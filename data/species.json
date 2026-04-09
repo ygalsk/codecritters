@@ -108,5 +108,60 @@
     "secondary_move": null,
     "evolves_to": null,
     "evolution_level": null
+  },
+  {
+    "id": "gremlin",
+    "name": "Gremlin",
+    "critter_type": "chaos",
+    "rarity": "common",
+    "base_stats": { "hp": 50, "logic": 80, "resolve": 45, "speed": 75 },
+    "signature_move": "bit_flip",
+    "secondary_move": "null_deref",
+    "evolves_to": "pandemonium",
+    "evolution_level": 30
+  },
+  {
+    "id": "pandemonium",
+    "name": "Pandemonium",
+    "critter_type": "chaos",
+    "rarity": "uncommon",
+    "base_stats": { "hp": 60, "logic": 100, "resolve": 50, "speed": 110 },
+    "signature_move": "buffer_overflow",
+    "secondary_move": "kernel_panic",
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "spaghetto",
+    "name": "Spaghetto",
+    "critter_type": "legacy",
+    "rarity": "common",
+    "base_stats": { "hp": 65, "logic": 55, "resolve": 70, "speed": 60 },
+    "signature_move": "jump_table",
+    "secondary_move": "tech_debt",
+    "evolves_to": "dependency",
+    "evolution_level": 28
+  },
+  {
+    "id": "dependency",
+    "name": "Dependency",
+    "critter_type": "legacy",
+    "rarity": "uncommon",
+    "base_stats": { "hp": 100, "logic": 60, "resolve": 95, "speed": 65 },
+    "signature_move": "tech_debt",
+    "secondary_move": "vendor_lock",
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "profiler",
+    "name": "Profiler",
+    "critter_type": "debug",
+    "rarity": "uncommon",
+    "base_stats": { "hp": 75, "logic": 95, "resolve": 65, "speed": 85 },
+    "signature_move": "stack_trace",
+    "secondary_move": "heap_profile",
+    "evolves_to": null,
+    "evolution_level": null
   }
 ]

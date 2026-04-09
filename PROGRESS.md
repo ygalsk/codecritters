@@ -151,3 +151,17 @@
 - **writeOut helper**: `bufPrint` + `std.fs.File.stdout().writeAll()` for CLI output (Zig 0.15 stdout API)
 - Design decisions: MCP server descoped (CLI subcommands + external hooks/skills instead), favorite critter managed via CLI (not game UI), cooldown critters still earn passive XP, max-level critters get 0 XP but still roll items, XP_PER_EVENT=5, EVENTS_PER_ITEM_ROLL=20, ITEM_FIND_CHANCE_PCT=30
 - 234 tests (12 new: 5 passive_store, 6 passive engine, 1 schema)
+
+## Phase 12 — Complete Starter Evolution Chains [DONE]
+- All 3 starter lines now complete (9 species total across 3 chains)
+- **DEBUG chain**: Println → Tracer → Profiler (Uncommon, hp=75/logic=95/resolve=65/speed=85)
+- **CHAOS chain**: Glitch → Gremlin (Common, hp=50/logic=80/resolve=45/speed=75) → Pandemonium (Uncommon, hp=60/logic=100/resolve=50/speed=110)
+- **LEGACY chain**: Goto → Spaghetto (Common, hp=65/logic=55/resolve=70/speed=60) → Dependency (Uncommon, hp=100/logic=60/resolve=95/speed=65)
+- **4 new moves**: null_deref (chaos 55/90, segfaulted 20%), heap_profile (debug 85/85, linted 25%), kernel_panic (chaos 90/75, segfaulted 25%), vendor_lock (legacy 80/85, deprecated 30%). Spaghetto reuses tech_debt as secondary
+- **Stat design**: mid evos ~250 total, finals ~320 total. Type themes preserved (CHAOS: glass cannon high logic+speed, LEGACY: tank high hp+resolve)
+- **Evolution levels**: Gremlin evolves at Lv30→Pandemonium, Spaghetto at Lv28→Dependency, Tracer at Lv28→Profiler (already set)
+- **5 new sprites**: profiler (flame graph), gremlin (imp with horns), pandemonium (explosion fragments), spaghetto (tangled lines), dependency (inverted tree). Generated via updated gen_sprites.py
+- **Biome encounters updated**: all 3 biomes (generic_dungeon, pythonic_caves, node_abyss) now include mid evos on floor 4-5+ and finals on floor 7-8+. Profiler added to generic_dungeon boss pool, Pandemonium to node_abyss boss pool
+- **main.zig**: sprite_ids expanded from 10 to 15 entries
+- Data totals: 15 species, 16 moves, 3 biomes
+- 234 tests passing (2 updated: biome encounter count, evolution missing-target test now uses monad→functor)

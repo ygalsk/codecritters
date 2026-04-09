@@ -123,8 +123,8 @@ test "load biomes from JSON" {
     try std.testing.expect(parsed.value.len >= 3);
     const generic = findById(parsed.value, "generic_dungeon");
     try std.testing.expect(generic != null);
-    try std.testing.expectEqual(@as(usize, 5), generic.?.encounter_table.len);
-    try std.testing.expectEqual(@as(usize, 1), generic.?.boss_pool.len);
+    try std.testing.expectEqual(@as(usize, 10), generic.?.encounter_table.len);
+    try std.testing.expectEqual(@as(usize, 2), generic.?.boss_pool.len);
     try std.testing.expectEqual(@as(usize, 7), generic.?.shop_bias.len);
 
     // Verify new biomes load

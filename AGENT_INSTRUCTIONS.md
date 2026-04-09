@@ -33,44 +33,29 @@ For each phase:
 
 ## Roadmap
 
-### Phase 0 — Project Skeleton
-Zig project setup, build.zig, libvaxis dependency, a window that opens and closes cleanly. Prove the toolchain works. Nothing else.
+### Phases 0–12 — Core Systems + Starter Chains [DONE]
+All game systems built through Phase 11. Phase 12 completed all 3 starter evolution chains (9 species): Println→Tracer→Profiler, Glitch→Gremlin→Pandemonium, Goto→Spaghetto→Dependency. 15 species, 16 moves, 234 tests passing. See PROGRESS.md for details.
 
-### Phase 1 — Data Layer
-Define the core data structures: Species, Critter (instance), Move, Item, type chart. Load species/moves/items from JSON data files. Write the data files for a small test subset (3-5 critters, a handful of moves). SQLite schema for persistent game state (roster, inventory, settings). Save and load a roster.
+### Phase 13 — Title Screen + Screen Transitions
+New title_screen.zig with ASCII art logo. Transition system in main.zig (brief visual wipe/fade between screen changes). Polish phase — no data changes.
 
-### Phase 2 — Battle Engine (No UI)
-Turn-based battle logic as pure functions with no rendering. Damage calculation, type effectiveness, status effects, speed-based turn order, fainting, swapping. Write tests against known scenarios. This must be solid before any UI work begins.
+### Phase 14 — Three-Stage Evolution Lines (All 7 Types)
+Complete every type's 3-stage common→common→uncommon line (Printf→Fprintf→Logstash, Segfault→Stack Overflow→Kernel Panic, etc.). +15 species, +14 moves, +15 sprites. Update all biome encounter tables.
 
-### Phase 3 — Battle Screen
-Render a battle using libvaxis. Two sprite placeholders (colored rectangles are fine), HP bars, action menu (Attack, Catch, Swap, Item). Wire up the battle engine from Phase 2. A human should be able to play through a full battle using keyboard input.
+### Phase 15 — Four New Biomes + Detection
+Rustacean Depths (.rs), Gopher Tunnels (.go), C Catacombs (.c/.h), Shell Scripts (.sh). Complete detect.zig with language scoring. Each biome needs encounter table, boss pool, shop/drop bias, theme colors.
 
-### Phase 4 — Sprites
-Sprite loading and rendering system. Half-block renderer using truecolor. Kitty graphics protocol renderer with capability detection and automatic fallback. Load PNG sprite sheets, support multi-frame idle animation. Replace the Phase 3 placeholders with real sprites for the test critters.
+### Phase 16 — Two-Stage Lines + Standalone Rares
+Each type gets its uncommon→rare 2-stage line + standalone rare (Breakpoint→Watchpoint, Heisenbug, etc.). +21 species, +10 moves, +21 sprites.
 
-### Phase 5 — Dungeon Engine (No UI)
-Procedural floor generation. Grid representation, tile types (floor, wall, encounter, shop, stairs). Player movement logic. Encounter triggering. Floor-to-floor transitions. Boss floor logic. All testable without rendering.
+### Phase 17 — Epics + Legendaries + Sound Cues
+7 epics (stats reflect drawbacks, no special engine hooks yet) + 3 legendaries (not in encounter tables). Sound system emitting BEL on key events. +10 species, +8 moves, +10 sprites. Full 61-critter roster complete.
 
-### Phase 6 — Dungeon Screen
-Render the dungeon map using libvaxis. Player movement with keyboard. Fog of war or visible radius. Transition into battle screen on encounter. Between-floor shop screen. Wire up to the battle engine.
+### Phase 18 — Sprite Audit + Visual Polish
+Verify all 61 sprites exist. Hub shows favorite critter. Roster shows sprite previews. Battle handles long names. All screens clean at 80×24 minimum.
 
-### Phase 7 — Party & Roster Management
-Party selection screen (pick 3 from roster). Roster viewer showing all owned critters, stats, scars, cooldown status. Leveling, XP gain from battles, evolution triggers. Move Disc equipping.
-
-### Phase 8 — Catch System & Inventory
-Catch tool usage during battle (replaces Attack option). Catch rate formula. Inventory screen. Item drops from battles. Shop purchasing with currency.
-
-### Phase 9 — Biome System
-Working directory language detection. Biome-specific encounter tables, shop bias, floor aesthetics. Generic fallback biome. At least 2 real biomes implemented (e.g., Python + JS).
-
-### Phase 10 — Death, Scarring & Persistence
-Faint → cooldown timer + stat scarring. Persistent roster across runs. Run extraction vs wipe. Full save/load cycle through a complete run.
-
-### Phase 11 — Passive Layer
-CLI subcommands (`log-event`, `status`, `set-favorite`, `statusline`) for Claude Code integration. Passive XP/item engine with backlog reconciliation on game launch. Recap screen. Claude Code hooks/skills/buddy live in separate repo (`ygalsk/codecritter`).
-
-### Phase 12 — Polish & Content
-Full critter roster (all 61). All moves defined. All biomes. Title screen, screen transitions, sound cues (if terminal supports BEL or similar). Balance pass on stats, catch rates, XP curves.
+### Phase 19 — Balance Pass + Final Polish
+Stat totals by rarity tier, move power/accuracy curves, XP curve verification, catch rate review, biome encounter balance, shop pricing, edge case testing. Content-complete.
 
 ---
 

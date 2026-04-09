@@ -164,16 +164,16 @@ test "awardXp no evolution when target species missing from data" {
     const gd = try game_data_mod.GameData.load(testing.allocator);
     defer @constCast(&gd).deinit();
 
-    // Glitch evolves_to "gremlin" at 14, but gremlin isn't in species.json yet
+    // Monad evolves_to "functor" at 15, but functor isn't in species.json yet
     // So evolution should NOT trigger (graceful handling of missing target)
-    const sp = gd.findSpecies("glitch") orelse return error.MissingSpecies;
-    var critter = critter_mod.Critter.createFromSpecies(sp, 13);
-    critter.xp = xpForLevel(13);
-    const result = awardXp(&critter, xpForLevel(14) - critter.xp, &gd);
+    const sp = gd.findSpecies("monad") orelse return error.MissingSpecies;
+    var critter = critter_mod.Critter.createFromSpecies(sp, 14);
+    critter.xp = xpForLevel(14);
+    const result = awardXp(&critter, xpForLevel(15) - critter.xp, &gd);
     try testing.expect(result.levels_gained >= 1);
     try testing.expect(!result.evolved);
-    // Species should remain glitch
-    try testing.expect(std.mem.eql(u8, "glitch", critter.species_id));
+    // Species should remain monad
+    try testing.expect(std.mem.eql(u8, "monad", critter.species_id));
 }
 
 test "awardXp does not exceed level 100" {
