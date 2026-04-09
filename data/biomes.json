@@ -18,7 +18,18 @@
       { "item_id": "hotfix", "weight": 20 },
       { "item_id": "print_statement", "weight": 25 },
       { "item_id": "breakpoint_tool", "weight": 15 },
-      { "item_id": "disc_buffer_overflow", "weight": 10 }
+      { "item_id": "disc_buffer_overflow", "weight": 10 },
+      { "item_id": "linter_tool", "weight": 8 },
+      { "item_id": "formal_proof_tool", "weight": 3 }
+    ],
+    "drop_table": [
+      { "item_id": "small_patch", "weight": 35 },
+      { "item_id": "hotfix", "weight": 15 },
+      { "item_id": "print_statement", "weight": 25 },
+      { "item_id": "breakpoint_tool", "weight": 10 },
+      { "item_id": "linter_tool", "weight": 5 },
+      { "item_id": "disc_buffer_overflow", "weight": 5 },
+      { "item_id": "disc_mutex_lock", "weight": 5 }
     ]
   }
 ]

@@ -26,6 +26,7 @@ pub const Biome = struct {
     encounter_table: []const EncounterEntry,
     boss_pool: []const BossEntry,
     shop_bias: []const ShopBiasEntry,
+    drop_table: []const ShopBiasEntry = &.{},
 };
 
 pub fn load(allocator: std.mem.Allocator, path: []const u8) !std.json.Parsed([]Biome) {
@@ -77,6 +78,33 @@ pub fn encounterLevel(floor_number: u8, rng: std.Random) u8 {
     return @intCast(level);
 }
 
+/// Roll for an item drop after a battle. Boss kills are guaranteed drops.
+/// Base drop chance: 40% + 3% per floor, capped at 70%.
+pub fn rollDrop(b: *const Biome, floor_number: u8, is_boss: bool, rng: std.Random) ?[]const u8 {
+    if (b.drop_table.len == 0) return null;
+
+    // Check if drop occurs
+    if (!is_boss) {
+        const chance: u32 = @min(70, 40 + @as(u32, floor_number) * 3);
+        if (rng.intRangeLessThan(u32, 0, 100) >= chance) return null;
+    }
+
+    // Weighted random selection from drop_table
+    var total_weight: u32 = 0;
+    for (b.drop_table) |entry| {
+        total_weight += entry.weight;
+    }
+    if (total_weight == 0) return null;
+
+    var roll = rng.intRangeLessThan(u32, 0, total_weight);
+    for (b.drop_table) |entry| {
+        if (roll < entry.weight) return entry.item_id;
+        roll -= entry.weight;
+    }
+
+    return null;
+}
+
 // --- Tests ---
 
 test "load biomes from JSON" {
@@ -89,7 +117,7 @@ test "load biomes from JSON" {
     try std.testing.expect(generic != null);
     try std.testing.expectEqual(@as(usize, 5), generic.?.encounter_table.len);
     try std.testing.expectEqual(@as(usize, 1), generic.?.boss_pool.len);
-    try std.testing.expectEqual(@as(usize, 5), generic.?.shop_bias.len);
+    try std.testing.expectEqual(@as(usize, 7), generic.?.shop_bias.len);
 }
 
 test "rollEncounter respects floor range" {
@@ -144,6 +172,29 @@ test "encounterLevel capped at 50" {
     var prng = std.Random.DefaultPrng.init(0);
     const lv = encounterLevel(30, prng.random());
     try std.testing.expect(lv <= 50);
+}
+
+test "rollDrop returns items from drop_table" {
+    const allocator = std.testing.allocator;
+    const parsed = try load(allocator, "data/biomes.json");
+    defer parsed.deinit();
+
+    const b = &parsed.value[0];
+    try std.testing.expect(b.drop_table.len >= 5);
+
+    // Boss drop is guaranteed
+    var prng = std.Random.DefaultPrng.init(42);
+    const boss_drop = rollDrop(b, 5, true, prng.random());
+    try std.testing.expect(boss_drop != null);
+
+    // Normal drops should occur sometimes over many trials
+    var drop_count: u32 = 0;
+    var i: u32 = 0;
+    while (i < 200) : (i += 1) {
+        if (rollDrop(b, 3, false, prng.random()) != null) drop_count += 1;
+    }
+    try std.testing.expect(drop_count > 0);
+    try std.testing.expect(drop_count < 200); // Not always
 }
 
 test "rollBoss returns valid entry" {

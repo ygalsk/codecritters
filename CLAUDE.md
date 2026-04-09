@@ -6,7 +6,7 @@ Pokemon-style roguelike TUI game. Zig 0.15.2 + libvaxis + zqlite.
 ```
 zig build          # compile
 zig build run      # launch game
-zig build test     # 203 unit tests
+zig build test     # 207 unit tests
 ```
 
 ## Structure

@@ -23,6 +23,8 @@ const party_select_mod = @import("ui/party_select_screen.zig");
 const PartySelectScreen = party_select_mod.PartySelectScreen;
 const roster_screen_mod = @import("ui/roster_screen.zig");
 const RosterScreen = roster_screen_mod.RosterScreen;
+const inventory_screen_mod = @import("ui/inventory_screen.zig");
+const InventoryScreen = inventory_screen_mod.InventoryScreen;
 const sprite_mod = @import("ui/sprite.zig");
 const SpriteMap = sprite_mod.SpriteMap;
 const ui = @import("ui/ui_common.zig");
@@ -40,6 +42,7 @@ const ActiveScreen = enum {
     hub,
     party_select,
     roster_view,
+    inventory,
     dungeon,
     battle,
     shop,
@@ -99,9 +102,11 @@ pub fn main() !void {
 
     // Screen state
     var active_screen: ActiveScreen = .hub;
-    var hub_screen: HubScreen = HubScreen.init(rosterCount(&database));
+    var hub_screen: HubScreen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
     var party_select_screen: PartySelectScreen = undefined;
     var roster_screen: RosterScreen = undefined;
+    var inv_screen: InventoryScreen = undefined;
+    var inv_screen_entries: [32]inventory_screen_mod.InventoryEntry = undefined;
     var dungeon_state: dungeon_mod.DungeonState = undefined;
     var dg_screen: DungeonScreen = undefined;
     var battle_state: battle.BattleState = undefined;
@@ -173,19 +178,20 @@ pub fn main() !void {
                         .hub => hub_screen.handleInput(key),
                         .party_select => party_select_screen.handleInput(key),
                         .roster_view => roster_screen.handleInput(key),
+                        .inventory => inv_screen.handleInput(key),
                         .dungeon => dg_screen.handleInput(key),
                         .battle => battle_screen.handleInput(key),
                         .shop => shop_screen.handleInput(key),
                         .run_over => {
                             // Any key returns to hub
                             active_screen = .hub;
-                            hub_screen = HubScreen.init(rosterCount(&database));
+                            hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
                         },
                     }
                 },
                 .winsize => |ws| {
                     try vx.resize(alloc, writer, ws);
-                    markAllDirty(active_screen, &hub_screen, &party_select_screen, &roster_screen, &dg_screen, &battle_screen, &shop_screen, &run_over_dirty);
+                    markAllDirty(active_screen, &hub_screen, &party_select_screen, &roster_screen, &inv_screen, &dg_screen, &battle_screen, &shop_screen, &run_over_dirty);
                 },
                 else => {},
             }
@@ -220,6 +226,22 @@ pub fn main() !void {
                             }
                             roster_screen = RosterScreen.init(roster_buf, roster_species_buf[0..roster_buf.len], inv_entries[0..inv_len], &gd);
                             active_screen = .roster_view;
+                        },
+                        .view_inventory => {
+                            if (inventory_buf.len > 0) {
+                                roster_db.freeInventory(alloc, inventory_buf);
+                                inventory_buf = &.{};
+                            }
+                            inventory_buf = roster_db.loadInventory(&database, alloc) catch &.{};
+                            const inv_len = @min(inventory_buf.len, inv_screen_entries.len);
+                            for (0..inv_len) |i| {
+                                inv_screen_entries[i] = .{
+                                    .item_id = inventory_buf[i].item_id,
+                                    .quantity = inventory_buf[i].quantity,
+                                };
+                            }
+                            inv_screen = InventoryScreen.init(inv_screen_entries[0..inv_len], &gd, roster_db.getCurrency(&database));
+                            active_screen = .inventory;
                         },
                         .quit => {
                             quit = true;
@@ -263,12 +285,12 @@ pub fn main() !void {
                         } else {
                             // No valid party, go back to hub
                             active_screen = .hub;
-                            hub_screen = HubScreen.init(rosterCount(&database));
+                            hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
                         }
                     } else {
                         // Cancelled
                         active_screen = .hub;
-                        hub_screen = HubScreen.init(rosterCount(&database));
+                        hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
                     }
                 }
             },
@@ -286,7 +308,13 @@ pub fn main() !void {
                 }
                 if (roster_screen.done) {
                     active_screen = .hub;
-                    hub_screen = HubScreen.init(rosterCount(&database));
+                    hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                }
+            },
+            .inventory => {
+                if (inv_screen.done) {
+                    active_screen = .hub;
+                    hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
                 }
             },
             .dungeon => {
@@ -305,7 +333,16 @@ pub fn main() !void {
             },
             .battle => {
                 if (battle_screen.done) {
-                    finishBattle(&dungeon_state, &battle_state, &inv_bridge, inv_bridge_count, &inv_pre_counts);
+                    const enc_result = finishBattle(&dungeon_state, &battle_state, &inv_bridge, inv_bridge_count, &inv_pre_counts);
+
+                    // Show drop notification
+                    if (enc_result.dropped_item_id) |item_id| {
+                        if (gd.findItem(item_id)) |item| {
+                            var drop_buf: [64]u8 = undefined;
+                            const drop_msg = std.fmt.bufPrint(&drop_buf, "Found a {s}!", .{item.name}) catch "Found an item!";
+                            dg_screen.log.push(drop_msg);
+                        }
+                    }
 
                     // Award XP on win/catch
                     const b_outcome = battle_state.outcome orelse .player_lose;
@@ -314,9 +351,10 @@ pub fn main() !void {
                     }
 
                     if (dungeon_state.phase == .run_over) {
-                        // Persist catches on extraction
+                        // Persist catches and inventory on extraction
                         if (dungeon_state.outcome == .extracted) {
                             persistCatches(&dungeon_state, &gd, &database);
+                            persistRunInventory(&dungeon_state, &database);
                         }
                         // Save party state back to DB
                         savePartyState(&dungeon_state, &database, &run_party_ids);
@@ -337,6 +375,7 @@ pub fn main() !void {
                     if (shop_screen.extracted) {
                         dungeon_mod.extract(&dungeon_state);
                         persistCatches(&dungeon_state, &gd, &database);
+                        persistRunInventory(&dungeon_state, &database);
                         savePartyState(&dungeon_state, &database, &run_party_ids);
                         active_screen = .run_over;
                         run_over_dirty = true;
@@ -363,6 +402,7 @@ pub fn main() !void {
             .hub => hub_screen.dirty,
             .party_select => party_select_screen.dirty,
             .roster_view => roster_screen.dirty,
+            .inventory => inv_screen.dirty,
             .dungeon => dg_screen.dirty,
             .battle => battle_screen.dirty,
             .shop => shop_screen.dirty,
@@ -374,6 +414,7 @@ pub fn main() !void {
                 .hub => hub_screen.dirty = false,
                 .party_select => party_select_screen.dirty = false,
                 .roster_view => roster_screen.dirty = false,
+                .inventory => inv_screen.dirty = false,
                 .dungeon => dg_screen.dirty = false,
                 .battle => battle_screen.dirty = false,
                 .shop => shop_screen.dirty = false,
@@ -384,6 +425,7 @@ pub fn main() !void {
                 .hub => hub_screen.render(win),
                 .party_select => party_select_screen.render(win),
                 .roster_view => roster_screen.render(win),
+                .inventory => inv_screen.render(win),
                 .dungeon => dg_screen.render(win),
                 .battle => battle_screen.render(win),
                 .shop => shop_screen.render(win),
@@ -491,7 +533,7 @@ fn finishBattle(
     inv_bridge: *const [dungeon_mod.MAX_RUN_ITEMS]InventorySlot,
     inv_bridge_count: usize,
     inv_pre_counts: *const [dungeon_mod.MAX_RUN_ITEMS]u8,
-) void {
+) dungeon_mod.EncounterResult {
     const b_outcome = battle_state.outcome orelse .player_lose;
     const d_outcome: dungeon_mod.EncounterOutcome = switch (b_outcome) {
         .player_win => .player_win,
@@ -513,7 +555,7 @@ fn finishBattle(
         caught_level = battle_state.wild.critter.level;
     }
 
-    dungeon_mod.resolveEncounter(dungeon_state, d_outcome, updated_party, caught_species_id, caught_level);
+    const enc_result = dungeon_mod.resolveEncounter(dungeon_state, d_outcome, updated_party, caught_species_id, caught_level);
 
     // Sync consumed inventory items back to dungeon
     var bridge_idx: usize = 0;
@@ -528,6 +570,8 @@ fn finishBattle(
             }
         }
     }
+
+    return enc_result;
 }
 
 fn awardPartyXp(
@@ -581,11 +625,27 @@ fn savePartyState(
     }
 }
 
+fn persistRunInventory(
+    dungeon_state: *const dungeon_mod.DungeonState,
+    database: *db.Db,
+) void {
+    for (dungeon_state.run_inventory[0..dungeon_state.run_inventory_count]) |maybe_item| {
+        const item = maybe_item orelse continue;
+        if (item.count > 0) {
+            roster_db.addInventoryItem(database, item.item_id, @intCast(item.count)) catch {};
+        }
+    }
+    if (dungeon_state.currency > 0) {
+        roster_db.addCurrency(database, dungeon_state.currency) catch {};
+    }
+}
+
 fn markAllDirty(
     active_screen: ActiveScreen,
     hub_screen: *HubScreen,
     party_select_screen: *PartySelectScreen,
     roster_screen: *RosterScreen,
+    inv_scr: *InventoryScreen,
     dg_screen: *DungeonScreen,
     battle_screen: *BattleScreen,
     shop_screen: *ShopScreen,
@@ -595,6 +655,7 @@ fn markAllDirty(
         .hub => hub_screen.dirty = true,
         .party_select => party_select_screen.dirty = true,
         .roster_view => roster_screen.dirty = true,
+        .inventory => inv_scr.dirty = true,
         .dungeon => dg_screen.dirty = true,
         .battle => battle_screen.dirty = true,
         .shop => shop_screen.dirty = true,

@@ -104,3 +104,19 @@
 - **build.zig**: `leveling_mod` and `equip_mod` registered as named modules with appropriate imports. Test entries added for both
 - Design decisions: XP curve level²×10, XP award 10+level×3, evolution immediate on level-up, move disc always slot 3 (replaces existing), starter critters Lv5
 - 203 tests (13 new: 9 leveling/evolution, 4 equip)
+
+## Phase 8 — Catch System & Inventory [DONE]
+- Completes item/catch loop: all 5 catch tiers, item drops, Try-Catch penalty, inventory persistence, hub inventory screen, heal target selection
+- **items.json**: Added Linter (tier 4, 50% base, $500) and Formal Proof (tier 5, 70% base, $800) catch tools. Now 10 items total
+- **biomes.json**: Added `drop_table` array per biome (7 items, weighted). Added Linter/Formal Proof to shop_bias
+- **biome.zig**: `rollDrop(biome, floor, is_boss, rng)` — base 40% chance +3%/floor (cap 70%), boss guaranteed. Weighted random from drop_table
+- **dungeon.zig**: `resolveEncounter` now returns `EncounterResult { dropped_item_id }`. Rolls drops on win/catch, adds to run_inventory
+- **battle.zig**: Try-Catch failure mechanic — failed catch with `.try_catch` tier tool triggers free retaliatory wild attack. New `catch_retaliation` event with move name and damage. `resolveCatch` now takes `game_data` param
+- **text.zig**: Added formatting for `catch_retaliation` event: "It broke free and attacked with [move]! [N] damage."
+- **roster.zig**: `getCurrency(db)` / `addCurrency(db, amount)` using meta table key-value. Currency persists across runs
+- **main.zig**: `persistRunInventory` saves run items + currency to DB on extraction (both battle and shop paths). Drop notification pushed to dungeon log ("Found a [item]!")
+- **hub_screen.zig**: Added "Inventory" menu option (4 items: New Run/View Roster/Inventory/Quit). Currency displayed on hub: "Roster: N critters | $N"
+- **inventory_screen.zig** (new): Hub inventory viewer grouped by category (Catch Tools, Healing Items, Move Discs). Shows quantity + extra info (catch rate %, heal amount). Currency display. Up/Down navigate, Esc back
+- **battle_screen.zig**: Healing target selection — new `select_heal_target` menu state. Item → select healing item → select party member (all alive, including active). Shows HP bars per target. Esc restores item and returns to item list
+- Design decisions: drop chance 40%+3%/floor (boss guaranteed), currency in meta table, no selling from hub (only in dungeon shops), wipe = lose all run items/currency
+- 207 tests (4 new: currency round-trip, Try-Catch retaliation, rollDrop, drop_table load)

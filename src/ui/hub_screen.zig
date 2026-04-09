@@ -4,6 +4,7 @@ const ui = @import("ui_common.zig");
 pub const HubChoice = enum {
     new_run,
     view_roster,
+    view_inventory,
     quit,
 };
 
@@ -13,20 +14,23 @@ pub const HubScreen = struct {
     done: bool,
     dirty: bool,
     roster_count: u16,
+    currency: u32,
 
     const menu_items = [_][]const u8{
         "New Run",
         "View Roster",
+        "Inventory",
         "Quit",
     };
 
-    pub fn init(roster_count: u16) HubScreen {
+    pub fn init(roster_count: u16, currency: u32) HubScreen {
         return .{
             .cursor = 0,
             .selection = null,
             .done = false,
             .dirty = true,
             .roster_count = roster_count,
+            .currency = currency,
         };
     }
 
@@ -40,7 +44,8 @@ pub const HubScreen = struct {
             self.selection = switch (self.cursor) {
                 0 => .new_run,
                 1 => .view_roster,
-                2 => .quit,
+                2 => .view_inventory,
+                3 => .quit,
                 else => null,
             };
             if (self.selection != null) self.done = true;
@@ -71,11 +76,12 @@ pub const HubScreen = struct {
             .fg = .{ .rgb = .{ 140, 140, 160 } },
         });
 
-        // Roster count
-        var roster_buf: [32]u8 = undefined;
-        const roster_str = std.fmt.bufPrint(&roster_buf, "Roster: {d} critter{s}", .{
+        // Roster count + currency
+        var roster_buf: [64]u8 = undefined;
+        const roster_str = std.fmt.bufPrint(&roster_buf, "Roster: {d} critter{s}  |  ${d}", .{
             self.roster_count,
             if (self.roster_count != 1) "s" else "",
+            self.currency,
         }) catch "Roster: ?";
         const roster_col: u16 = if (w > roster_str.len) @intCast((w - roster_str.len) / 2) else 0;
         _ = ui.writeText(win, roster_col, title_row + 3, roster_str, .{

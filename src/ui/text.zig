@@ -61,6 +61,9 @@ pub fn formatEvent(event: battle.BattleEvent, buf: []u8) []const u8 {
             const who = if (d.is_player) "Your critter" else "Wild critter";
             return std.fmt.bufPrint(buf, "{s}'s move was blocked by Lint!", .{who}) catch "...";
         },
+        .catch_retaliation => |d| {
+            return std.fmt.bufPrint(buf, "It broke free and attacked with {s}! {d} damage.", .{ d.move_name, d.damage_dealt }) catch "...";
+        },
     };
 }
 

@@ -247,6 +247,30 @@ pub fn freeInventory(allocator: std.mem.Allocator, inv: []InventoryEntry) void {
     allocator.free(inv);
 }
 
+// --- Currency ---
+
+pub fn getCurrency(database: *Db) u32 {
+    const maybe_row = database.conn.row(
+        "SELECT value FROM meta WHERE key = 'currency'",
+        .{},
+    ) catch return 0;
+    if (maybe_row) |row| {
+        defer row.deinit();
+        const val = std.fmt.parseInt(u32, row.text(0), 10) catch return 0;
+        return val;
+    }
+    return 0;
+}
+
+pub fn addCurrency(database: *Db, amount: u32) !void {
+    var buf: [16]u8 = undefined;
+    const amount_str = std.fmt.bufPrint(&buf, "{d}", .{amount}) catch return;
+    try database.conn.exec(
+        \\INSERT INTO meta (key, value) VALUES ('currency', ?1)
+        \\ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(value AS INTEGER) + CAST(?1 AS INTEGER) AS TEXT)
+    , .{amount_str});
+}
+
 // --- Tests ---
 
 test "save and load critter round-trip" {
@@ -376,4 +400,21 @@ test "inventory add and load" {
     defer freeInventory(allocator, inv);
 
     try std.testing.expectEqual(@as(usize, 2), inv.len);
+}
+
+test "currency get and add" {
+    var db = try Db.openMemory();
+    defer db.close();
+    try db.initSchema();
+
+    // Default is 0
+    try std.testing.expectEqual(@as(u32, 0), getCurrency(&db));
+
+    // Add currency
+    try addCurrency(&db, 100);
+    try std.testing.expectEqual(@as(u32, 100), getCurrency(&db));
+
+    // Add more (stacks)
+    try addCurrency(&db, 50);
+    try std.testing.expectEqual(@as(u32, 150), getCurrency(&db));
 }

@@ -60,7 +60,7 @@ test "load all game data" {
 
     try std.testing.expect(gd.species().len >= 5);
     try std.testing.expect(gd.moves().len >= 12);
-    try std.testing.expect(gd.items().len >= 8);
+    try std.testing.expect(gd.items().len >= 10);
 
     // Cross-reference: species signature move exists in moves
     const println = gd.findSpecies("println");

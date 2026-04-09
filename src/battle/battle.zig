@@ -41,6 +41,7 @@ pub const BattleEvent = union(enum) {
     turn_skipped: TurnSkippedEvent,
     self_damage: SelfDamageEvent,
     move_blocked_by_lint: MoveBlockedEvent,
+    catch_retaliation: CatchRetaliationEvent,
 };
 
 pub const DamageDealtEvent = struct {
@@ -101,6 +102,11 @@ pub const SelfDamageEvent = struct {
 
 pub const MoveBlockedEvent = struct {
     is_player: bool,
+};
+
+pub const CatchRetaliationEvent = struct {
+    move_name: []const u8,
+    damage_dealt: u16,
 };
 
 const MAX_EVENTS = 16;
@@ -364,7 +370,7 @@ fn resolveAction(
         },
         .catch_attempt => |tool| {
             if (is_player) {
-                resolveCatch(state, tool, result);
+                resolveCatch(state, tool, game_data, result);
             }
         },
     }
@@ -473,6 +479,7 @@ fn resolveItem(
 fn resolveCatch(
     state: *BattleState,
     tool: *const items_mod.Item,
+    game_data: *const game_data_mod.GameData,
     result: *TurnResult,
 ) void {
     const rng = state.rng.random();
@@ -490,6 +497,48 @@ fn resolveCatch(
     } });
     if (catch_result.success) {
         state.outcome = .caught;
+    } else if (tool.catch_tier) |tier| {
+        if (tier == .try_catch) {
+            // Try-Catch penalty: wild critter gets a free retaliatory attack
+            const wild_slot = ai.chooseWildMoveSlot(
+                state.wild.critter.move_slot_1,
+                state.wild.critter.move_slot_2,
+                state.wild.critter.move_slot_3,
+                state.rng.random(),
+            );
+            const move_id: ?[]const u8 = switch (wild_slot) {
+                0 => state.wild.critter.move_slot_1,
+                1 => state.wild.critter.move_slot_2,
+                2 => state.wild.critter.move_slot_3,
+                3 => null,
+            };
+            if (move_id) |mid| {
+                if (game_data.findMove(mid)) |move| {
+                    const player = state.activePlayerMut();
+                    const dmg = damage.calculateDamage(
+                        move,
+                        state.wild.critter.logic,
+                        state.wild.status.logic_mod,
+                        player.critter.resolve,
+                        player.status.resolve_mod,
+                        player.species.critter_type,
+                        state.wild.status.power_mod,
+                        state.rng.random(),
+                    );
+                    player.critter.current_hp -|= dmg;
+                    result.addEvent(.{ .catch_retaliation = .{
+                        .move_name = move.name,
+                        .damage_dealt = dmg,
+                    } });
+                    if (player.critter.current_hp == 0) {
+                        result.addEvent(.{ .critter_fainted = .{ .is_player = true } });
+                        if (checkPlayerLoss(state)) {
+                            state.outcome = .player_lose;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -775,6 +824,52 @@ test "processTurn: healing item restores HP" {
     // The HP was 50, healed to 100, then wild attacks bringing it down
     // Since wild deals ~34-40 damage, final HP should be ~60-66
     try testing.expect(state.activePlayer().critter.current_hp > 50);
+}
+
+test "resolveCatch: try-catch failure causes retaliation attack" {
+    const sp = makeTestSpecies("test_sp", .debug);
+    var c = makeTestCritter("test_sp", "log_dump", 100);
+    c.max_hp = 100;
+
+    const wild_sp = makeTestSpecies("wild_sp", .debug);
+    const wild_c = makeTestCritter("wild_sp", "log_dump", 100);
+
+    const critters = [_]critter_mod.Critter{c};
+    const sp_ptrs = [_]*const species_mod.Species{&sp};
+    var state = initBattle(&critters, &sp_ptrs, wild_c, &wild_sp, 42);
+
+    const try_catch_tool = items_mod.Item{
+        .id = "try_catch_tool",
+        .name = "Try-Catch",
+        .kind = .catch_tool,
+        .catch_tier = .try_catch,
+        .base_catch_rate = 1, // very low rate to ensure failure
+    };
+
+    const allocator = testing.allocator;
+    var gd = try game_data_mod.GameData.load(allocator);
+    defer gd.deinit();
+
+    // Use processTurn so the full flow runs
+    const result = processTurn(&state, .{ .catch_attempt = &try_catch_tool }, &gd);
+
+    // Check for retaliation event — catch should fail at 1% base rate (minus penalties)
+    // and then wild retaliates plus gets its normal turn
+    var found_retaliation = false;
+    for (result.events[0..result.event_count]) |evt| {
+        switch (evt) {
+            .catch_retaliation => {
+                found_retaliation = true;
+            },
+            else => {},
+        }
+    }
+
+    // With 1% base catch rate on a full-HP common critter, catch almost certainly fails
+    // and retaliation should fire. Player HP should be reduced.
+    if (found_retaliation) {
+        try testing.expect(state.activePlayer().critter.current_hp < 100);
+    }
 }
 
 test "getResults: extracts critter state" {

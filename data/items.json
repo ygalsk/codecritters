@@ -2,6 +2,8 @@
   { "id": "print_statement", "name": "Print Statement", "kind": "catch_tool", "catch_tier": "print_statement", "base_catch_rate": 20, "buy_price": 50, "sell_price": 25 },
   { "id": "breakpoint_tool", "name": "Breakpoint", "kind": "catch_tool", "catch_tier": "breakpoint", "base_catch_rate": 40, "buy_price": 150, "sell_price": 75 },
   { "id": "try_catch_tool", "name": "Try-Catch", "kind": "catch_tool", "catch_tier": "try_catch", "base_catch_rate": 60, "buy_price": 300, "sell_price": 150 },
+  { "id": "linter_tool", "name": "Linter", "kind": "catch_tool", "catch_tier": "linter", "base_catch_rate": 50, "buy_price": 500, "sell_price": 250 },
+  { "id": "formal_proof_tool", "name": "Formal Proof", "kind": "catch_tool", "catch_tier": "formal_proof", "base_catch_rate": 70, "buy_price": 800, "sell_price": 400 },
   { "id": "small_patch", "name": "Small Patch", "kind": "healing", "heal_amount": 30, "buy_price": 40, "sell_price": 20 },
   { "id": "hotfix", "name": "Hotfix", "kind": "healing", "heal_amount": 80, "buy_price": 100, "sell_price": 50 },
   { "id": "full_rebuild", "name": "Full Rebuild", "kind": "healing", "heal_amount": 9999, "buy_price": 500, "sell_price": 250 },

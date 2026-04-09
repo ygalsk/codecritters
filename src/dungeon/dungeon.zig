@@ -206,19 +206,25 @@ pub fn movePlayer(state: *DungeonState, dir: Direction) MoveResult {
     }
 }
 
+pub const EncounterResult = struct {
+    dropped_item_id: ?[]const u8 = null,
+};
+
 /// Resolve the outcome of an encounter (battle result).
 /// Updated party reflects post-battle HP state.
+/// Returns info about drops for the caller to display.
 pub fn resolveEncounter(
     state: *DungeonState,
     outcome: EncounterOutcome,
     updated_party: [3]?critter_mod.Critter,
     caught_species_id: ?[]const u8,
     caught_level: u8,
-) void {
+) EncounterResult {
     // Update party state from battle
     state.party = updated_party;
 
     const was_boss = state.phase == .boss_encounter;
+    var result = EncounterResult{};
 
     switch (outcome) {
         .player_win => {
@@ -264,6 +270,17 @@ pub fn resolveEncounter(
             }
         },
     }
+
+    // Roll for item drop on win or catch (not on loss)
+    if (outcome != .player_lose) {
+        const dropped = biome.rollDrop(state.biome_ptr, state.floor_number, was_boss, state.rng.random());
+        if (dropped) |item_id| {
+            addRunItem(state, item_id, 1);
+            result.dropped_item_id = item_id;
+        }
+    }
+
+    return result;
 }
 
 /// Advance to the next floor. Call after between-floors phase completes.
@@ -540,7 +557,7 @@ test "resolveEncounter updates party and awards currency" {
     var updated = state.party;
     updated[0].?.current_hp = 60;
 
-    resolveEncounter(&state, .player_win, updated, null, 0);
+    _ = resolveEncounter(&state, .player_win, updated, null, 0);
 
     try std.testing.expectEqual(@as(u16, 60), state.party[0].?.current_hp);
     try std.testing.expect(state.currency > 0); // 10 + 1*5 = 15
@@ -566,7 +583,7 @@ test "resolveEncounter wipe when all fainted" {
     var updated = state.party;
     updated[0].?.current_hp = 0;
 
-    resolveEncounter(&state, .player_lose, updated, null, 0);
+    _ = resolveEncounter(&state, .player_lose, updated, null, 0);
 
     try std.testing.expectEqual(RunPhase.run_over, state.phase);
     try std.testing.expectEqual(RunOutcome.wiped, state.outcome);
@@ -588,7 +605,7 @@ test "resolveEncounter records catch" {
     var state = startRun(&critters, &species_ptrs, b, 42);
     state.phase = .encounter;
 
-    resolveEncounter(&state, .caught, state.party, "glitch", 8);
+    _ = resolveEncounter(&state, .caught, state.party, "glitch", 8);
 
     try std.testing.expectEqual(@as(u8, 1), state.catch_count);
     try std.testing.expect(std.mem.eql(u8, state.catches[0].?.species_id, "glitch"));
@@ -801,11 +818,11 @@ test "full run simulation: 5 floors with encounters, boss, extraction" {
                 switch (result) {
                     .encounter_triggered => {
                         // Simulate winning the battle
-                        resolveEncounter(&state, .player_win, state.party, null, 0);
+                        _ = resolveEncounter(&state, .player_win, state.party, null, 0);
                     },
                     .boss_triggered => {
                         // Simulate winning the boss battle — transitions to between_floors
-                        resolveEncounter(&state, .player_win, state.party, null, 0);
+                        _ = resolveEncounter(&state, .player_win, state.party, null, 0);
                         try std.testing.expectEqual(RunPhase.between_floors, state.phase);
                         generateBetweenFloorShop(&state, &gd);
                         advanceFloor(&state);
