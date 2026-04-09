@@ -89,3 +89,18 @@
 - **Run over screen**: renderRunOver shows outcome (extracted/wiped), floors cleared, currency, catches list. Any key exits
 - **Fog of war**: visited[][] bool array per floor, updateVisited marks tiles within Manhattan distance 5 of player. resetVisited on floor advance
 - 190 tests still passing (no new UI tests — screens need live terminal)
+
+## Phase 7 — Party & Roster Management [DONE]
+- Metagame layer: XP/leveling, evolution, move disc equipping, hub menu, party selection, roster viewer
+- **leveling.zig**: XP/leveling as pure functions. `xpForLevel(level) = level² × 10` (quadratic curve). `battleXpAward(enemy_level, is_boss)` = `10 + level × 3` (doubled for bosses). `awardXp(critter, amount, game_data) → LevelUpResult` — loops level-ups, recomputes stats, checks evolution per level. Evolution: when `critter.level >= species.evolution_level`, updates species_id, recomputes stats from new species, sets signature/secondary moves
+- **equip.zig**: `equipMoveDisc(critter, item) → EquipResult` — validates item is move_disc kind, sets slot 3
+- **critter.zig changes**: `calcStat` made `pub`, added `recomputeStats(self, species)` — recalculates all stats proportionally (preserves damage taken)
+- **roster.zig addition**: `removeInventoryItem(db, item_id, quantity)` for consuming move discs
+- **hub_screen.zig**: Main menu screen — New Run / View Roster / Quit. Centered layout, shows roster count. Game starts here instead of going straight to dungeon
+- **party_select_screen.zig**: Load roster from DB, pick 1-3 critters. Toggle selection with Enter, confirm with C, escape to go back. Shows name/level/type/HP per critter. Cooldown critters visible but unselectable. Scrollable list
+- **roster_screen.zig**: Detail view for one critter at a time, Left/Right to cycle. Shows: name, level, type badge, XP progress, stats with scar adjustments in red, all 3 move slots with type/power/accuracy, cooldown timer, scar count. Sub-mode: press D to equip move disc from inventory overlay (Up/Down pick, Enter equip, Esc cancel). Pending equip events persisted to DB by main.zig
+- **main.zig rewrite**: `ActiveScreen` expanded to 7 states (hub/party_select/roster_view/dungeon/battle/shop/run_over). Game flow: hub → party_select → dungeon → battle ↔ shop → run_over → hub. Post-battle XP: surviving party members awarded XP, level-ups/evolutions applied, species pointers updated, critters saved to DB. Catches persisted on extraction (new Critter created from species+level, saved to roster). Starter seeding: empty roster gets Println Lv5 + Goto Lv5. Run over returns to hub (not quit)
+- **dungeon_screen.zig**: Added `pending_is_boss` flag for boss XP calculation
+- **build.zig**: `leveling_mod` and `equip_mod` registered as named modules with appropriate imports. Test entries added for both
+- Design decisions: XP curve level²×10, XP award 10+level×3, evolution immediate on level-up, move disc always slot 3 (replaces existing), starter critters Lv5
+- 203 tests (13 new: 9 leveling/evolution, 4 equip)

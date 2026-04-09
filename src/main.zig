@@ -7,7 +7,9 @@ const items_mod = @import("items");
 const critter_mod = @import("critter");
 const battle = @import("battle");
 const dungeon_mod = @import("dungeon");
+const leveling = @import("leveling");
 const db = @import("db/db.zig");
+const roster_db = @import("db/roster.zig");
 const battle_screen_mod = @import("ui/battle_screen.zig");
 const BattleScreen = battle_screen_mod.BattleScreen;
 const InventorySlot = battle_screen_mod.InventorySlot;
@@ -15,6 +17,12 @@ const dungeon_screen_mod = @import("ui/dungeon_screen.zig");
 const DungeonScreen = dungeon_screen_mod.DungeonScreen;
 const shop_screen_mod = @import("ui/shop_screen.zig");
 const ShopScreen = shop_screen_mod.ShopScreen;
+const hub_screen_mod = @import("ui/hub_screen.zig");
+const HubScreen = hub_screen_mod.HubScreen;
+const party_select_mod = @import("ui/party_select_screen.zig");
+const PartySelectScreen = party_select_mod.PartySelectScreen;
+const roster_screen_mod = @import("ui/roster_screen.zig");
+const RosterScreen = roster_screen_mod.RosterScreen;
 const sprite_mod = @import("ui/sprite.zig");
 const SpriteMap = sprite_mod.SpriteMap;
 const ui = @import("ui/ui_common.zig");
@@ -29,6 +37,9 @@ const Event = union(enum) {
 pub const panic = vaxis.Panic.call;
 
 const ActiveScreen = enum {
+    hub,
+    party_select,
+    roster_view,
     dungeon,
     battle,
     shop,
@@ -59,6 +70,8 @@ pub fn main() !void {
     defer database.close();
     try database.initSchema();
 
+    try seedStartersIfEmpty(&database, &gd);
+
     // Load biomes
     var biomes = dungeon_mod.biome.load(alloc, "data/biomes.json") catch |err| {
         std.debug.print("Failed to load biomes: {}\n", .{err});
@@ -84,32 +97,36 @@ pub fn main() !void {
     }
     defer for (sprite_storage[0..sprite_count]) |*s| s.deinit();
 
-    // Setup starter party
-    const player_sp = gd.findSpecies("println") orelse return error.MissingSpecies;
-    const partner_sp = gd.findSpecies("goto") orelse return error.MissingSpecies;
-
-    const player_critter = critter_mod.Critter.createFromSpecies(player_sp, 10);
-    const partner_critter = critter_mod.Critter.createFromSpecies(partner_sp, 10);
-
-    const party_critters = [_]critter_mod.Critter{ player_critter, partner_critter };
-    const party_species = [_]*const species_mod.Species{ player_sp, partner_sp };
-
-    const seed: u64 = @intCast(std.time.milliTimestamp());
-    var dungeon_state = dungeon_mod.startRun(&party_critters, &party_species, biome_ptr, seed);
-
     // Screen state
-    var active_screen: ActiveScreen = .dungeon;
-    var dg_screen = DungeonScreen.init(&dungeon_state, &gd);
+    var active_screen: ActiveScreen = .hub;
+    var hub_screen: HubScreen = HubScreen.init(rosterCount(&database));
+    var party_select_screen: PartySelectScreen = undefined;
+    var roster_screen: RosterScreen = undefined;
+    var dungeon_state: dungeon_mod.DungeonState = undefined;
+    var dg_screen: DungeonScreen = undefined;
     var battle_state: battle.BattleState = undefined;
     var battle_screen: BattleScreen = undefined;
     var shop_screen: ShopScreen = undefined;
     var use_kitty = false;
     var run_over_dirty = true;
 
+    // Roster/inventory storage for screens (loaded from DB before party_select/roster_view)
+    var roster_buf: []critter_mod.Critter = &.{};
+    defer if (roster_buf.len > 0) roster_db.freeRoster(alloc, roster_buf);
+    var roster_species_buf: [party_select_mod.MAX_ROSTER]?*const species_mod.Species = undefined;
+    var inventory_buf: []roster_db.InventoryEntry = &.{};
+    defer if (inventory_buf.len > 0) roster_db.freeInventory(alloc, inventory_buf);
+
+    // Party critter IDs (DB IDs) for the current run — used to save XP back
+    var run_party_ids: [3]u64 = .{ 0, 0, 0 };
+
     // Inventory bridge storage
     var inv_bridge: [dungeon_mod.MAX_RUN_ITEMS]InventorySlot = undefined;
     var inv_bridge_count: usize = 0;
     var inv_pre_counts: [dungeon_mod.MAX_RUN_ITEMS]u8 = undefined;
+
+    // Boss flag for XP calculation (set when battle starts)
+    var last_was_boss: bool = false;
 
     // TUI setup
     var tty_buf: [4096]u8 = undefined;
@@ -144,27 +161,31 @@ pub fn main() !void {
             switch (event) {
                 .key_press => |key| {
                     if (key.matches('q', .{}) or key.matches('c', .{ .ctrl = true })) {
-                        quit = true;
-                        break;
+                        if (active_screen == .hub) {
+                            quit = true;
+                            break;
+                        } else if (key.matches('c', .{ .ctrl = true })) {
+                            quit = true;
+                            break;
+                        }
                     }
                     switch (active_screen) {
+                        .hub => hub_screen.handleInput(key),
+                        .party_select => party_select_screen.handleInput(key),
+                        .roster_view => roster_screen.handleInput(key),
                         .dungeon => dg_screen.handleInput(key),
                         .battle => battle_screen.handleInput(key),
                         .shop => shop_screen.handleInput(key),
                         .run_over => {
-                            quit = true;
-                            break;
+                            // Any key returns to hub
+                            active_screen = .hub;
+                            hub_screen = HubScreen.init(rosterCount(&database));
                         },
                     }
                 },
                 .winsize => |ws| {
                     try vx.resize(alloc, writer, ws);
-                    switch (active_screen) {
-                        .dungeon => dg_screen.dirty = true,
-                        .battle => battle_screen.dirty = true,
-                        .shop => shop_screen.dirty = true,
-                        .run_over => run_over_dirty = true,
-                    }
+                    markAllDirty(active_screen, &hub_screen, &party_select_screen, &roster_screen, &dg_screen, &battle_screen, &shop_screen, &run_over_dirty);
                 },
                 else => {},
             }
@@ -173,10 +194,106 @@ pub fn main() !void {
 
         // Check screen transitions
         switch (active_screen) {
+            .hub => {
+                if (hub_screen.done) {
+                    hub_screen.done = false;
+                    switch (hub_screen.selection orelse .quit) {
+                        .new_run => {
+                            reloadRoster(alloc, &database, &gd, &roster_buf, &roster_species_buf);
+                            party_select_screen = PartySelectScreen.init(roster_buf, roster_species_buf[0..roster_buf.len]);
+                            active_screen = .party_select;
+                        },
+                        .view_roster => {
+                            reloadRoster(alloc, &database, &gd, &roster_buf, &roster_species_buf);
+                            if (inventory_buf.len > 0) {
+                                roster_db.freeInventory(alloc, inventory_buf);
+                                inventory_buf = &.{};
+                            }
+                            inventory_buf = roster_db.loadInventory(&database, alloc) catch &.{};
+                            var inv_entries: [roster_screen_mod.MAX_DISCS]RosterScreen.InventoryEntry = undefined;
+                            const inv_len = @min(inventory_buf.len, roster_screen_mod.MAX_DISCS);
+                            for (0..inv_len) |i| {
+                                inv_entries[i] = .{
+                                    .item_id = inventory_buf[i].item_id,
+                                    .quantity = inventory_buf[i].quantity,
+                                };
+                            }
+                            roster_screen = RosterScreen.init(roster_buf, roster_species_buf[0..roster_buf.len], inv_entries[0..inv_len], &gd);
+                            active_screen = .roster_view;
+                        },
+                        .quit => {
+                            quit = true;
+                        },
+                    }
+                    hub_screen.selection = null;
+                }
+            },
+            .party_select => {
+                if (party_select_screen.done) {
+                    if (party_select_screen.confirmed) {
+                        // Build party from selected roster indices
+                        var party_critters: [3]critter_mod.Critter = undefined;
+                        var party_species: [3]*const species_mod.Species = undefined;
+                        var party_count: usize = 0;
+                        run_party_ids = .{ 0, 0, 0 };
+
+                        for (party_select_screen.selected) |maybe_idx| {
+                            if (maybe_idx) |idx| {
+                                if (idx < roster_buf.len) {
+                                    party_critters[party_count] = roster_buf[idx];
+                                    run_party_ids[party_count] = roster_buf[idx].id;
+                                    if (roster_species_buf[idx]) |sp| {
+                                        party_species[party_count] = sp;
+                                    } else continue;
+                                    party_count += 1;
+                                }
+                            }
+                        }
+
+                        if (party_count > 0) {
+                            const seed: u64 = @intCast(std.time.milliTimestamp());
+                            dungeon_state = dungeon_mod.startRun(
+                                party_critters[0..party_count],
+                                party_species[0..party_count],
+                                biome_ptr,
+                                seed,
+                            );
+                            dg_screen = DungeonScreen.init(&dungeon_state, &gd);
+                            active_screen = .dungeon;
+                        } else {
+                            // No valid party, go back to hub
+                            active_screen = .hub;
+                            hub_screen = HubScreen.init(rosterCount(&database));
+                        }
+                    } else {
+                        // Cancelled
+                        active_screen = .hub;
+                        hub_screen = HubScreen.init(rosterCount(&database));
+                    }
+                }
+            },
+            .roster_view => {
+                // Handle pending equip events (persist to DB)
+                if (roster_screen.pending_equip) |equip| {
+                    if (equip.critter_idx < roster_buf.len) {
+                        const critter = &roster_buf[equip.critter_idx];
+                        // Save updated critter to DB
+                        _ = roster_db.saveCritter(&database, critter) catch {};
+                        // Consume disc from inventory
+                        roster_db.removeInventoryItem(&database, equip.item_id, 1) catch {};
+                    }
+                    roster_screen.pending_equip = null;
+                }
+                if (roster_screen.done) {
+                    active_screen = .hub;
+                    hub_screen = HubScreen.init(rosterCount(&database));
+                }
+            },
             .dungeon => {
                 if (dg_screen.pending_battle) |info| {
                     dg_screen.pending_battle = null;
-                    if (startBattle(&dungeon_state, info, &gd, &inv_bridge, &inv_bridge_count, &inv_pre_counts, &battle_state, &battle_screen, &sprite_map, use_kitty, seed)) {
+                    last_was_boss = dg_screen.pending_is_boss;
+                    if (startBattle(&dungeon_state, info, &gd, &inv_bridge, &inv_bridge_count, &inv_pre_counts, &battle_state, &battle_screen, &sprite_map, use_kitty)) {
                         active_screen = .battle;
                     }
                 } else if (dg_screen.pending_shop) {
@@ -190,7 +307,19 @@ pub fn main() !void {
                 if (battle_screen.done) {
                     finishBattle(&dungeon_state, &battle_state, &inv_bridge, inv_bridge_count, &inv_pre_counts);
 
+                    // Award XP on win/catch
+                    const b_outcome = battle_state.outcome orelse .player_lose;
+                    if (b_outcome == .player_win or b_outcome == .caught) {
+                        awardPartyXp(&dungeon_state, &gd, battle_state.wild.critter.level, last_was_boss);
+                    }
+
                     if (dungeon_state.phase == .run_over) {
+                        // Persist catches on extraction
+                        if (dungeon_state.outcome == .extracted) {
+                            persistCatches(&dungeon_state, &gd, &database);
+                        }
+                        // Save party state back to DB
+                        savePartyState(&dungeon_state, &database, &run_party_ids);
                         active_screen = .run_over;
                         run_over_dirty = true;
                     } else if (dungeon_state.phase == .between_floors) {
@@ -207,6 +336,8 @@ pub fn main() !void {
                 if (shop_screen.done) {
                     if (shop_screen.extracted) {
                         dungeon_mod.extract(&dungeon_state);
+                        persistCatches(&dungeon_state, &gd, &database);
+                        savePartyState(&dungeon_state, &database, &run_party_ids);
                         active_screen = .run_over;
                         run_over_dirty = true;
                     } else {
@@ -229,6 +360,9 @@ pub fn main() !void {
 
         // Render
         const dirty = switch (active_screen) {
+            .hub => hub_screen.dirty,
+            .party_select => party_select_screen.dirty,
+            .roster_view => roster_screen.dirty,
             .dungeon => dg_screen.dirty,
             .battle => battle_screen.dirty,
             .shop => shop_screen.dirty,
@@ -237,6 +371,9 @@ pub fn main() !void {
 
         if (dirty) {
             switch (active_screen) {
+                .hub => hub_screen.dirty = false,
+                .party_select => party_select_screen.dirty = false,
+                .roster_view => roster_screen.dirty = false,
                 .dungeon => dg_screen.dirty = false,
                 .battle => battle_screen.dirty = false,
                 .shop => shop_screen.dirty = false,
@@ -244,6 +381,9 @@ pub fn main() !void {
             }
             const win = vx.window();
             switch (active_screen) {
+                .hub => hub_screen.render(win),
+                .party_select => party_select_screen.render(win),
+                .roster_view => roster_screen.render(win),
                 .dungeon => dg_screen.render(win),
                 .battle => battle_screen.render(win),
                 .shop => shop_screen.render(win),
@@ -254,6 +394,43 @@ pub fn main() !void {
         }
 
         std.Thread.sleep(16 * std.time.ns_per_ms);
+    }
+}
+
+fn seedStartersIfEmpty(database: *db.Db, gd: *const game_data_mod.GameData) !void {
+    const roster = try roster_db.loadRoster(database, std.heap.page_allocator);
+    defer roster_db.freeRoster(std.heap.page_allocator, roster);
+    if (roster.len > 0) return;
+
+    // Create starter critters
+    const println_sp = gd.findSpecies("println") orelse return;
+    const goto_sp = gd.findSpecies("goto") orelse return;
+
+    var println = critter_mod.Critter.createFromSpecies(println_sp, 5);
+    var goto_c = critter_mod.Critter.createFromSpecies(goto_sp, 5);
+
+    _ = try roster_db.saveCritter(database, &println);
+    _ = try roster_db.saveCritter(database, &goto_c);
+}
+
+fn rosterCount(database: *db.Db) u16 {
+    return roster_db.countCritters(database);
+}
+
+fn reloadRoster(
+    alloc: std.mem.Allocator,
+    database: *db.Db,
+    gd: *const game_data_mod.GameData,
+    roster_buf: *[]critter_mod.Critter,
+    species_buf: *[party_select_mod.MAX_ROSTER]?*const species_mod.Species,
+) void {
+    if (roster_buf.len > 0) {
+        roster_db.freeRoster(alloc, roster_buf.*);
+    }
+    roster_buf.* = roster_db.loadRoster(database, alloc) catch &.{};
+    for (roster_buf.*, 0..) |critter, i| {
+        if (i >= party_select_mod.MAX_ROSTER) break;
+        species_buf[i] = gd.findSpecies(critter.species_id);
     }
 }
 
@@ -268,7 +445,6 @@ fn startBattle(
     b_screen: *BattleScreen,
     sprite_map: *const SpriteMap,
     use_kitty: bool,
-    seed: u64,
 ) bool {
     const wild_sp = gd.findSpecies(info.species_id) orelse return false;
     const wild_critter = critter_mod.Critter.createFromSpecies(wild_sp, info.level);
@@ -297,12 +473,13 @@ fn startBattle(
         inv_bridge_count.* += 1;
     }
 
+    const seed: u64 = @intCast(std.time.milliTimestamp());
     battle_state.* = battle.initBattle(
         party_critters[0..party_count],
         party_species[0..party_count],
         wild_critter,
         wild_sp,
-        seed +% @as(u64, @intCast(std.time.milliTimestamp())),
+        seed,
     );
     b_screen.* = BattleScreen.init(battle_state, gd, inv_bridge[0..inv_bridge_count.*], sprite_map, use_kitty);
     return true;
@@ -353,6 +530,78 @@ fn finishBattle(
     }
 }
 
+fn awardPartyXp(
+    dungeon_state: *dungeon_mod.DungeonState,
+    gd: *const game_data_mod.GameData,
+    enemy_level: u8,
+    is_boss: bool,
+) void {
+    const xp_amount = leveling.battleXpAward(enemy_level, is_boss);
+
+    for (&dungeon_state.party, 0..) |*maybe_critter, i| {
+        if (maybe_critter.*) |*critter| {
+            if (critter.current_hp == 0) continue;
+            const result = leveling.awardXp(critter, xp_amount, gd);
+
+            if (result.evolved) {
+                if (result.new_species_id) |new_id| {
+                    dungeon_state.party_species[i] = gd.findSpecies(new_id);
+                }
+            }
+        }
+    }
+}
+
+fn persistCatches(
+    dungeon_state: *const dungeon_mod.DungeonState,
+    gd: *const game_data_mod.GameData,
+    database: *db.Db,
+) void {
+    for (dungeon_state.catches[0..dungeon_state.catch_count]) |maybe_catch| {
+        const catch_rec = maybe_catch orelse continue;
+        const sp = gd.findSpecies(catch_rec.species_id) orelse continue;
+        var new_critter = critter_mod.Critter.createFromSpecies(sp, catch_rec.level);
+        _ = roster_db.saveCritter(database, &new_critter) catch {};
+    }
+}
+
+fn savePartyState(
+    dungeon_state: *const dungeon_mod.DungeonState,
+    database: *db.Db,
+    run_party_ids: *const [3]u64,
+) void {
+    for (dungeon_state.party, 0..) |maybe_critter, i| {
+        if (maybe_critter) |critter| {
+            if (run_party_ids[i] != 0) {
+                var save_critter = critter;
+                save_critter.id = run_party_ids[i];
+                _ = roster_db.saveCritter(database, &save_critter) catch {};
+            }
+        }
+    }
+}
+
+fn markAllDirty(
+    active_screen: ActiveScreen,
+    hub_screen: *HubScreen,
+    party_select_screen: *PartySelectScreen,
+    roster_screen: *RosterScreen,
+    dg_screen: *DungeonScreen,
+    battle_screen: *BattleScreen,
+    shop_screen: *ShopScreen,
+    run_over_dirty: *bool,
+) void {
+    switch (active_screen) {
+        .hub => hub_screen.dirty = true,
+        .party_select => party_select_screen.dirty = true,
+        .roster_view => roster_screen.dirty = true,
+        .dungeon => dg_screen.dirty = true,
+        .battle => battle_screen.dirty = true,
+        .shop => shop_screen.dirty = true,
+        .run_over => run_over_dirty.* = true,
+    }
+}
+
 fn renderRunOver(win: vaxis.Window, dungeon_state: *const dungeon_mod.DungeonState) void {
     win.clear();
 
@@ -391,6 +640,6 @@ fn renderRunOver(win: vaxis.Window, dungeon_state: *const dungeon_mod.DungeonSta
 
     const hint_row = if (win.height > 4) win.height - 2 else win.height;
     if (hint_row < win.height) {
-        _ = ui.writeText(win, 2, hint_row, "[Press any key to exit]", ui.dim_style);
+        _ = ui.writeText(win, 2, hint_row, "[Press any key to continue]", ui.dim_style);
     }
 }

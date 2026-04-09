@@ -32,10 +32,25 @@ pub const Critter = struct {
 
     /// Calculate stats for a given species at a given level.
     /// Simple linear scaling: stat = base + (level * base / 50)
-    fn calcStat(base: u16, level: u8) u16 {
+    pub fn calcStat(base: u16, level: u8) u16 {
         const lvl: u32 = @intCast(level);
         const b: u32 = @intCast(base);
         return @intCast(b + (lvl * b / 50));
+    }
+
+    /// Recompute all stats from species base stats at the critter's current level.
+    /// Adjusts current_hp proportionally (preserving damage taken).
+    pub fn recomputeStats(self: *Critter, sp: *const species_mod.Species) void {
+        const old_max = self.max_hp;
+        const new_max = calcStat(sp.base_stats.hp, self.level);
+        self.max_hp = new_max;
+        if (new_max > old_max) {
+            self.current_hp +|= new_max - old_max;
+        }
+        if (self.current_hp > new_max) self.current_hp = new_max;
+        self.logic = calcStat(sp.base_stats.logic, self.level);
+        self.resolve = calcStat(sp.base_stats.resolve, self.level);
+        self.speed = calcStat(sp.base_stats.speed, self.level);
     }
 
     /// Create a new critter instance from a species definition at a given level.

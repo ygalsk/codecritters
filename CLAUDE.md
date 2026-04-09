@@ -6,15 +6,15 @@ Pokemon-style roguelike TUI game. Zig 0.15.2 + libvaxis + zqlite.
 ```
 zig build          # compile
 zig build run      # launch game
-zig build test     # 190 unit tests
+zig build test     # 203 unit tests
 ```
 
 ## Structure
 ```
-src/data/       # Species, Move, Item, Critter structs + JSON loading + type chart
+src/data/       # Species, Move, Item, Critter structs + JSON loading + type chart + leveling + equip
 src/battle/     # Battle engine: damage, status, catch, AI, turn processing (no UI)
 src/dungeon/    # Dungeon engine: floor gen, biomes, shop, run state (no UI)
-src/ui/         # Dungeon screen, battle screen, shop screen, sprite rendering, colors, text
+src/ui/         # Hub, party select, roster, dungeon, battle, shop screens + sprite rendering
 src/db/         # SQLite persistence (roster, inventory, scars, run state)
 src/main.zig    # TUI entry point
 data/*.json     # Species, moves, items, biomes definitions

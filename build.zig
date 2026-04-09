@@ -72,6 +72,29 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // Leveling module — needs critter, species, game_data
+    const leveling_mod = b.createModule(.{
+        .root_source_file = b.path("src/data/leveling.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "critter", .module = critter_mod },
+            .{ .name = "species", .module = species_mod },
+            .{ .name = "game_data", .module = game_data_mod },
+        },
+    });
+
+    // Equip module — needs critter, items
+    const equip_mod = b.createModule(.{
+        .root_source_file = b.path("src/data/equip.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "critter", .module = critter_mod },
+            .{ .name = "items", .module = items_mod },
+        },
+    });
+
     // Battle engine modules — import data types via named modules
     const battle_data_imports: []const std.Build.Module.Import = &.{
         .{ .name = "types", .module = types_mod },
@@ -124,6 +147,8 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "items", .module = items_mod },
                 .{ .name = "critter", .module = critter_mod },
                 .{ .name = "dungeon", .module = dungeon_mod },
+                .{ .name = "leveling", .module = leveling_mod },
+                .{ .name = "equip", .module = equip_mod },
             },
         }),
     });
@@ -185,6 +210,39 @@ pub fn build(b: *std.Build) void {
         unit_test.link_gc_sections = true;
         const run_test = b.addRunArtifact(unit_test);
         test_step.dependOn(&run_test.step);
+    }
+
+    // Leveling and equip tests
+    {
+        const leveling_test = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/data/leveling.zig"),
+                .target = target,
+                .optimize = optimize,
+                .imports = &.{
+                    .{ .name = "critter", .module = critter_mod },
+                    .{ .name = "species", .module = species_mod },
+                    .{ .name = "game_data", .module = game_data_mod },
+                },
+            }),
+        });
+        const run_leveling_test = b.addRunArtifact(leveling_test);
+        test_step.dependOn(&run_leveling_test.step);
+    }
+    {
+        const equip_test = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/data/equip.zig"),
+                .target = target,
+                .optimize = optimize,
+                .imports = &.{
+                    .{ .name = "critter", .module = critter_mod },
+                    .{ .name = "items", .module = items_mod },
+                },
+            }),
+        });
+        const run_equip_test = b.addRunArtifact(equip_test);
+        test_step.dependOn(&run_equip_test.step);
     }
 
     // Sprite tests (need vaxis for types)

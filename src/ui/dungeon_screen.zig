@@ -28,6 +28,7 @@ pub const DungeonScreen = struct {
 
     // Transition signal (checked by main.zig after handleInput)
     pending_battle: ?dungeon_mod.EncounterInfo,
+    pending_is_boss: bool,
     pending_shop: bool,
 
     dirty: bool,
@@ -42,6 +43,7 @@ pub const DungeonScreen = struct {
             .visited = .{.{false} ** floor_gen.FLOOR_WIDTH} ** floor_gen.FLOOR_HEIGHT,
             .log = ui.MessageLog.init(),
             .pending_battle = null,
+            .pending_is_boss = false,
             .pending_shop = false,
             .dirty = true,
         };
@@ -74,11 +76,13 @@ pub const DungeonScreen = struct {
                 .encounter_triggered => |info| {
                     self.updateVisited();
                     self.pending_battle = info;
+                    self.pending_is_boss = false;
                     self.log.push("A wild critter appeared!");
                 },
                 .boss_triggered => |info| {
                     self.updateVisited();
                     self.pending_battle = info;
+                    self.pending_is_boss = true;
                     self.log.push("A powerful boss blocks your path!");
                 },
                 .stairs_reached => {

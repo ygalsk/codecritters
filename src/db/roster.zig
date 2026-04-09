@@ -204,6 +204,23 @@ pub const InventoryEntry = struct {
     quantity: i64,
 };
 
+pub fn removeInventoryItem(database: *Db, item_id: []const u8, quantity: i64) !void {
+    try database.conn.exec(
+        \\UPDATE inventory SET quantity = quantity - ?2 WHERE item_id = ?1;
+        \\DELETE FROM inventory WHERE item_id = ?1 AND quantity <= 0
+    , .{ item_id, quantity });
+}
+
+pub fn countCritters(database: *Db) u16 {
+    const maybe_row = database.conn.row("SELECT COUNT(*) FROM critters", .{}) catch return 0;
+    if (maybe_row) |row| {
+        defer row.deinit();
+        const count = row.int(0);
+        return @intCast(@min(count, 65535));
+    }
+    return 0;
+}
+
 pub fn loadInventory(db: *Db, allocator: std.mem.Allocator) ![]InventoryEntry {
     var entries: std.ArrayList(InventoryEntry) = .{};
     errdefer {
