@@ -69,6 +69,45 @@ pub const Db = struct {
             \\  value TEXT NOT NULL
             \\)
         );
+        try self.conn.execNoArgs(
+            \\CREATE TABLE IF NOT EXISTS runs (
+            \\  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            \\  biome_id     TEXT NOT NULL,
+            \\  floor_number INTEGER NOT NULL DEFAULT 1,
+            \\  currency     INTEGER NOT NULL DEFAULT 0,
+            \\  outcome      TEXT NOT NULL DEFAULT 'in_progress'
+            \\               CHECK(outcome IN ('in_progress','extracted','wiped')),
+            \\  seed         INTEGER NOT NULL,
+            \\  started_at   INTEGER NOT NULL DEFAULT (unixepoch()),
+            \\  ended_at     INTEGER
+            \\)
+        );
+        try self.conn.execNoArgs(
+            \\CREATE TABLE IF NOT EXISTS run_party (
+            \\  run_id     INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+            \\  slot       INTEGER NOT NULL CHECK(slot BETWEEN 0 AND 2),
+            \\  critter_id INTEGER NOT NULL REFERENCES critters(id),
+            \\  current_hp INTEGER NOT NULL,
+            \\  PRIMARY KEY (run_id, slot)
+            \\)
+        );
+        try self.conn.execNoArgs(
+            \\CREATE TABLE IF NOT EXISTS run_inventory (
+            \\  run_id   INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+            \\  item_id  TEXT NOT NULL,
+            \\  quantity INTEGER NOT NULL DEFAULT 1,
+            \\  PRIMARY KEY (run_id, item_id)
+            \\)
+        );
+        try self.conn.execNoArgs(
+            \\CREATE TABLE IF NOT EXISTS run_catches (
+            \\  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            \\  run_id       INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+            \\  species_id   TEXT NOT NULL,
+            \\  level        INTEGER NOT NULL,
+            \\  floor_caught INTEGER NOT NULL
+            \\)
+        );
     }
 };
 

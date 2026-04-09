@@ -58,3 +58,19 @@
 - **zigimg access**: `vaxis.zigimg` — transitive dependency re-exported by vaxis. `Image.fromFilePath` + format-agnostic `iterator()` (Colorf32 → u8 RGBA conversion)
 - **loadKittyImage**: separate method — loads kitty image after terminal capability detection, only if kitty_graphics supported
 - 129 tests (3 new: pixel indexing, PNG loading round-trip, display size calculation)
+
+## Phase 5 — Dungeon Engine (No UI) [DONE]
+- Dungeon engine as pure game logic in `src/dungeon/` — no rendering, fully testable
+- **floor_gen.zig**: 24x18 grid, `Tile` enum (wall/floor/encounter/stairs/entrance), `generateFloor(floor_number, rng)` — room-and-corridor algorithm placing 3-5 non-overlapping rooms connected by L-shaped corridors, encounter tiles scaled by depth (3 + floor/2, max 8), deterministic with seed. BFS `isReachable` for connectivity verification
+- **biome.zig**: `Biome` struct with encounter table (weighted species + floor range), boss pool, shop bias. `rollEncounter` (weighted random with floor filtering), `rollBoss`, `encounterLevel` (3 + floor×2 ±1, capped at 50). JSON loading from `data/biomes.json`. One `generic_dungeon` biome using all 5 test species
+- **shop.zig**: `ShopState` (up to 6 slots), `generateShop` (weighted random from biome shop_bias, prices scale +10%/floor), `buyItem` with currency deduction and stock tracking
+- **dungeon.zig**: `DungeonState` (biome, floor, player position, party, currency, run inventory, catches, phase, outcome, RNG), `RunPhase` enum (exploring/encounter/boss_encounter/between_floors/run_over), `RunOutcome` (in_progress/extracted/wiped)
+- **Key functions**: `startRun` (copies party, generates floor 1), `movePlayer` (returns MoveResult union: moved/blocked/encounter_triggered/stairs_reached/boss_triggered), `resolveEncounter` (decomposed params — no battle module import), `advanceFloor`, `extract`, `generateBetweenFloorShop`, `buyShopItem`, `addRunItem`, `alivePartyCount`
+- **Battle integration**: dungeon engine does NOT import battle module. Caller bridges: movePlayer returns encounter info, caller runs battle, passes results back via resolveEncounter with decomposed params (outcome enum + updated party + optional catch info)
+- **Boss floors**: every 5 floors (5, 10, 15...), boss from biome pool with level bonus. Boss win transitions to between_floors (double currency reward)
+- **Encounter tiles**: consumed on step (become floor). Encounters roll species from biome table respecting floor range. Currency awarded: win = 10 + floor×5, catch = 5 + floor×3
+- **DB schema additions**: `runs` (biome_id, floor_number, currency, outcome, seed, timestamps), `run_party` (slot, critter_id, current_hp), `run_inventory` (item_id, quantity), `run_catches` (species_id, level, floor_caught)
+- **run_store.zig**: `saveRun`, `updateRun`, `endRun`, `saveRunPartySlot`, `saveRunCatch`, `saveRunInventoryItem`, `loadRun`, `loadRunParty`, `loadRunCatches`, `findActiveRun`, with full free functions
+- **build.zig**: `dungeon_mod` with named data imports (types, species, items, critter, game_data). floor_gen.zig tested standalone (no deps). Biome/shop/dungeon tested with data imports. run_store.zig tested with zqlite+critter
+- Design decisions: 24×18 grid, room+corridor generation, encounter density 3+floor/2, level formula 3+floor×2±1, currency 10+floor×5 per win, 1 biome (generic_dungeon) for Phase 5
+- 190 tests (61 new: 6 floor_gen, 6 biome, 5 shop, 12 dungeon including full-run simulation, 7 run_store, plus 25 from dungeon.zig test helpers used across tests)

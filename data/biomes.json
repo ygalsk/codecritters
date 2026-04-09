@@ -1,0 +1,24 @@
+[
+  {
+    "id": "generic_dungeon",
+    "name": "Generic Dungeon",
+    "dominant_types": ["debug", "chaos"],
+    "encounter_table": [
+      { "species_id": "println", "weight": 30, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "glitch", "weight": 25, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "goto", "weight": 25, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "monad", "weight": 15, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "tracer", "weight": 5, "min_floor": 3, "max_floor": 255 }
+    ],
+    "boss_pool": [
+      { "species_id": "tracer", "level_bonus": 5 }
+    ],
+    "shop_bias": [
+      { "item_id": "small_patch", "weight": 30 },
+      { "item_id": "hotfix", "weight": 20 },
+      { "item_id": "print_statement", "weight": 25 },
+      { "item_id": "breakpoint_tool", "weight": 15 },
+      { "item_id": "disc_buffer_overflow", "weight": 10 }
+    ]
+  }
+]

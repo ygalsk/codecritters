@@ -90,6 +90,23 @@ pub fn build(b: *std.Build) void {
         .imports = battle_data_imports,
     });
 
+    // Dungeon engine modules — import data types via named modules
+    const dungeon_data_imports: []const std.Build.Module.Import = &.{
+        .{ .name = "types", .module = types_mod },
+        .{ .name = "species", .module = species_mod },
+        .{ .name = "items", .module = items_mod },
+        .{ .name = "critter", .module = critter_mod },
+        .{ .name = "game_data", .module = game_data_mod },
+        .{ .name = "loader", .module = loader_mod },
+    };
+
+    const dungeon_mod = b.createModule(.{
+        .root_source_file = b.path("src/dungeon/dungeon.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = dungeon_data_imports,
+    });
+
     const exe = b.addExecutable(.{
         .name = "codecritter",
         .root_module = b.createModule(.{
@@ -106,6 +123,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "moves", .module = moves_mod },
                 .{ .name = "items", .module = items_mod },
                 .{ .name = "critter", .module = critter_mod },
+                .{ .name = "dungeon", .module = dungeon_mod },
             },
         }),
     });
@@ -150,6 +168,7 @@ pub fn build(b: *std.Build) void {
     const db_test_modules = [_][]const u8{
         "src/db/db.zig",
         "src/db/roster.zig",
+        "src/db/run_store.zig",
     };
     for (db_test_modules) |test_file| {
         const unit_test = b.addTest(.{
@@ -198,6 +217,38 @@ pub fn build(b: *std.Build) void {
                 .target = target,
                 .optimize = optimize,
                 .imports = battle_data_imports,
+            }),
+        });
+        const run_test = b.addRunArtifact(unit_test);
+        test_step.dependOn(&run_test.step);
+    }
+
+    // Dungeon engine tests
+    // floor_gen.zig has no external deps — test standalone
+    {
+        const floor_gen_test = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/dungeon/floor_gen.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        const run_fg_test = b.addRunArtifact(floor_gen_test);
+        test_step.dependOn(&run_fg_test.step);
+    }
+
+    const dungeon_test_modules = [_][]const u8{
+        "src/dungeon/biome.zig",
+        "src/dungeon/shop.zig",
+        "src/dungeon/dungeon.zig",
+    };
+    for (dungeon_test_modules) |test_file| {
+        const unit_test = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(test_file),
+                .target = target,
+                .optimize = optimize,
+                .imports = dungeon_data_imports,
             }),
         });
         const run_test = b.addRunArtifact(unit_test);
