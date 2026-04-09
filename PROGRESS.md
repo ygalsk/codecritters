@@ -74,3 +74,18 @@
 - **build.zig**: `dungeon_mod` with named data imports (types, species, items, critter, game_data). floor_gen.zig tested standalone (no deps). Biome/shop/dungeon tested with data imports. run_store.zig tested with zqlite+critter
 - Design decisions: 24×18 grid, room+corridor generation, encounter density 3+floor/2, level formula 3+floor×2±1, currency 10+floor×5 per win, 1 biome (generic_dungeon) for Phase 5
 - 190 tests (61 new: 6 floor_gen, 6 biome, 5 shop, 12 dungeon including full-run simulation, 7 run_store, plus 25 from dungeon.zig test helpers used across tests)
+
+## Phase 6 — Dungeon Screen [DONE]
+- Full dungeon exploration TUI wired to battle engine — first playable game loop
+- **dungeon_screen.zig**: DungeonScreen renders 24×18 tile map centered in terminal. Tiles: wall `█` (dark gray), floor `·` (dim), encounter `!` (yellow), stairs `>` (green), entrance `<` (blue), player `@` (bold white). Manhattan-distance fog of war (radius 5): visible=full color, explored=dimmed ~40%, unseen=black. HUD shows floor number, currency, party HP summary. Message log and controls hint below map
+- **shop_screen.zig**: ShopScreen for between-floors phase. Shows shop items with prices/quantities, party status with HP, currency. Cursor selection + Enter to buy, `c` to continue to next floor, `e` to extract and end run. Buy results shown as messages
+- **main.zig rewrite**: `ActiveScreen` enum (dungeon/battle/shop/run_over) replaces hardcoded battle. Screen transition logic:
+  - Dungeon→Battle: encounter/boss triggers build inventory bridge (RunItem→InventorySlot via GameData lookup), create BattleCritter party from dungeon state, init BattleState
+  - Battle→Dungeon: extract updated Critter values from BattleCritter, sync consumed inventory counts, call resolveEncounter with decomposed params. Boss win→shop, wipe→run_over
+  - Dungeon→Shop: stairs reached, generateBetweenFloorShop, init ShopScreen
+  - Shop→Dungeon: advanceFloor, resetVisited (clears fog for new floor)
+  - Shop→RunOver: extract, show summary
+- **Inventory bridge**: stack-allocated InventorySlot array built before battle by resolving RunItem.item_id→*const Item. Pre-battle counts saved. Post-battle: diff counts, subtract consumed from run_inventory
+- **Run over screen**: renderRunOver shows outcome (extracted/wiped), floors cleared, currency, catches list. Any key exits
+- **Fog of war**: visited[][] bool array per floor, updateVisited marks tiles within Manhattan distance 5 of player. resetVisited on floor advance
+- 190 tests still passing (no new UI tests — screens need live terminal)

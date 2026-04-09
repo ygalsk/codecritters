@@ -9,45 +9,14 @@ const species_mod = @import("species");
 const colors = @import("colors.zig");
 const text = @import("text.zig");
 const sprite_mod = @import("sprite.zig");
+const ui = @import("ui_common.zig");
 
-const Window = vaxis.Window;
-const Color = vaxis.Cell.Color;
-const Style = vaxis.Cell.Style;
-const Key = vaxis.Key;
-
-// Comptime ASCII grapheme table: each entry is a static 1-byte string slice.
-// This avoids dangling pointers when using writeCell — the grapheme slices
-// live in static memory, not on the stack.
-const ascii_graphemes: [128][]const u8 = blk: {
-    var table: [128][]const u8 = undefined;
-    for (0..128) |i| {
-        const bytes = [1]u8{@intCast(i)};
-        table[i] = &bytes;
-    }
-    break :blk table;
-};
-
-/// Write text directly to window cells using static grapheme references.
-/// Returns the column after the last written character.
-fn writeText(win: Window, col: u16, row: u16, str: []const u8, style: Style) u16 {
-    var c = col;
-    for (str) |byte| {
-        if (c >= win.width) break;
-        if (byte < 128) {
-            win.writeCell(c, row, .{ .char = .{ .grapheme = ascii_graphemes[byte], .width = 1 }, .style = style });
-        }
-        c += 1;
-    }
-    return c;
-}
-
-/// Format text into a temporary buffer, then write it cell-by-cell via writeText.
-/// The buffer is only needed during this call — no dangling references.
-fn writeFmt(win: Window, col: u16, row: u16, style: Style, comptime fmt: []const u8, args: anytype) u16 {
-    var buf: [128]u8 = undefined;
-    const str = std.fmt.bufPrint(&buf, fmt, args) catch return col;
-    return writeText(win, col, row, str, style);
-}
+const Window = ui.Window;
+const Color = ui.Color;
+const Style = ui.Style;
+const Key = ui.Key;
+const writeText = ui.writeText;
+const writeFmt = ui.writeFmt;
 
 pub const InventorySlot = struct {
     item: *const items_mod.Item,
@@ -64,8 +33,7 @@ const MenuState = enum {
     battle_over,
 };
 
-const MAX_MESSAGES = 4;
-const MSG_BUF_LEN = 128;
+const MSG_BUF_LEN = ui.MSG_BUF_LEN;
 
 pub const SpriteMap = sprite_mod.SpriteMap;
 
@@ -76,9 +44,7 @@ pub const BattleScreen = struct {
     cursor: u8,
     current_result: ?battle.TurnResult,
     event_index: u8,
-    messages: [MAX_MESSAGES][MSG_BUF_LEN]u8,
-    msg_lens: [MAX_MESSAGES]u8,
-    msg_count: u8,
+    log: ui.MessageLog,
     inventory: []InventorySlot,
     done: bool,
     outcome: ?battle.BattleOutcome,
@@ -104,9 +70,7 @@ pub const BattleScreen = struct {
             .cursor = 0,
             .current_result = null,
             .event_index = 0,
-            .messages = undefined,
-            .msg_lens = .{ 0, 0, 0, 0 },
-            .msg_count = 0,
+            .log = ui.MessageLog.init(),
             .inventory = inventory,
             .done = false,
             .outcome = null,
@@ -116,7 +80,7 @@ pub const BattleScreen = struct {
             .last_anim_ms = std.time.milliTimestamp(),
             .dirty = true,
         };
-        screen.pushMessage("A wild critter appeared!");
+        screen.log.push("A wild critter appeared!");
         return screen;
     }
 
@@ -258,7 +222,7 @@ pub const BattleScreen = struct {
             const event = result.events[self.event_index];
             var buf: [MSG_BUF_LEN]u8 = undefined;
             const msg = text.formatEvent(event, &buf);
-            self.pushMessage(msg);
+            self.log.push(msg);
             self.event_index += 1;
         } else {
             self.current_result = null;
@@ -266,13 +230,13 @@ pub const BattleScreen = struct {
                 self.outcome = outcome;
                 if (outcome == .player_lose or outcome == .player_win or outcome == .caught) {
                     self.menu_state = .battle_over;
-                    self.pushMessage(text.formatOutcome(outcome));
+                    self.log.push(text.formatOutcome(outcome));
                 }
             } else {
                 if (self.state.activePlayer().critter.current_hp == 0 and self.hasAlivePartyMember()) {
                     self.menu_state = .select_swap;
                     self.cursor = 0;
-                    self.pushMessage("Choose a critter to send in!");
+                    self.log.push("Choose a critter to send in!");
                 } else {
                     self.menu_state = .main_menu;
                     self.cursor = 0;
@@ -289,7 +253,7 @@ pub const BattleScreen = struct {
         if (result.event_count > 0) {
             var buf: [MSG_BUF_LEN]u8 = undefined;
             const msg = text.formatEvent(result.events[0], &buf);
-            self.pushMessage(msg);
+            self.log.push(msg);
             self.event_index = 1;
         }
     }
@@ -429,19 +393,7 @@ pub const BattleScreen = struct {
 
     fn renderMessages(self: *const BattleScreen, win: Window, start_row: u16, end_row: u16) void {
         const available = if (end_row > start_row) end_row - start_row else 0;
-        const count: u16 = @intCast(self.msg_count);
-        const show = @min(count, available);
-        const skip = if (count > show) count - show else 0;
-        const msg_style: Style = .{ .fg = .{ .rgb = .{ 220, 220, 220 } } };
-
-        var i: u16 = 0;
-        while (i < show) : (i += 1) {
-            const msg_idx = skip + i;
-            const len = self.msg_lens[msg_idx];
-            if (len > 0) {
-                _ = writeText(win, 2, start_row + i, self.messages[msg_idx][0..len], msg_style);
-            }
-        }
+        self.log.render(win, start_row, available);
     }
 
     fn renderMenu(self: *const BattleScreen, win: Window, start_row: u16) void {
@@ -572,25 +524,6 @@ pub const BattleScreen = struct {
 
     const dim_style: Style = .{ .fg = .{ .rgb = .{ 100, 100, 100 } } };
     const header_style: Style = .{ .fg = .{ .rgb = .{ 180, 180, 180 } } };
-
-    fn pushMessage(self: *BattleScreen, msg: []const u8) void {
-        if (self.msg_count < MAX_MESSAGES) {
-            const len: u8 = @intCast(@min(msg.len, MSG_BUF_LEN));
-            @memcpy(self.messages[self.msg_count][0..len], msg[0..len]);
-            self.msg_lens[self.msg_count] = len;
-            self.msg_count += 1;
-        } else {
-            // Shift up
-            var i: u8 = 0;
-            while (i < MAX_MESSAGES - 1) : (i += 1) {
-                self.messages[i] = self.messages[i + 1];
-                self.msg_lens[i] = self.msg_lens[i + 1];
-            }
-            const len: u8 = @intCast(@min(msg.len, MSG_BUF_LEN));
-            @memcpy(self.messages[MAX_MESSAGES - 1][0..len], msg[0..len]);
-            self.msg_lens[MAX_MESSAGES - 1] = len;
-        }
-    }
 
     fn countMoveSlots(self: *const BattleScreen) u8 {
         const player = self.state.activePlayer();

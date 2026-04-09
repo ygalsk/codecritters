@@ -14,7 +14,7 @@ zig build test     # 190 unit tests
 src/data/       # Species, Move, Item, Critter structs + JSON loading + type chart
 src/battle/     # Battle engine: damage, status, catch, AI, turn processing (no UI)
 src/dungeon/    # Dungeon engine: floor gen, biomes, shop, run state (no UI)
-src/ui/         # Battle screen TUI, sprite rendering (half-block + kitty), colors, text
+src/ui/         # Dungeon screen, battle screen, shop screen, sprite rendering, colors, text
 src/db/         # SQLite persistence (roster, inventory, scars, run state)
 src/main.zig    # TUI entry point
 data/*.json     # Species, moves, items, biomes definitions
