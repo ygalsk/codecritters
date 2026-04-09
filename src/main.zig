@@ -7,8 +7,11 @@ const items_mod = @import("items");
 const critter_mod = @import("critter");
 const battle = @import("battle");
 const db = @import("db/db.zig");
-const BattleScreen = @import("ui/battle_screen.zig").BattleScreen;
-const InventorySlot = @import("ui/battle_screen.zig").InventorySlot;
+const battle_screen_mod = @import("ui/battle_screen.zig");
+const BattleScreen = battle_screen_mod.BattleScreen;
+const InventorySlot = battle_screen_mod.InventorySlot;
+const sprite_mod = @import("ui/sprite.zig");
+const SpriteMap = sprite_mod.SpriteMap;
 
 const Event = union(enum) {
     key_press: vaxis.Key,
@@ -18,6 +21,12 @@ const Event = union(enum) {
 };
 
 pub const panic = vaxis.Panic.call;
+
+var sprite_path_buf: [64]u8 = undefined;
+
+fn spritePath(id: []const u8) ?[]const u8 {
+    return std.fmt.bufPrint(&sprite_path_buf, "assets/sprites/{s}.png", .{id}) catch null;
+}
 
 pub fn main() !void {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
@@ -36,6 +45,19 @@ pub fn main() !void {
     };
     defer database.close();
     try database.initSchema();
+
+    // Load sprite sheets for known critters
+    var sprite_map = SpriteMap{};
+    const sprite_ids = [_][]const u8{ "println", "tracer", "glitch", "goto", "monad" };
+    var sprite_storage: [sprite_ids.len]sprite_mod.SpriteSheet = undefined;
+    var sprite_count: usize = 0;
+    for (sprite_ids) |id| {
+        const path = spritePath(id) orelse continue;
+        sprite_storage[sprite_count] = sprite_mod.SpriteSheet.loadFromFile(alloc, path) catch continue;
+        sprite_map.put(id, &sprite_storage[sprite_count]);
+        sprite_count += 1;
+    }
+    defer for (sprite_storage[0..sprite_count]) |*s| s.deinit();
 
     // Setup test battle
     const player_sp = gd.findSpecies("println") orelse return error.MissingSpecies;
@@ -60,7 +82,7 @@ pub fn main() !void {
         .{ .item = hotfix, .count = 2 },
     };
 
-    var screen = BattleScreen.init(&battle_state, &gd, &inventory);
+    var screen = BattleScreen.init(&battle_state, &gd, &inventory, &sprite_map, false);
 
     // TUI setup
     var tty_buf: [4096]u8 = undefined;
@@ -80,24 +102,54 @@ pub fn main() !void {
     try vx.enterAltScreen(writer);
     try vx.queryTerminal(writer, 1 * std.time.ns_per_s);
 
-    while (true) {
-        const event = loop.nextEvent();
-        switch (event) {
-            .key_press => |key| {
-                if (key.matches('q', .{}) or key.matches('c', .{ .ctrl = true })) {
-                    break;
-                }
-                screen.handleInput(key);
-                if (screen.done) break;
-            },
-            .winsize => |ws| try vx.resize(alloc, writer, ws),
-            else => {},
+    // Enable kitty graphics if terminal supports it
+    screen.use_kitty = vx.caps.kitty_graphics;
+
+    // If kitty is supported, load kitty images for sprites
+    if (vx.caps.kitty_graphics) {
+        for (sprite_map.entries[0..sprite_map.count]) |entry| {
+            const path = spritePath(entry.species_id) orelse continue;
+            @constCast(entry.sheet).loadKittyImage(&vx, alloc, writer, path) catch {};
+        }
+    }
+
+    var quit = false;
+    while (!quit) {
+        // Drain all pending events (non-blocking)
+        while (loop.tryEvent()) |event| {
+            switch (event) {
+                .key_press => |key| {
+                    if (key.matches('q', .{}) or key.matches('c', .{ .ctrl = true })) {
+                        quit = true;
+                        break;
+                    }
+                    screen.handleInput(key);
+                    if (screen.done) {
+                        quit = true;
+                        break;
+                    }
+                },
+                .winsize => |ws| {
+                    try vx.resize(alloc, writer, ws);
+                    screen.dirty = true;
+                },
+                else => {},
+            }
+        }
+        if (quit) break;
+
+        screen.updateAnimation();
+
+        // Only re-render when something changed
+        if (screen.dirty) {
+            screen.dirty = false;
+            const win = vx.window();
+            screen.render(win);
+            try vx.render(writer);
+            try writer.flush();
         }
 
-        const win = vx.window();
-        screen.render(win);
-
-        try vx.render(writer);
-        try writer.flush();
+        // ~60fps tick — keeps animation smooth without busy-spinning
+        std.Thread.sleep(16 * std.time.ns_per_ms);
     }
 }

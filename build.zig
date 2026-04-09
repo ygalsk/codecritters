@@ -168,6 +168,22 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&run_test.step);
     }
 
+    // Sprite tests (need vaxis for types)
+    {
+        const sprite_test = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/ui/sprite.zig"),
+                .target = target,
+                .optimize = optimize,
+                .imports = &.{
+                    .{ .name = "vaxis", .module = vaxis_dep.module("vaxis") },
+                },
+            }),
+        });
+        const run_sprite_test = b.addRunArtifact(sprite_test);
+        test_step.dependOn(&run_sprite_test.step);
+    }
+
     const battle_test_modules = [_][]const u8{
         "src/battle/damage.zig",
         "src/battle/status.zig",

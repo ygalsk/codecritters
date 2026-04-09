@@ -8,6 +8,7 @@ const items_mod = @import("items");
 const species_mod = @import("species");
 const colors = @import("colors.zig");
 const text = @import("text.zig");
+const sprite_mod = @import("sprite.zig");
 
 const Window = vaxis.Window;
 const Color = vaxis.Cell.Color;
@@ -66,6 +67,8 @@ const MenuState = enum {
 const MAX_MESSAGES = 4;
 const MSG_BUF_LEN = 128;
 
+pub const SpriteMap = sprite_mod.SpriteMap;
+
 pub const BattleScreen = struct {
     state: *battle.BattleState,
     game_data: *const game_data_mod.GameData,
@@ -79,11 +82,20 @@ pub const BattleScreen = struct {
     inventory: []InventorySlot,
     done: bool,
     outcome: ?battle.BattleOutcome,
+    sprites: *const SpriteMap,
+    use_kitty: bool,
+    anim_frame: u8,
+    last_anim_ms: i64,
+    dirty: bool,
+
+    const ANIM_INTERVAL_MS: i64 = 500;
 
     pub fn init(
         state: *battle.BattleState,
         game_data: *const game_data_mod.GameData,
         inventory: []InventorySlot,
+        sprites: *const SpriteMap,
+        use_kitty: bool,
     ) BattleScreen {
         var screen = BattleScreen{
             .state = state,
@@ -98,12 +110,18 @@ pub const BattleScreen = struct {
             .inventory = inventory,
             .done = false,
             .outcome = null,
+            .sprites = sprites,
+            .use_kitty = use_kitty,
+            .anim_frame = 0,
+            .last_anim_ms = std.time.milliTimestamp(),
+            .dirty = true,
         };
         screen.pushMessage("A wild critter appeared!");
         return screen;
     }
 
     pub fn handleInput(self: *BattleScreen, key: vaxis.Key) void {
+        self.dirty = true;
         switch (self.menu_state) {
             .main_menu => self.handleMainMenu(key),
             .select_attack => self.handleSelectAttack(key),
@@ -283,20 +301,21 @@ pub const BattleScreen = struct {
             return;
         }
 
-        // Layout zones
+        // Layout zones — sprites are 16 cols × 8 rows (half-block)
         const info_height: u16 = 3;
-        const sprite_height: u16 = 4;
-        const separator_row: u16 = if (win.height > 20) win.height - 9 else win.height / 2 + 2;
+        const sprite_height: u16 = 8;
+        const sprite_width: u16 = 16;
+        const separator_row: u16 = if (win.height > 24) win.height - 9 else win.height / 2 + 4;
         const msg_start: u16 = separator_row + 1;
-        const menu_start: u16 = if (win.height > 16) win.height - 5 else msg_start + 2;
+        const menu_start: u16 = if (win.height > 20) win.height - 5 else msg_start + 2;
 
         // Wild critter (top-right)
         self.renderCritterInfo(win, &self.state.wild, true, 1, win.width / 2);
-        self.renderSprite(win, &self.state.wild, info_height + 1, win.width - 14);
+        self.renderSprite(win, &self.state.wild, info_height + 1, win.width -| (sprite_width + 2));
 
         // Player critter (bottom-left)
         const player = self.state.activePlayer();
-        const player_info_row = separator_row - info_height - sprite_height - 1;
+        const player_info_row = separator_row -| (info_height + sprite_height + 1);
         self.renderSprite(win, player, player_info_row, 2);
         self.renderCritterInfo(win, player, false, player_info_row + sprite_height, 2);
 
@@ -359,12 +378,19 @@ pub const BattleScreen = struct {
         _ = writeFmt(win, c, row, gray, " {d}/{d}", .{ current, max });
     }
 
-    fn renderSprite(_: *const BattleScreen, win: Window, bc: *const battle.BattleCritter, row: u16, col: u16) void {
-        const sprite_w: u16 = 10;
-        const sprite_h: u16 = 4;
+    fn renderSprite(self: *const BattleScreen, win: Window, bc: *const battle.BattleCritter, row: u16, col: u16) void {
+        // Try sprite sheet first
+        if (self.sprites.get(bc.species.id)) |sheet| {
+            const frame = self.anim_frame % sheet.frame_count;
+            sheet.render(win, frame, row, col, self.use_kitty);
+            return;
+        }
+
+        // Fallback: colored rectangle (same as Phase 3)
+        const sprite_w: u16 = 16;
+        const sprite_h: u16 = 8;
         const tc = colors.typeColor(bc.species.critter_type);
 
-        // Filled rectangle
         var r: u16 = 0;
         while (r < sprite_h) : (r += 1) {
             var c: u16 = 0;
@@ -375,13 +401,22 @@ pub const BattleScreen = struct {
             }
         }
 
-        // Center name on sprite
         const name = bc.species.name;
         const name_len = @as(u16, @intCast(name.len));
         const name_col = if (sprite_w > name_len) col + (sprite_w - name_len) / 2 else col;
         const name_row = row + sprite_h / 2;
         if (name_row < win.height) {
-            _ = win.printSegment(.{ .text = name, .style = .{ .fg = .{ .rgb = .{ 0, 0, 0 } }, .bg = tc, .bold = true } }, .{ .col_offset = name_col, .row_offset = name_row });
+            _ = writeText(win, name_col, name_row, name, .{ .fg = .{ .rgb = .{ 0, 0, 0 } }, .bg = tc, .bold = true });
+        }
+    }
+
+    /// Advance animation frame based on elapsed time. Returns true if frame changed.
+    pub fn updateAnimation(self: *BattleScreen) void {
+        const now = std.time.milliTimestamp();
+        if (now - self.last_anim_ms >= ANIM_INTERVAL_MS) {
+            self.anim_frame +%= 1;
+            self.last_anim_ms = now;
+            self.dirty = true;
         }
     }
 
