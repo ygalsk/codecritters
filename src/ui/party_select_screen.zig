@@ -24,7 +24,6 @@ pub const PartySelectScreen = struct {
     done: bool,
     confirmed: bool,
     dirty: bool,
-    current_time: i64,
 
     pub fn init(
         roster: []const critter_mod.Critter,
@@ -40,7 +39,6 @@ pub const PartySelectScreen = struct {
             .done = false,
             .confirmed = false,
             .dirty = true,
-            .current_time = std.time.timestamp(),
         };
     }
 
@@ -80,8 +78,7 @@ pub const PartySelectScreen = struct {
 
     fn isOnCooldown(self: *const PartySelectScreen, idx: usize) bool {
         if (idx >= self.roster.len) return false;
-        const cd = self.roster[idx].cooldown_until orelse return false;
-        return cd > self.current_time;
+        return self.roster[idx].cooldown_runs > 0;
     }
 
     pub fn handleInput(self: *PartySelectScreen, key: vaxis.Key) void {
@@ -165,11 +162,12 @@ pub const PartySelectScreen = struct {
             }
 
             // HP
-            const hp_color = colors.hpColor(critter.current_hp, critter.max_hp);
-            c = writeFmt(win, c, row, .{ .fg = hp_color }, " HP {d}/{d}", .{ critter.current_hp, critter.max_hp });
+            const eff_hp = critter.effectiveStat(.hp);
+            const hp_color = colors.hpColor(critter.current_hp, eff_hp);
+            c = writeFmt(win, c, row, .{ .fg = hp_color }, " HP {d}/{d}", .{ critter.current_hp, eff_hp });
 
             if (on_cd) {
-                _ = writeText(win, c, row, " [COOLDOWN]", .{ .fg = .{ .rgb = .{ 200, 60, 60 } } });
+                _ = writeFmt(win, c, row, .{ .fg = .{ .rgb = .{ 200, 60, 60 } } }, " [COOLDOWN {d} run(s)]", .{critter.cooldown_runs});
             }
 
             row += 1;

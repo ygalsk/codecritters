@@ -39,7 +39,6 @@ pub const RosterScreen = struct {
     dirty: bool,
     log: ui.MessageLog,
     pending_equip: ?DiscEquipEvent,
-    current_time: i64,
 
     pub const InventoryEntry = struct {
         item_id: []const u8,
@@ -66,7 +65,6 @@ pub const RosterScreen = struct {
             .dirty = true,
             .log = ui.MessageLog.init(),
             .pending_equip = null,
-            .current_time = std.time.timestamp(),
         };
         screen.buildDiscList();
         return screen;
@@ -205,17 +203,18 @@ pub const RosterScreen = struct {
         _ = writeText(win, 2, row, "Stats:", header_style);
         row += 1;
 
-        const hp_color = colors.hpColor(critter.current_hp, critter.max_hp);
-        _ = writeFmt(win, 4, row, .{ .fg = hp_color }, "HP:      {d}/{d}", .{ critter.current_hp, critter.max_hp });
+        const eff_hp = critter.effectiveStat(.hp);
+        const hp_color = colors.hpColor(critter.current_hp, eff_hp);
+        _ = writeFmt(win, 4, row, .{ .fg = hp_color }, "HP:      {d}/{d}", .{ critter.current_hp, eff_hp });
         self.renderScarNote(win, critter, .hp, row);
         row += 1;
-        _ = writeFmt(win, 4, row, header_style, "Logic:   {d}", .{critter.logic});
+        _ = writeFmt(win, 4, row, header_style, "Logic:   {d}", .{critter.effectiveStat(.logic)});
         self.renderScarNote(win, critter, .logic, row);
         row += 1;
-        _ = writeFmt(win, 4, row, header_style, "Resolve: {d}", .{critter.resolve});
+        _ = writeFmt(win, 4, row, header_style, "Resolve: {d}", .{critter.effectiveStat(.resolve)});
         self.renderScarNote(win, critter, .resolve, row);
         row += 1;
-        _ = writeFmt(win, 4, row, header_style, "Speed:   {d}", .{critter.speed});
+        _ = writeFmt(win, 4, row, header_style, "Speed:   {d}", .{critter.effectiveStat(.speed)});
         self.renderScarNote(win, critter, .speed, row);
         row += 1;
 
@@ -231,14 +230,10 @@ pub const RosterScreen = struct {
         row += 1;
 
         // Cooldown
-        if (critter.cooldown_until) |cd| {
-            if (cd > self.current_time) {
-                row += 1;
-                const remaining = cd - self.current_time;
-                const mins = @divFloor(remaining, 60);
-                _ = writeFmt(win, 2, row, .{ .fg = .{ .rgb = .{ 255, 100, 100 } } }, "COOLDOWN: {d}m remaining", .{mins});
-                row += 1;
-            }
+        if (critter.cooldown_runs > 0) {
+            row += 1;
+            _ = writeFmt(win, 2, row, .{ .fg = .{ .rgb = .{ 255, 100, 100 } } }, "COOLDOWN: {d} run(s) remaining", .{critter.cooldown_runs});
+            row += 1;
         }
 
         // Scars

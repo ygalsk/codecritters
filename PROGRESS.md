@@ -120,3 +120,17 @@
 - **battle_screen.zig**: Healing target selection — new `select_heal_target` menu state. Item → select healing item → select party member (all alive, including active). Shows HP bars per target. Esc restores item and returns to item list
 - Design decisions: drop chance 40%+3%/floor (boss guaranteed), currency in meta table, no selling from hub (only in dungeon shops), wipe = lose all run items/currency
 - 207 tests (4 new: currency round-trip, Try-Catch retaliation, rollDrop, drop_table load)
+
+## Phase 10 — Death, Scarring & Persistence [DONE]
+- Consequence system: scars, run-based cooldowns, revive item, effective stats
+- **critter.zig**: `effectiveStat(stat)` returns base stat minus accumulated scar penalties (floored at 1). `baseStat(stat)` switch for field access by StatKind. `StatKind.displayName()` for UI. `cooldown_until: ?i64` replaced with `cooldown_runs: u8` (run-based, not time-based)
+- **battle.zig**: All stat reads use `effectiveStat` — speed (turn order), logic/resolve (damage calc), max HP (healing cap, status ticks, catch rate). Revive handling in `resolveItem`: `.revive` kind restores fainted critter to `revive_percent`% of effective max HP. `revive_used: bool` on BattleState limits 1 revive per battle
+- **items.zig**: Added `revive` to `ItemKind`, `revive_percent: ?u8` field. Git Revert item (50% revive, $300)
+- **dungeon.zig**: `PendingScar` struct + `pending_scars[16]` on DungeonState. `resolveEncounter` compares pre/post battle HP — critters that went from alive to fainted get a random stat scar. Already-fainted critters don't double-scar
+- **main.zig**: `persistPendingScars` writes scars to DB at run end (both extraction and wipe). On wipe: all party critters get `cooldown_runs = 2`. `decrementCooldowns` runs at each new run start — decrements all roster critters with cooldown, full HP heal when cooldown expires
+- **battle_screen.zig**: Unified item/party filter helpers — `countItems(filter)`/`getNthItem(filter, n)` with `?ItemKind` (null = usable items). `countPartyByHp(want_fainted)`/`getPartyTarget(want_fainted, idx)`. Single `renderItemList` for both usable items and catch tools. Revive items show fainted targets, grayed out after use
+- **party_select_screen.zig**: `isOnCooldown` checks `cooldown_runs > 0`. Shows run count: "[COOLDOWN 2 run(s)]"
+- **roster_screen.zig**: Stats display uses `effectiveStat` (shows effective values, scar notes show penalty). Cooldown shows run count instead of minutes
+- **Run over screen**: Shows scar summary (species + stat penalized) and cooldown warning on wipe
+- Design decisions: scars per-faint (checked at battle end, revive avoids scar), cooldown = 2 runs (not time-based), 1 revive per battle, extraction keeps scars but no cooldown, wipe adds cooldown to all party members
+- 222 tests (15 new: effective stat with scars, floor at 1, scar generation on faint, no double-scar)

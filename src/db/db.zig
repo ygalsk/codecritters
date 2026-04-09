@@ -44,7 +44,7 @@ pub const Db = struct {
             \\  move_slot_1    TEXT,
             \\  move_slot_2    TEXT,
             \\  move_slot_3    TEXT,
-            \\  cooldown_until INTEGER,
+            \\  cooldown_runs INTEGER NOT NULL DEFAULT 0,
             \\  created_at     INTEGER NOT NULL DEFAULT (unixepoch())
             \\)
         );

@@ -6,6 +6,15 @@ pub const StatKind = enum {
     logic,
     resolve,
     speed,
+
+    pub fn displayName(self: StatKind) []const u8 {
+        return switch (self) {
+            .hp => "HP",
+            .logic => "Logic",
+            .resolve => "Resolve",
+            .speed => "Speed",
+        };
+    }
 };
 
 pub const Scar = struct {
@@ -28,7 +37,26 @@ pub const Critter = struct {
     move_slot_2: ?[]const u8,
     move_slot_3: ?[]const u8,
     scars: []Scar,
-    cooldown_until: ?i64,
+    cooldown_runs: u8,
+
+    pub fn baseStat(self: *const Critter, stat: StatKind) u16 {
+        return switch (stat) {
+            .hp => self.max_hp,
+            .logic => self.logic,
+            .resolve => self.resolve,
+            .speed => self.speed,
+        };
+    }
+
+    /// Base stat minus accumulated scar penalties, floored at 1.
+    pub fn effectiveStat(self: *const Critter, stat: StatKind) u16 {
+        var penalty: i16 = 0;
+        for (self.scars) |scar| {
+            if (scar.stat == stat) penalty += scar.amount;
+        }
+        const adj = @as(i32, self.baseStat(stat)) + @as(i32, penalty);
+        return if (adj < 1) 1 else @intCast(adj);
+    }
 
     /// Calculate stats for a given species at a given level.
     /// Simple linear scaling: stat = base + (level * base / 50)
@@ -71,7 +99,7 @@ pub const Critter = struct {
             .move_slot_2 = sp.secondary_move,
             .move_slot_3 = null,
             .scars = &.{},
-            .cooldown_until = null,
+            .cooldown_runs = 0,
         };
     }
 };
@@ -99,4 +127,60 @@ test "create critter from species" {
     try std.testing.expectEqual(c.max_hp, c.current_hp);
     // Logic at level 10: 55 + (10 * 55 / 50) = 55 + 11 = 66
     try std.testing.expectEqual(@as(u16, 66), c.logic);
+    try std.testing.expectEqual(@as(u8, 0), c.cooldown_runs);
+}
+
+test "effective stats with scars" {
+    var scars = [_]Scar{
+        .{ .stat = .logic, .amount = -1 },
+        .{ .stat = .logic, .amount = -1 },
+        .{ .stat = .hp, .amount = -1 },
+    };
+    const c = Critter{
+        .id = 1,
+        .species_id = "println",
+        .nickname = null,
+        .level = 10,
+        .xp = 0,
+        .current_hp = 54,
+        .max_hp = 54,
+        .logic = 66,
+        .resolve = 48,
+        .speed = 60,
+        .move_slot_1 = null,
+        .move_slot_2 = null,
+        .move_slot_3 = null,
+        .scars = &scars,
+        .cooldown_runs = 0,
+    };
+
+    try std.testing.expectEqual(@as(u16, 53), c.effectiveStat(.hp));
+    try std.testing.expectEqual(@as(u16, 64), c.effectiveStat(.logic));
+    try std.testing.expectEqual(@as(u16, 48), c.effectiveStat(.resolve));
+    try std.testing.expectEqual(@as(u16, 60), c.effectiveStat(.speed));
+}
+
+test "effective stats floor at 1" {
+    var scars = [_]Scar{
+        .{ .stat = .speed, .amount = -100 },
+    };
+    const c = Critter{
+        .id = 1,
+        .species_id = "println",
+        .nickname = null,
+        .level = 1,
+        .xp = 0,
+        .current_hp = 10,
+        .max_hp = 10,
+        .logic = 5,
+        .resolve = 5,
+        .speed = 5,
+        .move_slot_1 = null,
+        .move_slot_2 = null,
+        .move_slot_3 = null,
+        .scars = &scars,
+        .cooldown_runs = 0,
+    };
+
+    try std.testing.expectEqual(@as(u16, 1), c.effectiveStat(.speed));
 }

@@ -7,6 +7,7 @@
   { "id": "small_patch", "name": "Small Patch", "kind": "healing", "heal_amount": 30, "buy_price": 40, "sell_price": 20 },
   { "id": "hotfix", "name": "Hotfix", "kind": "healing", "heal_amount": 80, "buy_price": 100, "sell_price": 50 },
   { "id": "full_rebuild", "name": "Full Rebuild", "kind": "healing", "heal_amount": 9999, "buy_price": 500, "sell_price": 250 },
+  { "id": "git_revert", "name": "Git Revert", "kind": "revive", "revive_percent": 50, "buy_price": 300, "sell_price": 150 },
   { "id": "disc_buffer_overflow", "name": "Move Disc: Buffer Overflow", "kind": "move_disc", "move_id": "buffer_overflow", "buy_price": 400, "sell_price": 200 },
   { "id": "disc_mutex_lock", "name": "Move Disc: Mutex Lock", "kind": "move_disc", "move_id": "mutex_lock", "buy_price": 350, "sell_price": 175 }
 ]

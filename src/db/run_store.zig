@@ -269,7 +269,7 @@ test "save and load run party" {
         .move_slot_2 = null,
         .move_slot_3 = null,
         .scars = &.{},
-        .cooldown_until = null,
+        .cooldown_runs = 0,
     };
     // Insert critter directly
     try db.conn.exec(

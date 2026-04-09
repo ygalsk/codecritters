@@ -276,6 +276,9 @@ pub fn main() !void {
                         }
 
                         if (party_count > 0) {
+                            // Decrement cooldowns for all roster critters
+                            decrementCooldowns(roster_buf, &database);
+
                             const seed: u64 = @intCast(std.time.milliTimestamp());
                             dungeon_state = dungeon_mod.startRun(
                                 party_critters[0..party_count],
@@ -359,6 +362,16 @@ pub fn main() !void {
                             persistCatches(&dungeon_state, &gd, &database);
                             persistRunInventory(&dungeon_state, &database);
                         }
+                        // Apply cooldowns on wipe
+                        if (dungeon_state.outcome == .wiped) {
+                            for (&dungeon_state.party) |*maybe_critter| {
+                                if (maybe_critter.*) |*c| {
+                                    c.cooldown_runs = 2;
+                                }
+                            }
+                        }
+                        // Persist scars earned during the run
+                        persistPendingScars(&dungeon_state, &database, &run_party_ids);
                         // Save party state back to DB
                         savePartyState(&dungeon_state, &database, &run_party_ids);
                         active_screen = .run_over;
@@ -379,6 +392,7 @@ pub fn main() !void {
                         dungeon_mod.extract(&dungeon_state);
                         persistCatches(&dungeon_state, &gd, &database);
                         persistRunInventory(&dungeon_state, &database);
+                        persistPendingScars(&dungeon_state, &database, &run_party_ids);
                         savePartyState(&dungeon_state, &database, &run_party_ids);
                         active_screen = .run_over;
                         run_over_dirty = true;
@@ -612,6 +626,32 @@ fn persistCatches(
     }
 }
 
+fn decrementCooldowns(roster: []critter_mod.Critter, database: *db.Db) void {
+    for (roster) |*critter| {
+        if (critter.cooldown_runs > 0) {
+            critter.cooldown_runs -= 1;
+            // Heal to full when cooldown expires
+            if (critter.cooldown_runs == 0) {
+                critter.current_hp = critter.effectiveStat(.hp);
+            }
+            _ = roster_db.saveCritter(database, critter) catch {};
+        }
+    }
+}
+
+fn persistPendingScars(
+    dungeon_state: *const dungeon_mod.DungeonState,
+    database: *db.Db,
+    run_party_ids: *const [3]u64,
+) void {
+    for (dungeon_state.pending_scars[0..dungeon_state.pending_scar_count]) |scar| {
+        const critter_id = run_party_ids[scar.party_index];
+        if (critter_id != 0) {
+            roster_db.addScar(database, @intCast(critter_id), scar.stat, -1) catch {};
+        }
+    }
+}
+
 fn savePartyState(
     dungeon_state: *const dungeon_mod.DungeonState,
     database: *db.Db,
@@ -690,8 +730,9 @@ fn renderRunOver(win: vaxis.Window, dungeon_state: *const dungeon_mod.DungeonSta
     _ = ui.writeFmt(win, 2, 4, gold, "Currency earned: ${d}", .{dungeon_state.currency});
     _ = ui.writeFmt(win, 2, 5, gray, "Critters caught: {d}", .{dungeon_state.catch_count});
 
+    var row: u16 = 7;
+
     if (dungeon_state.catch_count > 0) {
-        var row: u16 = 7;
         _ = ui.writeText(win, 2, row, "Catches:", gray);
         row += 1;
         for (dungeon_state.catches[0..dungeon_state.catch_count]) |maybe_catch| {
@@ -700,6 +741,29 @@ fn renderRunOver(win: vaxis.Window, dungeon_state: *const dungeon_mod.DungeonSta
             _ = ui.writeFmt(win, 4, row, gray, "{s} Lv{d} (floor {d})", .{ catch_rec.species_id, catch_rec.level, catch_rec.floor_caught });
             row += 1;
         }
+        row += 1;
+    }
+
+    // Show scars earned
+    const scar_style: ui.Style = .{ .fg = .{ .rgb = .{ 200, 100, 100 } } };
+    if (dungeon_state.pending_scar_count > 0) {
+        _ = ui.writeText(win, 2, row, "Scars:", scar_style);
+        row += 1;
+        for (dungeon_state.pending_scars[0..dungeon_state.pending_scar_count]) |scar| {
+            if (row >= win.height) break;
+            if (dungeon_state.party[scar.party_index]) |c| {
+                _ = ui.writeFmt(win, 4, row, scar_style, "{s}: -1 {s}", .{ c.species_id, scar.stat.displayName() });
+            } else {
+                _ = ui.writeFmt(win, 4, row, scar_style, "Party #{d}: -1 {s}", .{ scar.party_index + 1, scar.stat.displayName() });
+            }
+            row += 1;
+        }
+        row += 1;
+    }
+
+    // Show cooldown on wipe
+    if (dungeon_state.outcome == .wiped) {
+        _ = ui.writeText(win, 2, row, "Your critters need 2 runs to recover.", .{ .fg = .{ .rgb = .{ 255, 100, 100 } }, .bold = true });
     }
 
     const hint_row = if (win.height > 4) win.height - 2 else win.height;

@@ -37,7 +37,7 @@ fn makeTestCritter() critter_mod.Critter {
         .move_slot_2 = null,
         .move_slot_3 = null,
         .scars = &.{},
-        .cooldown_until = null,
+        .cooldown_runs = 0,
     };
 }
 

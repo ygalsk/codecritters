@@ -14,7 +14,7 @@ pub fn saveCritter(db: *Db, critter: *const Critter) !i64 {
             \\UPDATE critters SET
             \\  species_id=?1, nickname=?2, level=?3, xp=?4,
             \\  current_hp=?5, max_hp=?6, logic=?7, resolve=?8, speed=?9,
-            \\  move_slot_1=?10, move_slot_2=?11, move_slot_3=?12, cooldown_until=?13
+            \\  move_slot_1=?10, move_slot_2=?11, move_slot_3=?12, cooldown_runs=?13
             \\WHERE id=?14
         , .{
             critter.species_id,
@@ -29,7 +29,7 @@ pub fn saveCritter(db: *Db, critter: *const Critter) !i64 {
             critter.move_slot_1,
             critter.move_slot_2,
             critter.move_slot_3,
-            critter.cooldown_until,
+            @as(i64, critter.cooldown_runs),
             @as(i64, @intCast(critter.id)),
         });
         return @intCast(critter.id);
@@ -37,7 +37,7 @@ pub fn saveCritter(db: *Db, critter: *const Critter) !i64 {
         try db.conn.exec(
             \\INSERT INTO critters
             \\  (species_id, nickname, level, xp, current_hp, max_hp,
-            \\   logic, resolve, speed, move_slot_1, move_slot_2, move_slot_3, cooldown_until)
+            \\   logic, resolve, speed, move_slot_1, move_slot_2, move_slot_3, cooldown_runs)
             \\VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)
         , .{
             critter.species_id,
@@ -52,7 +52,7 @@ pub fn saveCritter(db: *Db, critter: *const Critter) !i64 {
             critter.move_slot_1,
             critter.move_slot_2,
             critter.move_slot_3,
-            critter.cooldown_until,
+            @as(i64, critter.cooldown_runs),
         });
         return db.conn.lastInsertedRowId();
     }
@@ -74,7 +74,7 @@ pub fn addScar(db: *Db, critter_id: i64, stat: StatKind, amount: i8) !void {
 pub fn loadCritter(db: *Db, allocator: std.mem.Allocator, id: i64) !?Critter {
     const maybe_row = try db.conn.row(
         \\SELECT id, species_id, nickname, level, xp, current_hp, max_hp,
-        \\  logic, resolve, speed, move_slot_1, move_slot_2, move_slot_3, cooldown_until
+        \\  logic, resolve, speed, move_slot_1, move_slot_2, move_slot_3, cooldown_runs
         \\FROM critters WHERE id = ?1
     , .{id});
 
@@ -112,7 +112,7 @@ pub fn loadCritter(db: *Db, allocator: std.mem.Allocator, id: i64) !?Critter {
             .move_slot_2 = ms2,
             .move_slot_3 = ms3,
             .scars = scars,
-            .cooldown_until = row.nullableInt(13),
+            .cooldown_runs = @intCast(row.int(13)),
         };
     }
     return null;
@@ -295,7 +295,7 @@ test "save and load critter round-trip" {
         .move_slot_2 = null,
         .move_slot_3 = null,
         .scars = &.{},
-        .cooldown_until = null,
+        .cooldown_runs = 0,
     };
 
     const id = try saveCritter(&db, &critter);
@@ -338,7 +338,7 @@ test "save critter with scars" {
         .move_slot_2 = null,
         .move_slot_3 = null,
         .scars = &.{},
-        .cooldown_until = null,
+        .cooldown_runs = 0,
     };
 
     const id = try saveCritter(&db, &critter);
@@ -365,14 +365,14 @@ test "load full roster" {
         .level = 5, .xp = 0, .current_hp = 40, .max_hp = 40,
         .logic = 55, .resolve = 40, .speed = 50,
         .move_slot_1 = "log_dump", .move_slot_2 = null, .move_slot_3 = null,
-        .scars = &.{}, .cooldown_until = null,
+        .scars = &.{}, .cooldown_runs = 0,
     };
     var c2 = Critter{
         .id = 0, .species_id = "glitch", .nickname = null,
         .level = 3, .xp = 0, .current_hp = 35, .max_hp = 35,
         .logic = 60, .resolve = 35, .speed = 65,
         .move_slot_1 = "bit_flip", .move_slot_2 = null, .move_slot_3 = null,
-        .scars = &.{}, .cooldown_until = null,
+        .scars = &.{}, .cooldown_runs = 0,
     };
 
     _ = try saveCritter(&db, &c1);

@@ -90,7 +90,17 @@ pub const DungeonState = struct {
     rng: std.Random.DefaultPrng,
 
     current_shop: ?shop.ShopState,
+
+    pending_scars: [MAX_PENDING_SCARS]PendingScar,
+    pending_scar_count: u8,
 };
+
+pub const PendingScar = struct {
+    party_index: u8,
+    stat: critter_mod.StatKind,
+};
+
+pub const MAX_PENDING_SCARS: u8 = 16;
 
 /// Start a new dungeon run.
 pub fn startRun(
@@ -129,6 +139,8 @@ pub fn startRun(
         .seed = seed,
         .rng = rng,
         .current_shop = null,
+        .pending_scars = undefined,
+        .pending_scar_count = 0,
     };
 }
 
@@ -221,6 +233,25 @@ pub fn resolveEncounter(
     caught_species_id: ?[]const u8,
     caught_level: u8,
 ) EncounterResult {
+    // Check for newly fainted critters and generate scars
+    for (state.party, updated_party, 0..) |old_maybe, new_maybe, i| {
+        if (old_maybe) |old| {
+            if (new_maybe) |new| {
+                if (old.current_hp > 0 and new.current_hp == 0) {
+                    // This critter fainted this battle — assign a scar
+                    if (state.pending_scar_count < MAX_PENDING_SCARS) {
+                        const stat = state.rng.random().enumValue(critter_mod.StatKind);
+                        state.pending_scars[state.pending_scar_count] = .{
+                            .party_index = @intCast(i),
+                            .stat = stat,
+                        };
+                        state.pending_scar_count += 1;
+                    }
+                }
+            }
+        }
+    }
+
     // Update party state from battle
     state.party = updated_party;
 
@@ -369,7 +400,7 @@ fn makeTestCritter(id: u64, hp: u16) critter_mod.Critter {
         .move_slot_2 = null,
         .move_slot_3 = null,
         .scars = &.{},
-        .cooldown_until = null,
+        .cooldown_runs = 0,
     };
 }
 
@@ -588,6 +619,59 @@ test "resolveEncounter wipe when all fainted" {
 
     try std.testing.expectEqual(RunPhase.run_over, state.phase);
     try std.testing.expectEqual(RunOutcome.wiped, state.outcome);
+}
+
+test "resolveEncounter generates scar when critter faints" {
+    const allocator = std.testing.allocator;
+    const biomes_parsed = try biome.load(allocator, "data/biomes.json");
+    defer biomes_parsed.deinit();
+    const b = &biomes_parsed.value[0];
+
+    var gd = try game_data_mod.GameData.load(allocator);
+    defer gd.deinit();
+    const sp = gd.findSpecies("println").?;
+
+    const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
+    const species_ptrs = [_]*const species_mod.Species{sp};
+
+    var state = startRun(&critters, &species_ptrs, b, 42);
+    state.phase = .encounter;
+
+    // Critter starts alive, faints during battle
+    var updated = state.party;
+    updated[0].?.current_hp = 0;
+
+    _ = resolveEncounter(&state, .player_lose, updated, null, 0);
+
+    // Should have 1 pending scar for party index 0
+    try std.testing.expectEqual(@as(u8, 1), state.pending_scar_count);
+    try std.testing.expectEqual(@as(u8, 0), state.pending_scars[0].party_index);
+}
+
+test "resolveEncounter no scar for already-fainted critter" {
+    const allocator = std.testing.allocator;
+    const biomes_parsed = try biome.load(allocator, "data/biomes.json");
+    defer biomes_parsed.deinit();
+    const b = &biomes_parsed.value[0];
+
+    var gd = try game_data_mod.GameData.load(allocator);
+    defer gd.deinit();
+    const sp = gd.findSpecies("println").?;
+
+    const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
+    const species_ptrs = [_]*const species_mod.Species{sp};
+
+    var state = startRun(&critters, &species_ptrs, b, 42);
+    state.phase = .encounter;
+
+    // Critter was already fainted before this battle
+    state.party[0].?.current_hp = 0;
+    const updated = state.party;
+    // Still fainted after battle — no new scar
+
+    _ = resolveEncounter(&state, .player_lose, updated, null, 0);
+
+    try std.testing.expectEqual(@as(u8, 0), state.pending_scar_count);
 }
 
 test "resolveEncounter records catch" {

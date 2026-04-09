@@ -135,6 +135,7 @@ pub const BattleState = struct {
     wild: BattleCritter,
     turn_number: u16,
     outcome: ?BattleOutcome,
+    revive_used: bool,
     rng: std.Random.DefaultPrng,
 
     pub fn activePlayer(self: *const BattleState) *const BattleCritter {
@@ -184,6 +185,7 @@ pub fn initBattle(
         },
         .turn_number = 0,
         .outcome = null,
+        .revive_used = false,
         .rng = std.Random.DefaultPrng.init(seed),
     };
 }
@@ -223,7 +225,7 @@ pub fn processTurn(
         const player = state.activePlayerMut();
         if (player.status.effect != .none) {
             const prev_effect = player.status.effect;
-            const tick = status.processStatusTick(&player.status, player.critter.max_hp, rng);
+            const tick = status.processStatusTick(&player.status, player.critter.effectiveStat(.hp), rng);
             if (tick.self_damage > 0) {
                 player.critter.current_hp -|= tick.self_damage;
                 result.addEvent(.{ .self_damage = .{ .is_player = true, .damage_dealt = tick.self_damage } });
@@ -256,7 +258,7 @@ pub fn processTurn(
     {
         if (state.wild.status.effect != .none) {
             const prev_effect = state.wild.status.effect;
-            const tick = status.processStatusTick(&state.wild.status, state.wild.critter.max_hp, rng);
+            const tick = status.processStatusTick(&state.wild.status, state.wild.critter.effectiveStat(.hp), rng);
             if (tick.self_damage > 0) {
                 state.wild.critter.current_hp -|= tick.self_damage;
                 result.addEvent(.{ .self_damage = .{ .is_player = false, .damage_dealt = tick.self_damage } });
@@ -295,11 +297,11 @@ pub fn processTurn(
 
     // --- Determine turn order by speed ---
     const player_speed = damage.effectiveStat(
-        state.activePlayer().critter.speed,
+        state.activePlayer().critter.effectiveStat(.speed),
         state.activePlayer().status.speed_mod,
     );
     const wild_speed = damage.effectiveStat(
-        state.wild.critter.speed,
+        state.wild.critter.effectiveStat(.speed),
         state.wild.status.speed_mod,
     );
 
@@ -413,9 +415,9 @@ fn resolveAttack(
     // Calculate and apply damage
     const dmg = damage.calculateDamage(
         move,
-        attacker.critter.logic,
+        attacker.critter.effectiveStat(.logic),
         attacker.status.logic_mod,
-        defender.critter.resolve,
+        defender.critter.effectiveStat(.resolve),
         defender.status.resolve_mod,
         defender.species.critter_type,
         attacker.status.power_mod,
@@ -462,12 +464,29 @@ fn resolveItem(
     target: u2,
     result: *TurnResult,
 ) void {
+    if (item.kind == .revive) {
+        if (state.revive_used) return;
+        const pct = item.revive_percent orelse 50;
+        if (state.player_party[target]) |*bc| {
+            if (bc.critter.current_hp != 0) return; // not fainted
+            const restore = @max(1, @as(u16, bc.critter.effectiveStat(.hp)) * pct / 100);
+            bc.critter.current_hp = restore;
+            state.revive_used = true;
+            result.addEvent(.{ .item_used = .{
+                .item_name = item.name,
+                .target = target,
+                .heal_amount = restore,
+            } });
+        }
+        return;
+    }
+
     if (item.kind != .healing) return;
     const heal = item.heal_amount orelse return;
 
     if (state.player_party[target]) |*bc| {
         const old_hp = bc.critter.current_hp;
-        bc.critter.current_hp = @min(bc.critter.max_hp, old_hp + heal);
+        bc.critter.current_hp = @min(bc.critter.effectiveStat(.hp), old_hp + heal);
         result.addEvent(.{ .item_used = .{
             .item_name = item.name,
             .target = target,
@@ -487,7 +506,7 @@ fn resolveCatch(
         tool,
         state.wild.species.critter_type,
         state.wild.critter.current_hp,
-        state.wild.critter.max_hp,
+        state.wild.critter.effectiveStat(.hp),
         state.wild.species.rarity,
         rng,
     );
@@ -517,9 +536,9 @@ fn resolveCatch(
                     const player = state.activePlayerMut();
                     const dmg = damage.calculateDamage(
                         move,
-                        state.wild.critter.logic,
+                        state.wild.critter.effectiveStat(.logic),
                         state.wild.status.logic_mod,
-                        player.critter.resolve,
+                        player.critter.effectiveStat(.resolve),
                         player.status.resolve_mod,
                         player.species.critter_type,
                         state.wild.status.power_mod,
@@ -586,7 +605,7 @@ fn makeTestCritter(species_id: []const u8, move1: []const u8, hp: u16) critter_m
         .move_slot_2 = null,
         .move_slot_3 = null,
         .scars = &.{},
-        .cooldown_until = null,
+        .cooldown_runs = 0,
     };
 }
 

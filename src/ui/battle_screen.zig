@@ -180,15 +180,16 @@ pub const BattleScreen = struct {
             self.cursor = 0;
             return;
         }
-        const count = self.countItemsByKind(.healing);
+        const count = self.countItems(null);
         if (count == 0) return;
         if (key.matches(Key.up, .{})) {
             if (self.cursor > 0) self.cursor -= 1;
         } else if (key.matches(Key.down, .{})) {
             if (self.cursor + 1 < count) self.cursor += 1;
         } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
-            if (self.getNthItemByKind(.healing, self.cursor)) |slot_idx| {
+            if (self.getNthItem(null,self.cursor)) |slot_idx| {
                 const slot = &self.inventory[slot_idx];
+                if (slot.item.kind == .revive and self.state.revive_used) return;
                 self.pending_heal_item = .{ .slot_idx = slot_idx, .item = slot.item };
                 self.menu_state = .select_heal_target;
                 self.cursor = 0;
@@ -203,7 +204,8 @@ pub const BattleScreen = struct {
             self.cursor = 0;
             return;
         }
-        const count = self.countAlivePartyAll();
+        const is_revive = if (self.pending_heal_item) |h| h.item.kind == .revive else false;
+        const count = self.countPartyByHp(is_revive);
         if (count == 0) return;
         if (key.matches(Key.up, .{})) {
             if (self.cursor > 0) self.cursor -= 1;
@@ -211,10 +213,11 @@ pub const BattleScreen = struct {
             if (self.cursor + 1 < count) self.cursor += 1;
         } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
             if (self.pending_heal_item) |heal| {
-                if (self.getHealTarget(self.cursor)) |target| {
+                const target = self.getPartyTarget(is_revive, self.cursor);
+                if (target) |t| {
                     self.submitAction(.{ .use_item = .{
                         .item = heal.item,
-                        .target = target,
+                        .target = t,
                     } });
                     self.inventory[heal.slot_idx].count -|= 1;
                     self.pending_heal_item = null;
@@ -229,14 +232,14 @@ pub const BattleScreen = struct {
             self.cursor = 0;
             return;
         }
-        const count = self.countItemsByKind(.catch_tool);
+        const count = self.countItems(.catch_tool);
         if (count == 0) return;
         if (key.matches(Key.up, .{})) {
             if (self.cursor > 0) self.cursor -= 1;
         } else if (key.matches(Key.down, .{})) {
             if (self.cursor + 1 < count) self.cursor += 1;
         } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
-            if (self.getNthItemByKind(.catch_tool, self.cursor)) |slot_idx| {
+            if (self.getNthItem(.catch_tool,self.cursor)) |slot_idx| {
                 const slot = &self.inventory[slot_idx];
                 self.submitAction(.{ .catch_attempt = slot.item });
                 slot.count -|= 1;
@@ -337,7 +340,7 @@ pub const BattleScreen = struct {
         _ = writeText(win, c, row, "]", type_bold);
 
         // Line 2: HP bar
-        self.renderHpBar(win, bc.critter.current_hp, bc.critter.max_hp, row + 1, col);
+        self.renderHpBar(win, bc.critter.current_hp, bc.critter.effectiveStat(.hp), row + 1, col);
 
         // Line 3: Status (if any)
         if (bc.status.effect != .none) {
@@ -430,7 +433,7 @@ pub const BattleScreen = struct {
             .main_menu => self.renderMainMenu(win, start_row),
             .select_attack => self.renderAttackMenu(win, start_row),
             .select_swap => self.renderSwapMenu(win, start_row),
-            .select_item => self.renderItemList(win, start_row, .healing),
+            .select_item => self.renderItemList(win, start_row, null),
             .select_heal_target => self.renderHealTargetMenu(win, start_row),
             .select_catch_tool => self.renderItemList(win, start_row, .catch_tool),
             .animating => {
@@ -515,7 +518,7 @@ pub const BattleScreen = struct {
             const prefix: []const u8 = if (selected) "> " else "  ";
             var c = writeText(win, 2, r, prefix, style);
             c = writeText(win, c, r, bc.species.name, style);
-            _ = writeFmt(win, c, r, style, "  Lv{d}  HP:{d}/{d}", .{ bc.critter.level, bc.critter.current_hp, bc.critter.max_hp });
+            _ = writeFmt(win, c, r, style, "  Lv{d}  HP:{d}/{d}", .{ bc.critter.level, bc.critter.current_hp, bc.critter.effectiveStat(.hp) });
             display_idx += 1;
         }
 
@@ -524,16 +527,19 @@ pub const BattleScreen = struct {
         }
     }
 
-    fn renderItemList(self: *const BattleScreen, win: Window, row: u16, kind: items_mod.ItemKind) void {
-        const label: []const u8 = if (kind == .catch_tool) "Use catch tool:" else "Use item:";
+    fn renderItemList(self: *const BattleScreen, win: Window, row: u16, filter: ?items_mod.ItemKind) void {
+        const label: []const u8 = if (filter != null and filter.? == .catch_tool) "Use catch tool:" else "Use item:";
         _ = writeText(win, 2, row, label, header_style);
 
         var display_idx: u8 = 0;
         for (self.inventory) |slot| {
-            if (slot.item.kind != kind or slot.count == 0) continue;
+            if (!matchesItemFilter(slot.item.kind, filter) or slot.count == 0) continue;
 
+            const is_blocked = slot.item.kind == .revive and self.state.revive_used;
             const selected = self.cursor == display_idx;
-            const style: Style = if (selected)
+            const style: Style = if (is_blocked)
+                .{ .fg = .{ .rgb = .{ 80, 80, 80 } } }
+            else if (selected)
                 .{ .fg = .{ .rgb = .{ 0, 0, 0 } }, .bg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true }
             else
                 .{ .fg = .{ .rgb = .{ 200, 200, 200 } } };
@@ -541,7 +547,11 @@ pub const BattleScreen = struct {
             const prefix: []const u8 = if (selected) "> " else "  ";
             var c = writeText(win, 2, r, prefix, style);
             c = writeText(win, c, r, slot.item.name, style);
-            _ = writeFmt(win, c, r, style, "  x{d}", .{slot.count});
+            if (is_blocked) {
+                _ = writeFmt(win, c, r, style, "  x{d} (used)", .{slot.count});
+            } else {
+                _ = writeFmt(win, c, r, style, "  x{d}", .{slot.count});
+            }
             display_idx += 1;
         }
 
@@ -600,18 +610,24 @@ pub const BattleScreen = struct {
         return false;
     }
 
-    fn countItemsByKind(self: *const BattleScreen, kind: items_mod.ItemKind) u8 {
+    /// null = usable items (healing + revive), non-null = exact kind match
+    fn matchesItemFilter(kind: items_mod.ItemKind, filter: ?items_mod.ItemKind) bool {
+        if (filter) |f| return kind == f;
+        return kind == .healing or kind == .revive;
+    }
+
+    fn countItems(self: *const BattleScreen, filter: ?items_mod.ItemKind) u8 {
         var count: u8 = 0;
         for (self.inventory) |slot| {
-            if (slot.item.kind == kind and slot.count > 0) count += 1;
+            if (matchesItemFilter(slot.item.kind, filter) and slot.count > 0) count += 1;
         }
         return count;
     }
 
-    fn getNthItemByKind(self: *const BattleScreen, kind: items_mod.ItemKind, n: u8) ?usize {
+    fn getNthItem(self: *const BattleScreen, filter: ?items_mod.ItemKind, n: u8) ?usize {
         var count: u8 = 0;
         for (self.inventory, 0..) |slot, i| {
-            if (slot.item.kind != kind or slot.count == 0) continue;
+            if (!matchesItemFilter(slot.item.kind, filter) or slot.count == 0) continue;
             if (count == n) return i;
             count += 1;
         }
@@ -619,21 +635,20 @@ pub const BattleScreen = struct {
     }
 
     /// Count all alive party members (including active critter) for heal targeting.
-    fn countAlivePartyAll(self: *const BattleScreen) u8 {
+    fn countPartyByHp(self: *const BattleScreen, want_fainted: bool) u8 {
         var count: u8 = 0;
         for (self.state.player_party) |slot| {
             const bc = slot orelse continue;
-            if (bc.critter.current_hp > 0) count += 1;
+            if ((bc.critter.current_hp == 0) == want_fainted) count += 1;
         }
         return count;
     }
 
-    /// Get the party index for the nth alive member (for heal targeting).
-    fn getHealTarget(self: *const BattleScreen, display_idx: u8) ?u2 {
+    fn getPartyTarget(self: *const BattleScreen, want_fainted: bool, display_idx: u8) ?u2 {
         var count: u8 = 0;
         for (self.state.player_party, 0..) |slot, i| {
             const bc = slot orelse continue;
-            if (bc.critter.current_hp == 0) continue;
+            if ((bc.critter.current_hp == 0) != want_fainted) continue;
             if (count == display_idx) return @intCast(i);
             count += 1;
         }
@@ -641,6 +656,7 @@ pub const BattleScreen = struct {
     }
 
     fn renderHealTargetMenu(self: *const BattleScreen, win: Window, row: u16) void {
+        const is_revive = if (self.pending_heal_item) |h| h.item.kind == .revive else false;
         const item_name = if (self.pending_heal_item) |h| h.item.name else "item";
         var label_buf: [64]u8 = undefined;
         const label = std.fmt.bufPrint(&label_buf, "Use {s} on:", .{item_name}) catch "Use item on:";
@@ -649,7 +665,12 @@ pub const BattleScreen = struct {
         var display_idx: u8 = 0;
         for (self.state.player_party, 0..) |slot, i| {
             const bc = slot orelse continue;
-            if (bc.critter.current_hp == 0) continue;
+            // Revive targets fainted critters; healing targets alive critters
+            if (is_revive) {
+                if (bc.critter.current_hp != 0) continue;
+            } else {
+                if (bc.critter.current_hp == 0) continue;
+            }
 
             const selected = self.cursor == display_idx;
             const is_active = i == self.state.player_active;
@@ -664,8 +685,13 @@ pub const BattleScreen = struct {
             if (is_active) {
                 c = writeText(win, c, r, " (active)", style);
             }
-            _ = writeFmt(win, c, r, style, "  HP:{d}/{d}", .{ bc.critter.current_hp, bc.critter.max_hp });
+            _ = writeFmt(win, c, r, style, "  HP:{d}/{d}", .{ bc.critter.current_hp, bc.critter.effectiveStat(.hp) });
             display_idx += 1;
+        }
+
+        if (display_idx == 0) {
+            const msg: []const u8 = if (is_revive) "  (no fainted critters)" else "  (no targets)";
+            _ = writeText(win, 2, row + 1, msg, .{ .fg = dim_style.fg, .italic = true });
         }
 
         _ = writeText(win, 2, row + 2 + @as(u16, display_idx), "[Esc] Back", dim_style);

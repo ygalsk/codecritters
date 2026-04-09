@@ -5,6 +5,7 @@ const loader = @import("loader.zig");
 pub const ItemKind = enum {
     catch_tool,
     healing,
+    revive,
     move_disc,
 };
 
@@ -23,6 +24,7 @@ pub const Item = struct {
     catch_tier: ?CatchTier = null,
     base_catch_rate: ?u8 = null,
     heal_amount: ?u16 = null,
+    revive_percent: ?u8 = null,
     move_id: ?[]const u8 = null,
     buy_price: u16 = 0,
     sell_price: u16 = 0,
