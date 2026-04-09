@@ -1,0 +1,57 @@
+[
+  {
+    "id": "println",
+    "name": "Println",
+    "critter_type": "debug",
+    "rarity": "common",
+    "base_stats": { "hp": 45, "logic": 55, "resolve": 40, "speed": 50 },
+    "signature_move": "log_dump",
+    "secondary_move": null,
+    "evolves_to": "tracer",
+    "evolution_level": 12
+  },
+  {
+    "id": "tracer",
+    "name": "Tracer",
+    "critter_type": "debug",
+    "rarity": "common",
+    "base_stats": { "hp": 60, "logic": 75, "resolve": 55, "speed": 60 },
+    "signature_move": "log_dump",
+    "secondary_move": "stack_trace",
+    "evolves_to": "profiler",
+    "evolution_level": 28
+  },
+  {
+    "id": "glitch",
+    "name": "Glitch",
+    "critter_type": "chaos",
+    "rarity": "common",
+    "base_stats": { "hp": 40, "logic": 60, "resolve": 35, "speed": 65 },
+    "signature_move": "bit_flip",
+    "secondary_move": null,
+    "evolves_to": "gremlin",
+    "evolution_level": 14
+  },
+  {
+    "id": "goto",
+    "name": "Goto",
+    "critter_type": "legacy",
+    "rarity": "common",
+    "base_stats": { "hp": 50, "logic": 45, "resolve": 55, "speed": 40 },
+    "signature_move": "jump_table",
+    "secondary_move": null,
+    "evolves_to": "spaghetto",
+    "evolution_level": 13
+  },
+  {
+    "id": "monad",
+    "name": "Monad",
+    "critter_type": "wisdom",
+    "rarity": "common",
+    "base_stats": { "hp": 35, "logic": 70, "resolve": 45, "speed": 50 },
+    "signature_move": "bind",
+    "secondary_move": null,
+    "evolves_to": "functor",
+    "evolution_level": 15
+  }
+]

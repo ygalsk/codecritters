@@ -1,0 +1,14 @@
+[
+  { "id": "log_dump", "name": "Log Dump", "move_type": "debug", "power": 40, "accuracy": 100 },
+  { "id": "stack_trace", "name": "Stack Trace", "move_type": "debug", "power": 65, "accuracy": 90, "status_effect": "linted", "status_chance": 20 },
+  { "id": "bit_flip", "name": "Bit Flip", "move_type": "chaos", "power": 45, "accuracy": 95, "status_effect": "segfaulted", "status_chance": 15 },
+  { "id": "buffer_overflow", "name": "Buffer Overflow", "move_type": "chaos", "power": 70, "accuracy": 80 },
+  { "id": "jump_table", "name": "Jump Table", "move_type": "legacy", "power": 40, "accuracy": 100 },
+  { "id": "tech_debt", "name": "Tech Debt", "move_type": "legacy", "power": 60, "accuracy": 85, "status_effect": "deprecated", "status_chance": 25 },
+  { "id": "bind", "name": "Bind", "move_type": "wisdom", "power": 50, "accuracy": 95 },
+  { "id": "pattern_match", "name": "Pattern Match", "move_type": "wisdom", "power": 70, "accuracy": 90 },
+  { "id": "mutex_lock", "name": "Mutex Lock", "move_type": "patience", "power": 35, "accuracy": 100, "status_effect": "blocked", "status_chance": 40 },
+  { "id": "code_review", "name": "Code Review", "move_type": "snark", "power": 55, "accuracy": 90, "status_effect": "tilted", "status_chance": 20 },
+  { "id": "ship_it", "name": "Ship It", "move_type": "vibe", "power": 80, "accuracy": 70 },
+  { "id": "tackle", "name": "Tackle", "move_type": "debug", "power": 30, "accuracy": 100 }
+]

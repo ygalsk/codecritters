@@ -36,6 +36,10 @@
             .url = "git+https://github.com/rockorager/libvaxis.git#3d37f043a161fd32897ad44a2dddbfaab75faa8a",
             .hash = "vaxis-0.5.1-BWNV_JJOCQAtdJyLvrYCKbKIhX9q3liQkKMAzujWS4HJ",
         },
+        .zqlite = .{
+            .url = "git+https://github.com/karlseguin/zqlite.zig#05a88d6758753e1c63fdd45b211dde2057094b0c",
+            .hash = "zqlite-0.0.1-RWLaYz6bmAAT7E_jxopXf-j5Ea8VQldnxsd6TU8sa0Bb",
+        },
     },
     .paths = .{
         "build.zig",
