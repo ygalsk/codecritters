@@ -14,11 +14,62 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    // Shared internal modules for cross-directory imports
+    // Shared data modules — named so battle/ can import them without ../
+    // and type identity is preserved across all consumers.
+    const types_mod = b.createModule(.{
+        .root_source_file = b.path("src/data/types.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const loader_mod = b.createModule(.{
+        .root_source_file = b.path("src/data/loader.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const moves_mod = b.createModule(.{
+        .root_source_file = b.path("src/data/moves.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "types.zig", .module = types_mod },
+            .{ .name = "loader.zig", .module = loader_mod },
+        },
+    });
+    const species_mod = b.createModule(.{
+        .root_source_file = b.path("src/data/species.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "types.zig", .module = types_mod },
+            .{ .name = "loader.zig", .module = loader_mod },
+        },
+    });
+    const items_mod = b.createModule(.{
+        .root_source_file = b.path("src/data/items.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "types.zig", .module = types_mod },
+            .{ .name = "loader.zig", .module = loader_mod },
+        },
+    });
     const critter_mod = b.createModule(.{
         .root_source_file = b.path("src/data/critter.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = &.{
+            .{ .name = "species.zig", .module = species_mod },
+        },
+    });
+    const game_data_mod = b.createModule(.{
+        .root_source_file = b.path("src/data/game_data.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "species.zig", .module = species_mod },
+            .{ .name = "moves.zig", .module = moves_mod },
+            .{ .name = "items.zig", .module = items_mod },
+        },
     });
 
     const exe = b.addExecutable(.{
@@ -88,6 +139,35 @@ pub fn build(b: *std.Build) void {
             }),
         });
         unit_test.link_gc_sections = true;
+        const run_test = b.addRunArtifact(unit_test);
+        test_step.dependOn(&run_test.step);
+    }
+
+    // Battle engine modules — import data types via named modules
+    const battle_data_imports: []const std.Build.Module.Import = &.{
+        .{ .name = "types", .module = types_mod },
+        .{ .name = "moves", .module = moves_mod },
+        .{ .name = "species", .module = species_mod },
+        .{ .name = "items", .module = items_mod },
+        .{ .name = "critter", .module = critter_mod },
+        .{ .name = "game_data", .module = game_data_mod },
+    };
+    const battle_test_modules = [_][]const u8{
+        "src/battle/damage.zig",
+        "src/battle/status.zig",
+        "src/battle/catch.zig",
+        "src/battle/ai.zig",
+        "src/battle/battle.zig",
+    };
+    for (battle_test_modules) |test_file| {
+        const unit_test = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(test_file),
+                .target = target,
+                .optimize = optimize,
+                .imports = battle_data_imports,
+            }),
+        });
         const run_test = b.addRunArtifact(unit_test);
         test_step.dependOn(&run_test.step);
     }
