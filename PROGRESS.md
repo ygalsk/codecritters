@@ -32,3 +32,17 @@
 - **build.zig**: Named data modules (types, moves, species, items, critter, game_data, loader) with full dependency wiring so battle/ imports data types without `../` paths while preserving type identity
 - 81 new tests (126 total), all passing
 - Design decisions made: variance range 0.85–1.0, deprecated decays -3 per tick, segfaulted 25%/10% max HP, minimum 5% catch chance floor, status durations as listed above
+
+## Phase 3 — Battle Screen [DONE]
+- Full battle TUI in `src/ui/` — thin rendering layer over Phase 2 engine
+- **battle_screen.zig**: 7-state menu system (main_menu, select_attack, select_swap, select_item, select_catch_tool, animating, battle_over), arrow key navigation, Enter/Space confirm, Escape backs out
+- **colors.zig**: CritterType → RGB color mapping, HP bar color thresholds (green >50%, yellow 25-50%, red <25%)
+- **text.zig**: BattleEvent → human-readable message formatting, status name display
+- Layout: wild critter top-right, player bottom-left, each with 10×4 colored rectangle sprite, name/level/type badge, HP bar, status indicator. Separator, 4-line rolling message log, menu area below
+- Turn events step through one-by-one on keypress (Pokemon-style drama)
+- Forced swap when active critter faints with alive party members remaining
+- Inventory system: `InventorySlot` struct with item pointer + count, submenus filter by item kind
+- Test battle on startup: Println Lv10 + Goto Lv10 vs wild Glitch Lv8, 3× Print Statement + 2× Hotfix
+- **build.zig**: battle engine exposed as named module (`battle_mod`), exe imports all data/battle modules for shared type identity. UI files use relative imports between themselves + named imports for data/battle/vaxis
+- **Vaxis gotcha**: `printSegment` stores borrowed references to text — stack-local `bufPrint` buffers become dangling after helper functions return. Fixed with `writeText`/`writeFmt` helpers that write character-by-character using a comptime ASCII grapheme lookup table (static memory, no dangling pointers)
+- 126 tests still passing (no new UI tests — battle_screen needs a live terminal)

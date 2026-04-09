@@ -72,6 +72,24 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // Battle engine modules — import data types via named modules
+    const battle_data_imports: []const std.Build.Module.Import = &.{
+        .{ .name = "types", .module = types_mod },
+        .{ .name = "moves", .module = moves_mod },
+        .{ .name = "species", .module = species_mod },
+        .{ .name = "items", .module = items_mod },
+        .{ .name = "critter", .module = critter_mod },
+        .{ .name = "game_data", .module = game_data_mod },
+    };
+
+    // Battle engine as a named module (shares data type identity with everything else)
+    const battle_mod = b.createModule(.{
+        .root_source_file = b.path("src/battle/battle.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = battle_data_imports,
+    });
+
     const exe = b.addExecutable(.{
         .name = "codecritter",
         .root_module = b.createModule(.{
@@ -81,6 +99,13 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "vaxis", .module = vaxis_dep.module("vaxis") },
                 .{ .name = "zqlite", .module = zqlite_dep.module("zqlite") },
+                .{ .name = "battle", .module = battle_mod },
+                .{ .name = "game_data", .module = game_data_mod },
+                .{ .name = "types", .module = types_mod },
+                .{ .name = "species", .module = species_mod },
+                .{ .name = "moves", .module = moves_mod },
+                .{ .name = "items", .module = items_mod },
+                .{ .name = "critter", .module = critter_mod },
             },
         }),
     });
@@ -143,15 +168,6 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&run_test.step);
     }
 
-    // Battle engine modules — import data types via named modules
-    const battle_data_imports: []const std.Build.Module.Import = &.{
-        .{ .name = "types", .module = types_mod },
-        .{ .name = "moves", .module = moves_mod },
-        .{ .name = "species", .module = species_mod },
-        .{ .name = "items", .module = items_mod },
-        .{ .name = "critter", .module = critter_mod },
-        .{ .name = "game_data", .module = game_data_mod },
-    };
     const battle_test_modules = [_][]const u8{
         "src/battle/damage.zig",
         "src/battle/status.zig",
