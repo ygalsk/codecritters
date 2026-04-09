@@ -134,3 +134,20 @@
 - **Run over screen**: Shows scar summary (species + stat penalized) and cooldown warning on wipe
 - Design decisions: scars per-faint (checked at battle end, revive avoids scar), cooldown = 2 runs (not time-based), 1 revive per battle, extraction keeps scars but no cooldown, wipe adds cooldown to all party members
 - 222 tests (15 new: effective stat with scars, floor at 1, scar generation on faint, no double-scar)
+
+## Phase 11 — Passive Layer [DONE]
+- Passive XP/item system rewarding real coding work via CLI subcommands (no MCP server — descoped in favor of CLI + hooks + Claude Code skill in separate repo)
+- **db.zig**: Added `events` table (id, event_type, timestamp, processed). Added `PRAGMA busy_timeout=3000` for concurrent CLI+TUI access
+- **passive_store.zig** (new): `logEvent`, `loadUnprocessedEvents`, `freeEvents`, `markEventsProcessed`, `countUnprocessedEvents`, `getFavoriteCritterId`, `setFavoriteCritterId` — follows roster.zig pattern, uses settings table for favorite
+- **passive.zig** (new, `src/passive/`): Pure reconciliation engine. `reconcile(events, critter, game_data, seed) → ReconcileResult` — awards XP (5 per event via `leveling.awardXp`), rolls items (per 20 events, 30% chance from loot table: small_patch, print_statement, hotfix). No DB imports — caller handles persistence
+- **CLI subcommands** in main.zig: arg parsing via `std.process.argsWithAllocator` before TUI setup
+  - `codecritter log-event <type>` — logs event to DB (DB-only, fast, called by Claude Code hooks)
+  - `codecritter set-favorite <id>` — sets which critter earns passive XP (validates critter exists)
+  - `codecritter status` — outputs JSON: favorite critter info, roster summary, pending event count
+  - `codecritter statusline` — outputs compact one-liner: `Println Lv12 ♥45/54`
+  - No args — launches TUI as before
+- **recap_screen.zig** (new): "While you were coding..." screen showing XP gained, level-ups, items found, event count. Any key dismisses to hub
+- **main.zig integration**: `runReconciliation` at TUI startup loads unprocessed events, runs passive.reconcile, persists critter/items/events, auto-selects first roster critter as favorite if none set. `recap` added to `ActiveScreen` enum with full input/transition/render wiring
+- **writeOut helper**: `bufPrint` + `std.fs.File.stdout().writeAll()` for CLI output (Zig 0.15 stdout API)
+- Design decisions: MCP server descoped (CLI subcommands + external hooks/skills instead), favorite critter managed via CLI (not game UI), cooldown critters still earn passive XP, max-level critters get 0 XP but still roll items, XP_PER_EVENT=5, EVENTS_PER_ITEM_ROLL=20, ITEM_FIND_CHANCE_PCT=30
+- 234 tests (12 new: 5 passive_store, 6 passive engine, 1 schema)

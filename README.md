@@ -4,7 +4,7 @@
 
 Codecritter is a Pokemon-style roguelike that runs in your terminal. Every critter is a programming concept — from the humble `Printf` to the terrifying `Kernel Panic`. Build a party, descend through procedurally generated dungeons themed around programming languages, and catch the bugs that haunt your codebase.
 
-Your real coding work fuels the game. Codecritter integrates with Claude Code: tool usage earns your critters XP, coding sessions surface rare items, and your party state is queryable via MCP so your favorite critter can live in your statusline.
+Your real coding work fuels the game. Codecritter integrates with Claude Code: tool usage earns your critters XP, coding sessions surface rare items, and your party state is queryable via CLI so your favorite critter can live in your statusline.
 
 ## The Pitch
 
@@ -26,7 +26,7 @@ Later that evening you're deep in a real debugging session. Claude Code fires of
 
 **Pixel-art sprites in your terminal.** Half-block rendering (▄/▀) with 24-bit truecolor. Kitty graphics protocol support for terminals that have it (Ghostty, Kitty, WezTerm) with automatic fallback. Idle animations. Two sprites facing off in a proper battle layout.
 
-**Claude Code integration.** Your coding fuels the game through a passive ambient layer. An MCP server exposes your party state for statusline integration and slash commands. Your real-world workflow and your critter roster feed each other.
+**Claude Code integration.** Your coding fuels the game through a passive ambient layer. CLI subcommands expose your party state for statusline integration and slash commands. Claude Code hooks and skills live in a companion repo ([ygalsk/codecritter](https://github.com/ygalsk/codecritter)) — including a buddy companion that comments on your work in-character.
 
 **Biomes from your codebase.** Codecritter reads your working directory and generates dungeons themed to the language. Python projects get Pythonic Caves. Node projects get the Node Modules Abyss (it's deeper than you think). Rust projects get the Rustacean Depths, where the corridors are strict and there are no unsafe zones. Unlockable for manual selection after clearing.
 
@@ -50,7 +50,7 @@ Later that evening you're deep in a real debugging session. Claude Code fires of
 - **Zig** — the whole thing
 - **libvaxis** — terminal rendering, input handling, Kitty graphics protocol
 - **SQLite** — persistent game state
-- **MCP** — Claude Code integration via JSON-RPC over Unix socket
+- **CLI subcommands** — `log-event`, `status`, `set-favorite`, `statusline` for Claude Code integration (hooks/skills in [ygalsk/codecritter](https://github.com/ygalsk/codecritter))
 
 ## Status
 

@@ -4,7 +4,7 @@
 
 Codecritter is a Pokemon-style roguelike that lives in your terminal. Every critter is a programming concept, bug, tool, or language spirit. You catch them, build a party, and descend through procedurally generated dungeons themed around programming languages. Between runs, a passive ambient layer rewards real coding work with XP and items — connecting the game to your actual development workflow via Claude Code integration.
 
-**Tech stack:** Zig + libvaxis. SQLite for persistence. MCP server for Claude Code integration.
+**Tech stack:** Zig + libvaxis. SQLite for persistence. CLI subcommands + Claude Code hooks/skills for integration (separate repo).
 
 ---
 
@@ -333,19 +333,27 @@ More biomes can be added as content updates.
 
 ## Claude Code Integration
 
+The game binary (this repo, `ygalsk/codecritters`) exposes CLI subcommands for integration. The Claude Code side — hooks, skills, and the buddy companion persona — lives in a separate repo (`ygalsk/codecritter`).
+
 ### Passive Ambient Layer
 
 Your favorite critter sits in the background while you code. It earns passive XP and occasionally finds items. This is fueled by Claude Code tool-use events (Bash, Edit, Write, etc.).
 
-**Implementation:** Tool-use events are logged to SQLite. On game launch, the backlog is reconciled. "While you were coding, Segfault found a Mutex Key!" No daemon required — just event logging and batch processing.
+**Implementation:** Claude Code hooks call `codecritter log-event <type>` on tool use, logging events to SQLite. On game launch, the backlog is reconciled. "While you were coding, Segfault found a Mutex Key!" No daemon, no MCP server — just CLI calls and batch processing.
 
-### MCP Server
+### CLI Subcommands (this repo)
 
-A thread listening on a Unix socket, exposing read-only party state via JSON-RPC. This enables:
+- `codecritter log-event <type>` — log a coding event (called by Claude Code hooks)
+- `codecritter set-favorite <id>` — set which critter earns passive XP
+- `codecritter status` — output party status as JSON (consumed by Claude Code skill)
+- `codecritter statusline` — output compact one-liner for terminal prompt / editor statusline
 
-- **Statusline integration** — show your active critter in your terminal prompt or editor statusline
-- **Claude Code queries** — `/critter` slash command to check party status, swap passive critter, view loot found
-- **Future extensibility** — connecting an MCP unlocks a critter type, CI passes give XP, etc.
+### Claude Code Integration (separate repo: `ygalsk/codecritter`)
+
+- **Hooks** — shell commands that fire on tool use, calling `codecritter log-event`
+- **`/critter` skill** — check party status, set favorite, view loot found
+- **Buddy companion** — critter personality that occasionally comments on your work
+- **Statusline config** — show your active critter in your terminal prompt
 
 ### Coding Event Rewards
 

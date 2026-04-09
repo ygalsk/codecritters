@@ -6,7 +6,7 @@ Pokemon-style roguelike TUI game. Zig 0.15.2 + libvaxis + zqlite.
 ```
 zig build          # compile
 zig build run      # launch game
-zig build test     # 207 unit tests
+zig build test     # 234 unit tests
 ```
 
 ## Structure
@@ -14,9 +14,10 @@ zig build test     # 207 unit tests
 src/data/       # Species, Move, Item, Critter structs + JSON loading + type chart + leveling + equip
 src/battle/     # Battle engine: damage, status, catch, AI, turn processing (no UI)
 src/dungeon/    # Dungeon engine: floor gen, biomes, shop, run state (no UI)
-src/ui/         # Hub, party select, roster, dungeon, battle, shop screens + sprite rendering
-src/db/         # SQLite persistence (roster, inventory, scars, run state)
-src/main.zig    # TUI entry point
+src/passive/    # Passive XP/item engine: reconciliation logic (no UI)
+src/ui/         # Hub, party select, roster, dungeon, battle, shop, recap screens + sprite rendering
+src/db/         # SQLite persistence (roster, inventory, scars, run state, events)
+src/main.zig    # TUI entry point + CLI subcommands (log-event, status, set-favorite, statusline)
 data/*.json     # Species, moves, items, biomes definitions
 assets/sprites/ # 32x16 PNG sprite sheets (2 frames per critter)
 ```
@@ -40,3 +41,4 @@ assets/sprites/ # 32x16 PNG sprite sheets (2 frames per critter)
 - `std.Random.DefaultPrng` — `.random()` needs `*self` (mutable), not const
 - zigimg access: `vaxis.zigimg` (re-exported transitive dep). `Image.deinit(alloc)` needs allocator arg
 - vaxis `Window.child(.{.x_off, .y_off, .width, .height})` — width/height are `?u16`, not structs
+- Zig 0.15 stdout: `std.fs.File.stdout().writeAll(bytes)` — writer needs buffer arg, use `writeAll` or `bufPrint` + `writeAll`

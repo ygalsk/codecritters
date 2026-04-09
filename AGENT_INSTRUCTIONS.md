@@ -66,8 +66,8 @@ Working directory language detection. Biome-specific encounter tables, shop bias
 ### Phase 10 — Death, Scarring & Persistence
 Faint → cooldown timer + stat scarring. Persistent roster across runs. Run extraction vs wipe. Full save/load cycle through a complete run.
 
-### Phase 11 — Passive Layer & MCP
-Event logging for Claude Code tool-use hooks. Backlog reconciliation on game launch. Passive XP and item finding. MCP server on Unix socket exposing party state as JSON-RPC. Statusline-friendly output.
+### Phase 11 — Passive Layer
+CLI subcommands (`log-event`, `status`, `set-favorite`, `statusline`) for Claude Code integration. Passive XP/item engine with backlog reconciliation on game launch. Recap screen. Claude Code hooks/skills/buddy live in separate repo (`ygalsk/codecritter`).
 
 ### Phase 12 — Polish & Content
 Full critter roster (all 61). All moves defined. All biomes. Title screen, screen transitions, sound cues (if terminal supports BEL or similar). Balance pass on stats, catch rates, XP curves.

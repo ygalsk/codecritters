@@ -28,6 +28,10 @@ const InventoryScreen = inventory_screen_mod.InventoryScreen;
 const sprite_mod = @import("ui/sprite.zig");
 const SpriteMap = sprite_mod.SpriteMap;
 const ui = @import("ui/ui_common.zig");
+const passive = @import("passive");
+const passive_store = @import("db/passive_store.zig");
+const recap_screen_mod = @import("ui/recap_screen.zig");
+const RecapScreen = recap_screen_mod.RecapScreen;
 
 const Event = union(enum) {
     key_press: vaxis.Key,
@@ -39,6 +43,7 @@ const Event = union(enum) {
 pub const panic = vaxis.Panic.call;
 
 const ActiveScreen = enum {
+    recap,
     hub,
     party_select,
     roster_view,
@@ -59,6 +64,35 @@ pub fn main() !void {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
     defer _ = gpa.deinit();
     const alloc = gpa.allocator();
+
+    // CLI subcommand dispatch — runs before any TUI setup
+    var args = try std.process.argsWithAllocator(alloc);
+    defer args.deinit();
+    _ = args.next(); // skip argv[0]
+    if (args.next()) |subcmd| {
+        if (std.mem.eql(u8, subcmd, "log-event")) {
+            const event_type = args.next() orelse {
+                printUsage();
+                return;
+            };
+            return handleLogEvent(event_type);
+        } else if (std.mem.eql(u8, subcmd, "set-favorite")) {
+            const id_str = args.next() orelse {
+                printUsage();
+                return;
+            };
+            return handleSetFavorite(alloc, id_str);
+        } else if (std.mem.eql(u8, subcmd, "status")) {
+            return handleStatus(alloc);
+        } else if (std.mem.eql(u8, subcmd, "statusline")) {
+            return handleStatusline(alloc);
+        } else {
+            printUsage();
+            return;
+        }
+    }
+
+    // --- TUI mode ---
 
     var gd = game_data_mod.GameData.load(alloc) catch |err| {
         std.debug.print("Failed to load game data: {}\n", .{err});
@@ -103,8 +137,16 @@ pub fn main() !void {
     }
     defer for (sprite_storage[0..sprite_count]) |*s| s.deinit();
 
-    // Screen state
+    // Passive reconciliation — process events before showing UI
+    var recap_screen: RecapScreen = undefined;
     var active_screen: ActiveScreen = .hub;
+    const reconcile_result = runReconciliation(alloc, &database, &gd);
+    if (reconcile_result) |r| {
+        recap_screen = r;
+        active_screen = .recap;
+    }
+
+    // Screen state
     var hub_screen: HubScreen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
     var party_select_screen: PartySelectScreen = undefined;
     var roster_screen: RosterScreen = undefined;
@@ -178,6 +220,9 @@ pub fn main() !void {
                         }
                     }
                     switch (active_screen) {
+                        .recap => {
+                            recap_screen.handleInput(key);
+                        },
                         .hub => hub_screen.handleInput(key),
                         .party_select => party_select_screen.handleInput(key),
                         .roster_view => roster_screen.handleInput(key),
@@ -194,7 +239,7 @@ pub fn main() !void {
                 },
                 .winsize => |ws| {
                     try vx.resize(alloc, writer, ws);
-                    markAllDirty(active_screen, &hub_screen, &party_select_screen, &roster_screen, &inv_screen, &dg_screen, &battle_screen, &shop_screen, &run_over_dirty);
+                    markAllDirty(active_screen, &recap_screen, &hub_screen, &party_select_screen, &roster_screen, &inv_screen, &dg_screen, &battle_screen, &shop_screen, &run_over_dirty);
                 },
                 else => {},
             }
@@ -203,6 +248,12 @@ pub fn main() !void {
 
         // Check screen transitions
         switch (active_screen) {
+            .recap => {
+                if (recap_screen.done) {
+                    active_screen = .hub;
+                    hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                }
+            },
             .hub => {
                 if (hub_screen.done) {
                     hub_screen.done = false;
@@ -416,6 +467,7 @@ pub fn main() !void {
 
         // Render
         const dirty = switch (active_screen) {
+            .recap => recap_screen.dirty,
             .hub => hub_screen.dirty,
             .party_select => party_select_screen.dirty,
             .roster_view => roster_screen.dirty,
@@ -428,6 +480,7 @@ pub fn main() !void {
 
         if (dirty) {
             switch (active_screen) {
+                .recap => recap_screen.dirty = false,
                 .hub => hub_screen.dirty = false,
                 .party_select => party_select_screen.dirty = false,
                 .roster_view => roster_screen.dirty = false,
@@ -439,6 +492,7 @@ pub fn main() !void {
             }
             const win = vx.window();
             switch (active_screen) {
+                .recap => recap_screen.render(win),
                 .hub => hub_screen.render(win),
                 .party_select => party_select_screen.render(win),
                 .roster_view => roster_screen.render(win),
@@ -685,6 +739,7 @@ fn persistRunInventory(
 
 fn markAllDirty(
     active_screen: ActiveScreen,
+    recap_scr: *RecapScreen,
     hub_screen: *HubScreen,
     party_select_screen: *PartySelectScreen,
     roster_screen: *RosterScreen,
@@ -695,6 +750,7 @@ fn markAllDirty(
     run_over_dirty: *bool,
 ) void {
     switch (active_screen) {
+        .recap => recap_scr.dirty = true,
         .hub => hub_screen.dirty = true,
         .party_select => party_select_screen.dirty = true,
         .roster_view => roster_screen.dirty = true,
@@ -770,4 +826,216 @@ fn renderRunOver(win: vaxis.Window, dungeon_state: *const dungeon_mod.DungeonSta
     if (hint_row < win.height) {
         _ = ui.writeText(win, 2, hint_row, "[Press any key to continue]", ui.dim_style);
     }
+}
+
+// --- CLI subcommand handlers ---
+
+fn writeOut(comptime fmt: []const u8, args: anytype) void {
+    var buf: [2048]u8 = undefined;
+    const str = std.fmt.bufPrint(&buf, fmt, args) catch return;
+    std.fs.File.stdout().writeAll(str) catch {};
+}
+
+fn openDb() ?db.Db {
+    var database = db.Db.open("codecritter.db") catch |err| {
+        std.debug.print("Failed to open database: {}\n", .{err});
+        return null;
+    };
+    database.initSchema() catch {
+        database.close();
+        return null;
+    };
+    return database;
+}
+
+fn printUsage() void {
+    std.fs.File.stdout().writeAll(
+        \\Usage: codecritter [command]
+        \\
+        \\Commands:
+        \\  (no args)              Launch the game
+        \\  log-event <type>       Log a coding event (bash, edit, write, etc.)
+        \\  set-favorite <id>      Set which critter earns passive XP
+        \\  status                 Output party status as JSON
+        \\  statusline             Output compact statusline string
+        \\
+    ) catch {};
+}
+
+fn handleLogEvent(event_type: []const u8) void {
+    var database = openDb() orelse return;
+    defer database.close();
+
+    passive_store.logEvent(&database, event_type) catch |err| {
+        std.debug.print("Failed to log event: {}\n", .{err});
+    };
+}
+
+fn handleSetFavorite(alloc: std.mem.Allocator, id_str: []const u8) void {
+    const critter_id = std.fmt.parseInt(i64, id_str, 10) catch {
+        std.debug.print("Invalid critter ID: {s}\n", .{id_str});
+        return;
+    };
+
+    var database = openDb() orelse return;
+    defer database.close();
+
+    if (roster_db.loadCritter(&database, alloc, critter_id) catch null) |critter| {
+        var c = critter;
+        roster_db.freeCritter(alloc, &c);
+    } else {
+        std.debug.print("No critter with ID {d}\n", .{critter_id});
+        return;
+    }
+
+    passive_store.setFavoriteCritterId(&database, critter_id) catch |err| {
+        std.debug.print("Failed to set favorite: {}\n", .{err});
+        return;
+    };
+
+    writeOut("Favorite critter set to ID {d}\n", .{critter_id});
+}
+
+fn handleStatus(alloc: std.mem.Allocator) void {
+    var database = openDb() orelse return;
+    defer database.close();
+
+    var gd = game_data_mod.GameData.load(alloc) catch |err| {
+        std.debug.print("Failed to load game data: {}\n", .{err});
+        return;
+    };
+    defer gd.deinit();
+
+    const fav_id = passive_store.getFavoriteCritterId(&database) orelse getFirstCritterId(&database);
+    const pending = passive_store.countUnprocessedEvents(&database);
+    const roster_count = roster_db.countCritters(&database);
+
+    const on_cooldown = countCooldowns(&database);
+
+    if (fav_id) |id| {
+        if (roster_db.loadCritter(&database, alloc, id) catch null) |critter| {
+            var c = critter;
+            defer roster_db.freeCritter(alloc, &c);
+            const sp_name = if (gd.findSpecies(c.species_id)) |sp| sp.name else c.species_id;
+            writeOut(
+                \\{{"favorite":{{"id":{d},"name":"{s}","species":"{s}","level":{d},"xp":{d},"hp":"{d}/{d}"}},"roster":{{"count":{d},"on_cooldown":{d}}},"pending_events":{d}}}
+                \\
+            , .{ c.id, sp_name, c.species_id, c.level, c.xp, c.current_hp, c.max_hp, roster_count, on_cooldown, pending });
+            return;
+        }
+    }
+
+    writeOut(
+        \\{{"favorite":null,"roster":{{"count":{d},"on_cooldown":{d}}},"pending_events":{d}}}
+        \\
+    , .{ roster_count, on_cooldown, pending });
+}
+
+fn handleStatusline(alloc: std.mem.Allocator) void {
+    var database = openDb() orelse return;
+    defer database.close();
+
+    var gd = game_data_mod.GameData.load(alloc) catch return;
+    defer gd.deinit();
+
+    const fav_id = passive_store.getFavoriteCritterId(&database) orelse getFirstCritterId(&database);
+
+    if (fav_id) |id| {
+        if (roster_db.loadCritter(&database, alloc, id) catch null) |critter| {
+            var c = critter;
+            defer roster_db.freeCritter(alloc, &c);
+            const sp_name = if (gd.findSpecies(c.species_id)) |sp| sp.name else c.species_id;
+            writeOut("{s} Lv{d} \xe2\x99\xa5{d}/{d}\n", .{ sp_name, c.level, c.current_hp, c.max_hp });
+            return;
+        }
+    }
+
+    std.fs.File.stdout().writeAll("No critters yet\n") catch {};
+}
+
+fn countCooldowns(database: *db.Db) u16 {
+    const maybe_row = database.conn.row("SELECT COUNT(*) FROM critters WHERE cooldown_runs > 0", .{}) catch return 0;
+    if (maybe_row) |row| {
+        defer row.deinit();
+        return @intCast(@max(row.int(0), 0));
+    }
+    return 0;
+}
+
+fn getFirstCritterId(database: *db.Db) ?i64 {
+    const maybe_row = database.conn.row("SELECT id FROM critters ORDER BY id LIMIT 1", .{}) catch return null;
+    if (maybe_row) |row| {
+        defer row.deinit();
+        return row.int(0);
+    }
+    return null;
+}
+
+// --- Passive reconciliation ---
+
+fn runReconciliation(alloc: std.mem.Allocator, database: *db.Db, gd: *game_data_mod.GameData) ?RecapScreen {
+    const event_count = passive_store.countUnprocessedEvents(database);
+    if (event_count == 0) return null;
+
+    const stored_fav = passive_store.getFavoriteCritterId(database);
+    const fav_id = stored_fav orelse getFirstCritterId(database) orelse return null;
+
+    var critter = (roster_db.loadCritter(database, alloc, fav_id) catch return null) orelse return null;
+    defer roster_db.freeCritter(alloc, &critter);
+
+    const old_level = critter.level;
+    const seed: u64 = @intCast(@max(std.time.milliTimestamp(), 0));
+    const result = passive.reconcile(event_count, &critter, gd, seed);
+
+    // Persist critter, items, mark events processed
+    _ = roster_db.saveCritter(database, &critter) catch {};
+
+    var i: u8 = 0;
+    while (i < result.item_count) : (i += 1) {
+        if (result.items_found[i]) |item| {
+            roster_db.addInventoryItem(database, item.item_id, 1) catch {};
+        }
+    }
+
+    if (stored_fav == null) {
+        passive_store.setFavoriteCritterId(database, @intCast(fav_id)) catch {};
+    }
+
+    passive_store.markAllEventsProcessed(database) catch {};
+
+    // Build recap data
+    var data = RecapScreen{
+        .dirty = true,
+        .done = false,
+        .xp_awarded = result.xp_awarded,
+        .events_processed = result.events_processed,
+        .level_before = old_level,
+        .level_after = critter.level,
+        .evolved = if (result.level_up) |lu| lu.evolved else false,
+        .items = undefined,
+        .item_count = result.item_count,
+        .critter_name = undefined,
+        .critter_name_len = 0,
+    };
+
+    // Copy critter display name
+    const sp_name = if (gd.findSpecies(critter.species_id)) |sp| sp.name else critter.species_id;
+    const name_len: u8 = @intCast(@min(sp_name.len, 32));
+    @memcpy(data.critter_name[0..name_len], sp_name[0..name_len]);
+    data.critter_name_len = name_len;
+
+    // Copy item names
+    const empty_item = RecapScreen.ItemDisplay{ .name = undefined, .name_len = 0 };
+    data.items = .{empty_item} ** 4;
+    var j: u8 = 0;
+    while (j < result.item_count) : (j += 1) {
+        if (result.items_found[j]) |item| {
+            const item_name = if (gd.findItem(item.item_id)) |it| it.name else item.item_id;
+            const ilen: u8 = @intCast(@min(item_name.len, 32));
+            @memcpy(data.items[j].name[0..ilen], item_name[0..ilen]);
+            data.items[j].name_len = ilen;
+        }
+    }
+
+    return data;
 }

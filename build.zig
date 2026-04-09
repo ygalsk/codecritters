@@ -95,6 +95,20 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // Passive engine module — needs critter, leveling, game_data
+    const passive_mod = b.createModule(.{
+        .root_source_file = b.path("src/passive/passive.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "critter", .module = critter_mod },
+            .{ .name = "species", .module = species_mod },
+            .{ .name = "game_data", .module = game_data_mod },
+            .{ .name = "leveling", .module = leveling_mod },
+            .{ .name = "items", .module = items_mod },
+        },
+    });
+
     // Battle engine modules — import data types via named modules
     const battle_data_imports: []const std.Build.Module.Import = &.{
         .{ .name = "types", .module = types_mod },
@@ -149,6 +163,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "dungeon", .module = dungeon_mod },
                 .{ .name = "leveling", .module = leveling_mod },
                 .{ .name = "equip", .module = equip_mod },
+                .{ .name = "passive", .module = passive_mod },
             },
         }),
     });
@@ -194,6 +209,7 @@ pub fn build(b: *std.Build) void {
         "src/db/db.zig",
         "src/db/roster.zig",
         "src/db/run_store.zig",
+        "src/db/passive_store.zig",
     };
     for (db_test_modules) |test_file| {
         const unit_test = b.addTest(.{
@@ -243,6 +259,26 @@ pub fn build(b: *std.Build) void {
         });
         const run_equip_test = b.addRunArtifact(equip_test);
         test_step.dependOn(&run_equip_test.step);
+    }
+
+    // Passive engine tests
+    {
+        const passive_test = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/passive/passive.zig"),
+                .target = target,
+                .optimize = optimize,
+                .imports = &.{
+                    .{ .name = "critter", .module = critter_mod },
+                    .{ .name = "species", .module = species_mod },
+                    .{ .name = "game_data", .module = game_data_mod },
+                    .{ .name = "leveling", .module = leveling_mod },
+                    .{ .name = "items", .module = items_mod },
+                },
+            }),
+        });
+        const run_passive_test = b.addRunArtifact(passive_test);
+        test_step.dependOn(&run_passive_test.step);
     }
 
     // Sprite tests (need vaxis for types)

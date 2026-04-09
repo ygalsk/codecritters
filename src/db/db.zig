@@ -7,6 +7,7 @@ pub const Db = struct {
     pub fn open(path: [*:0]const u8) !Db {
         const conn = try zqlite.open(path, zqlite.OpenFlags.Create);
         try conn.execNoArgs("PRAGMA journal_mode=WAL");
+        try conn.execNoArgs("PRAGMA busy_timeout=3000");
         try conn.execNoArgs("PRAGMA foreign_keys=ON");
         return .{ .conn = conn };
     }
@@ -106,6 +107,14 @@ pub const Db = struct {
             \\  species_id   TEXT NOT NULL,
             \\  level        INTEGER NOT NULL,
             \\  floor_caught INTEGER NOT NULL
+            \\)
+        );
+        try self.conn.execNoArgs(
+            \\CREATE TABLE IF NOT EXISTS events (
+            \\  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            \\  event_type TEXT NOT NULL,
+            \\  timestamp  INTEGER NOT NULL DEFAULT (unixepoch()),
+            \\  processed  INTEGER NOT NULL DEFAULT 0
             \\)
         );
     }
