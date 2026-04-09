@@ -19,6 +19,13 @@ pub const ShopBiasEntry = struct {
     weight: u16,
 };
 
+pub const Theme = struct {
+    wall_fg: [3]u8 = .{ 60, 60, 60 },
+    floor_fg: [3]u8 = .{ 100, 100, 100 },
+    wall_dim_fg: [3]u8 = .{ 25, 25, 25 },
+    floor_dim_fg: [3]u8 = .{ 40, 40, 40 },
+};
+
 pub const Biome = struct {
     id: []const u8,
     name: []const u8,
@@ -27,6 +34,7 @@ pub const Biome = struct {
     boss_pool: []const BossEntry,
     shop_bias: []const ShopBiasEntry,
     drop_table: []const ShopBiasEntry = &.{},
+    theme: Theme = .{},
 };
 
 pub fn load(allocator: std.mem.Allocator, path: []const u8) !std.json.Parsed([]Biome) {
@@ -112,12 +120,43 @@ test "load biomes from JSON" {
     const parsed = try load(allocator, "data/biomes.json");
     defer parsed.deinit();
 
-    try std.testing.expect(parsed.value.len >= 1);
+    try std.testing.expect(parsed.value.len >= 3);
     const generic = findById(parsed.value, "generic_dungeon");
     try std.testing.expect(generic != null);
     try std.testing.expectEqual(@as(usize, 5), generic.?.encounter_table.len);
     try std.testing.expectEqual(@as(usize, 1), generic.?.boss_pool.len);
     try std.testing.expectEqual(@as(usize, 7), generic.?.shop_bias.len);
+
+    // Verify new biomes load
+    const pythonic = findById(parsed.value, "pythonic_caves");
+    try std.testing.expect(pythonic != null);
+    try std.testing.expectEqual(types.CritterType.vibe, pythonic.?.dominant_types[0]);
+    try std.testing.expectEqual(types.CritterType.wisdom, pythonic.?.dominant_types[1]);
+    try std.testing.expect(pythonic.?.encounter_table.len >= 5);
+
+    const node = findById(parsed.value, "node_abyss");
+    try std.testing.expect(node != null);
+    try std.testing.expectEqual(types.CritterType.chaos, node.?.dominant_types[0]);
+    try std.testing.expectEqual(types.CritterType.vibe, node.?.dominant_types[1]);
+    try std.testing.expect(node.?.encounter_table.len >= 5);
+}
+
+test "theme defaults match current colors" {
+    const theme = Theme{};
+    try std.testing.expectEqual([3]u8{ 60, 60, 60 }, theme.wall_fg);
+    try std.testing.expectEqual([3]u8{ 100, 100, 100 }, theme.floor_fg);
+    try std.testing.expectEqual([3]u8{ 25, 25, 25 }, theme.wall_dim_fg);
+    try std.testing.expectEqual([3]u8{ 40, 40, 40 }, theme.floor_dim_fg);
+}
+
+test "biome theme parsed from JSON" {
+    const allocator = std.testing.allocator;
+    const parsed = try load(allocator, "data/biomes.json");
+    defer parsed.deinit();
+
+    const pythonic = findById(parsed.value, "pythonic_caves").?;
+    try std.testing.expectEqual([3]u8{ 40, 60, 30 }, pythonic.theme.wall_fg);
+    try std.testing.expectEqual([3]u8{ 80, 110, 70 }, pythonic.theme.floor_fg);
 }
 
 test "rollEncounter respects floor range" {

@@ -8,6 +8,7 @@ const colors = @import("colors.zig");
 const ui = @import("ui_common.zig");
 
 const floor_gen = dungeon_mod.floor_gen;
+const biome_mod = dungeon_mod.biome;
 
 const Window = ui.Window;
 const Style = ui.Style;
@@ -168,12 +169,12 @@ pub const DungeonScreen = struct {
                 if (dist <= VISIBILITY_RADIUS) {
                     win.writeCell(col, row, .{
                         .char = .{ .grapheme = tileChar(tile), .width = 1 },
-                        .style = tileStyle(tile),
+                        .style = tileStyleFor(tile, self.dungeon.biome_ptr.theme, false),
                     });
                 } else if (self.visited[yi][xi]) {
                     win.writeCell(col, row, .{
                         .char = .{ .grapheme = tileChar(tile), .width = 1 },
-                        .style = tileDimStyle(tile),
+                        .style = tileStyleFor(tile, self.dungeon.biome_ptr.theme, true),
                     });
                 }
             }
@@ -210,23 +211,13 @@ pub const DungeonScreen = struct {
         };
     }
 
-    fn tileStyle(tile: floor_gen.Tile) Style {
+    fn tileStyleFor(tile: floor_gen.Tile, theme: biome_mod.Theme, dim: bool) Style {
         return switch (tile) {
-            .wall => .{ .fg = .{ .rgb = .{ 60, 60, 60 } } },
-            .floor => .{ .fg = .{ .rgb = .{ 100, 100, 100 } } },
-            .encounter => .{ .fg = .{ .rgb = .{ 255, 200, 40 } }, .bold = true },
-            .stairs => .{ .fg = .{ .rgb = .{ 80, 255, 120 } }, .bold = true },
-            .entrance => .{ .fg = .{ .rgb = .{ 0, 180, 255 } } },
-        };
-    }
-
-    fn tileDimStyle(tile: floor_gen.Tile) Style {
-        return switch (tile) {
-            .wall => .{ .fg = .{ .rgb = .{ 25, 25, 25 } } },
-            .floor => .{ .fg = .{ .rgb = .{ 40, 40, 40 } } },
-            .encounter => .{ .fg = .{ .rgb = .{ 100, 80, 16 } } },
-            .stairs => .{ .fg = .{ .rgb = .{ 32, 100, 48 } } },
-            .entrance => .{ .fg = .{ .rgb = .{ 0, 72, 100 } } },
+            .wall => .{ .fg = .{ .rgb = if (dim) theme.wall_dim_fg else theme.wall_fg } },
+            .floor => .{ .fg = .{ .rgb = if (dim) theme.floor_dim_fg else theme.floor_fg } },
+            .encounter => .{ .fg = .{ .rgb = if (dim) .{ 100, 80, 16 } else .{ 255, 200, 40 } }, .bold = !dim },
+            .stairs => .{ .fg = .{ .rgb = if (dim) .{ 32, 100, 48 } else .{ 80, 255, 120 } }, .bold = !dim },
+            .entrance => .{ .fg = .{ .rgb = if (dim) .{ 0, 72, 100 } else .{ 0, 180, 255 } } },
         };
     }
 

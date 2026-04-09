@@ -8,6 +8,7 @@ const items_mod = @import("items");
 pub const floor_gen = @import("floor_gen.zig");
 pub const biome = @import("biome.zig");
 pub const shop = @import("shop.zig");
+pub const detect = @import("detect.zig");
 
 pub const RunPhase = enum {
     exploring,

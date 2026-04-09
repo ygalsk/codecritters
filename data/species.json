@@ -53,5 +53,60 @@
     "secondary_move": null,
     "evolves_to": "functor",
     "evolution_level": 15
+  },
+  {
+    "id": "copilot",
+    "name": "Copilot",
+    "critter_type": "vibe",
+    "rarity": "common",
+    "base_stats": { "hp": 40, "logic": 50, "resolve": 45, "speed": 65 },
+    "signature_move": "ship_it",
+    "secondary_move": null,
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "segfault",
+    "name": "Segfault",
+    "critter_type": "chaos",
+    "rarity": "common",
+    "base_stats": { "hp": 45, "logic": 60, "resolve": 30, "speed": 55 },
+    "signature_move": "bit_flip",
+    "secondary_move": null,
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "mutex",
+    "name": "Mutex",
+    "critter_type": "patience",
+    "rarity": "common",
+    "base_stats": { "hp": 55, "logic": 40, "resolve": 60, "speed": 35 },
+    "signature_move": "mutex_lock",
+    "secondary_move": null,
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "lgtm",
+    "name": "LGTM",
+    "critter_type": "snark",
+    "rarity": "common",
+    "base_stats": { "hp": 40, "logic": 55, "resolve": 50, "speed": 55 },
+    "signature_move": "code_review",
+    "secondary_move": null,
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "singleton",
+    "name": "Singleton",
+    "critter_type": "legacy",
+    "rarity": "common",
+    "base_stats": { "hp": 50, "logic": 45, "resolve": 55, "speed": 40 },
+    "signature_move": "jump_table",
+    "secondary_move": null,
+    "evolves_to": null,
+    "evolution_level": null
   }
 ]

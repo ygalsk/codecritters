@@ -3,6 +3,12 @@
     "id": "generic_dungeon",
     "name": "Generic Dungeon",
     "dominant_types": ["debug", "chaos"],
+    "theme": {
+      "wall_fg": [60, 60, 60],
+      "floor_fg": [100, 100, 100],
+      "wall_dim_fg": [25, 25, 25],
+      "floor_dim_fg": [40, 40, 40]
+    },
     "encounter_table": [
       { "species_id": "println", "weight": 30, "min_floor": 1, "max_floor": 255 },
       { "species_id": "glitch", "weight": 25, "min_floor": 1, "max_floor": 255 },
@@ -30,6 +36,80 @@
       { "item_id": "linter_tool", "weight": 5 },
       { "item_id": "disc_buffer_overflow", "weight": 5 },
       { "item_id": "disc_mutex_lock", "weight": 5 }
+    ]
+  },
+  {
+    "id": "pythonic_caves",
+    "name": "Pythonic Caves",
+    "dominant_types": ["vibe", "wisdom"],
+    "theme": {
+      "wall_fg": [40, 60, 30],
+      "floor_fg": [80, 110, 70],
+      "wall_dim_fg": [16, 24, 12],
+      "floor_dim_fg": [32, 44, 28]
+    },
+    "encounter_table": [
+      { "species_id": "copilot", "weight": 30, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "monad", "weight": 25, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "println", "weight": 20, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "lgtm", "weight": 15, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "segfault", "weight": 10, "min_floor": 3, "max_floor": 255 }
+    ],
+    "boss_pool": [
+      { "species_id": "monad", "level_bonus": 5 }
+    ],
+    "shop_bias": [
+      { "item_id": "small_patch", "weight": 25 },
+      { "item_id": "hotfix", "weight": 20 },
+      { "item_id": "disc_buffer_overflow", "weight": 15 },
+      { "item_id": "disc_mutex_lock", "weight": 15 },
+      { "item_id": "print_statement", "weight": 15 },
+      { "item_id": "breakpoint_tool", "weight": 10 }
+    ],
+    "drop_table": [
+      { "item_id": "small_patch", "weight": 30 },
+      { "item_id": "hotfix", "weight": 20 },
+      { "item_id": "disc_buffer_overflow", "weight": 15 },
+      { "item_id": "disc_mutex_lock", "weight": 15 },
+      { "item_id": "print_statement", "weight": 10 },
+      { "item_id": "breakpoint_tool", "weight": 10 }
+    ]
+  },
+  {
+    "id": "node_abyss",
+    "name": "Node Modules Abyss",
+    "dominant_types": ["chaos", "vibe"],
+    "theme": {
+      "wall_fg": [50, 30, 60],
+      "floor_fg": [90, 70, 110],
+      "wall_dim_fg": [20, 12, 24],
+      "floor_dim_fg": [36, 28, 44]
+    },
+    "encounter_table": [
+      { "species_id": "glitch", "weight": 30, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "copilot", "weight": 25, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "segfault", "weight": 20, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "goto", "weight": 15, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "lgtm", "weight": 10, "min_floor": 3, "max_floor": 255 }
+    ],
+    "boss_pool": [
+      { "species_id": "segfault", "level_bonus": 5 }
+    ],
+    "shop_bias": [
+      { "item_id": "print_statement", "weight": 25 },
+      { "item_id": "breakpoint_tool", "weight": 20 },
+      { "item_id": "try_catch_tool", "weight": 15 },
+      { "item_id": "small_patch", "weight": 20 },
+      { "item_id": "hotfix", "weight": 10 },
+      { "item_id": "disc_buffer_overflow", "weight": 10 }
+    ],
+    "drop_table": [
+      { "item_id": "print_statement", "weight": 25 },
+      { "item_id": "breakpoint_tool", "weight": 20 },
+      { "item_id": "small_patch", "weight": 25 },
+      { "item_id": "hotfix", "weight": 10 },
+      { "item_id": "try_catch_tool", "weight": 10 },
+      { "item_id": "disc_buffer_overflow", "weight": 10 }
     ]
   }
 ]

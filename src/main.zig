@@ -82,14 +82,17 @@ pub fn main() !void {
     };
     defer biomes.deinit();
 
-    const biome_ptr = dungeon_mod.biome.findById(biomes.value, "generic_dungeon") orelse {
+    // Detect biome from working directory language
+    const detected_id = dungeon_mod.detect.detectBiome();
+    const biome_ptr = dungeon_mod.biome.findById(biomes.value, detected_id) orelse
+        dungeon_mod.biome.findById(biomes.value, "generic_dungeon") orelse {
         std.debug.print("Missing generic_dungeon biome\n", .{});
         return error.MissingBiome;
     };
 
     // Load sprite sheets for known critters
     var sprite_map = SpriteMap{};
-    const sprite_ids = [_][]const u8{ "println", "tracer", "glitch", "goto", "monad" };
+    const sprite_ids = [_][]const u8{ "println", "tracer", "glitch", "goto", "monad", "copilot", "segfault", "mutex", "lgtm", "singleton" };
     var sprite_storage: [sprite_ids.len]sprite_mod.SpriteSheet = undefined;
     var sprite_count: usize = 0;
     for (sprite_ids) |id| {

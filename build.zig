@@ -282,17 +282,21 @@ pub fn build(b: *std.Build) void {
     }
 
     // Dungeon engine tests
-    // floor_gen.zig has no external deps — test standalone
-    {
-        const floor_gen_test = b.addTest(.{
+    // floor_gen.zig and detect.zig have no external deps — test standalone
+    const standalone_dungeon_tests = [_][]const u8{
+        "src/dungeon/floor_gen.zig",
+        "src/dungeon/detect.zig",
+    };
+    for (standalone_dungeon_tests) |test_file| {
+        const unit_test = b.addTest(.{
             .root_module = b.createModule(.{
-                .root_source_file = b.path("src/dungeon/floor_gen.zig"),
+                .root_source_file = b.path(test_file),
                 .target = target,
                 .optimize = optimize,
             }),
         });
-        const run_fg_test = b.addRunArtifact(floor_gen_test);
-        test_step.dependOn(&run_fg_test.step);
+        const run_test = b.addRunArtifact(unit_test);
+        test_step.dependOn(&run_test.step);
     }
 
     const dungeon_test_modules = [_][]const u8{
