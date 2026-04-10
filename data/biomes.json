@@ -155,5 +155,204 @@
       { "item_id": "try_catch_tool", "weight": 10 },
       { "item_id": "disc_buffer_overflow", "weight": 10 }
     ]
+  },
+  {
+    "id": "rustacean_depths",
+    "name": "Rustacean Depths",
+    "dominant_types": ["debug", "patience"],
+    "theme": {
+      "wall_fg": [180, 100, 40],
+      "floor_fg": [210, 140, 70],
+      "wall_dim_fg": [72, 40, 16],
+      "floor_dim_fg": [84, 56, 28]
+    },
+    "encounter_table": [
+      { "species_id": "println", "weight": 20, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "printf", "weight": 18, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "mutex", "weight": 18, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "monad", "weight": 10, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "tracer", "weight": 6, "min_floor": 3, "max_floor": 255 },
+      { "species_id": "semaphore", "weight": 6, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "fprintf", "weight": 5, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "lgtm", "weight": 5, "min_floor": 2, "max_floor": 255 },
+      { "species_id": "profiler", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "logstash", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "deadlock", "weight": 3, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "nitpick", "weight": 3, "min_floor": 5, "max_floor": 255 },
+      { "species_id": "functor", "weight": 3, "min_floor": 5, "max_floor": 255 },
+      { "species_id": "burrito", "weight": 2, "min_floor": 8, "max_floor": 255 }
+    ],
+    "boss_pool": [
+      { "species_id": "profiler", "level_bonus": 5 },
+      { "species_id": "deadlock", "level_bonus": 5 },
+      { "species_id": "logstash", "level_bonus": 5 },
+      { "species_id": "burrito", "level_bonus": 5 }
+    ],
+    "shop_bias": [
+      { "item_id": "formal_proof_tool", "weight": 25 },
+      { "item_id": "linter_tool", "weight": 20 },
+      { "item_id": "small_patch", "weight": 20 },
+      { "item_id": "breakpoint_tool", "weight": 15 },
+      { "item_id": "hotfix", "weight": 10 },
+      { "item_id": "disc_mutex_lock", "weight": 10 }
+    ],
+    "drop_table": [
+      { "item_id": "small_patch", "weight": 25 },
+      { "item_id": "formal_proof_tool", "weight": 20 },
+      { "item_id": "linter_tool", "weight": 15 },
+      { "item_id": "breakpoint_tool", "weight": 15 },
+      { "item_id": "hotfix", "weight": 10 },
+      { "item_id": "disc_mutex_lock", "weight": 10 },
+      { "item_id": "git_revert", "weight": 5 }
+    ]
+  },
+  {
+    "id": "gopher_tunnels",
+    "name": "Gopher Tunnels",
+    "dominant_types": ["patience", "wisdom"],
+    "theme": {
+      "wall_fg": [40, 140, 150],
+      "floor_fg": [70, 180, 190],
+      "wall_dim_fg": [16, 56, 60],
+      "floor_dim_fg": [28, 72, 76]
+    },
+    "encounter_table": [
+      { "species_id": "mutex", "weight": 22, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "monad", "weight": 18, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "println", "weight": 12, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "lgtm", "weight": 10, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "semaphore", "weight": 8, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "functor", "weight": 6, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "nitpick", "weight": 5, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "printf", "weight": 5, "min_floor": 2, "max_floor": 255 },
+      { "species_id": "tracer", "weight": 4, "min_floor": 3, "max_floor": 255 },
+      { "species_id": "goto", "weight": 4, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "deadlock", "weight": 3, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "burrito", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "bikeshed", "weight": 2, "min_floor": 8, "max_floor": 255 }
+    ],
+    "boss_pool": [
+      { "species_id": "deadlock", "level_bonus": 5 },
+      { "species_id": "burrito", "level_bonus": 5 },
+      { "species_id": "bikeshed", "level_bonus": 5 },
+      { "species_id": "logstash", "level_bonus": 5 }
+    ],
+    "shop_bias": [
+      { "item_id": "disc_mutex_lock", "weight": 25 },
+      { "item_id": "linter_tool", "weight": 20 },
+      { "item_id": "small_patch", "weight": 20 },
+      { "item_id": "hotfix", "weight": 15 },
+      { "item_id": "breakpoint_tool", "weight": 10 },
+      { "item_id": "formal_proof_tool", "weight": 10 }
+    ],
+    "drop_table": [
+      { "item_id": "small_patch", "weight": 25 },
+      { "item_id": "disc_mutex_lock", "weight": 20 },
+      { "item_id": "linter_tool", "weight": 15 },
+      { "item_id": "hotfix", "weight": 15 },
+      { "item_id": "breakpoint_tool", "weight": 10 },
+      { "item_id": "formal_proof_tool", "weight": 10 },
+      { "item_id": "disc_buffer_overflow", "weight": 5 }
+    ]
+  },
+  {
+    "id": "c_catacombs",
+    "name": "C Catacombs",
+    "dominant_types": ["legacy", "chaos"],
+    "theme": {
+      "wall_fg": [50, 45, 45],
+      "floor_fg": [90, 75, 75],
+      "wall_dim_fg": [20, 18, 18],
+      "floor_dim_fg": [36, 30, 30]
+    },
+    "encounter_table": [
+      { "species_id": "goto", "weight": 20, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "segfault", "weight": 20, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "glitch", "weight": 15, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "singleton", "weight": 10, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "printf", "weight": 8, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "spaghetto", "weight": 6, "min_floor": 5, "max_floor": 255 },
+      { "species_id": "gremlin", "weight": 5, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "stack_overflow", "weight": 5, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "god_object", "weight": 4, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "pandemonium", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "kernel_panic_critter", "weight": 3, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "dependency", "weight": 3, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "monolith", "weight": 3, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "mutex", "weight": 3, "min_floor": 3, "max_floor": 255 }
+    ],
+    "boss_pool": [
+      { "species_id": "kernel_panic_critter", "level_bonus": 5 },
+      { "species_id": "monolith", "level_bonus": 5 },
+      { "species_id": "pandemonium", "level_bonus": 5 },
+      { "species_id": "dependency", "level_bonus": 5 }
+    ],
+    "shop_bias": [
+      { "item_id": "print_statement", "weight": 25 },
+      { "item_id": "try_catch_tool", "weight": 20 },
+      { "item_id": "small_patch", "weight": 20 },
+      { "item_id": "hotfix", "weight": 15 },
+      { "item_id": "breakpoint_tool", "weight": 10 },
+      { "item_id": "disc_buffer_overflow", "weight": 10 }
+    ],
+    "drop_table": [
+      { "item_id": "small_patch", "weight": 25 },
+      { "item_id": "print_statement", "weight": 20 },
+      { "item_id": "try_catch_tool", "weight": 15 },
+      { "item_id": "disc_buffer_overflow", "weight": 15 },
+      { "item_id": "hotfix", "weight": 10 },
+      { "item_id": "breakpoint_tool", "weight": 10 },
+      { "item_id": "full_rebuild", "weight": 5 }
+    ]
+  },
+  {
+    "id": "shell_scripts",
+    "name": "Shell Scripts",
+    "dominant_types": ["snark", "chaos"],
+    "theme": {
+      "wall_fg": [30, 70, 30],
+      "floor_fg": [50, 140, 50],
+      "wall_dim_fg": [12, 28, 12],
+      "floor_dim_fg": [20, 56, 20]
+    },
+    "encounter_table": [
+      { "species_id": "lgtm", "weight": 20, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "glitch", "weight": 18, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "segfault", "weight": 12, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "println", "weight": 10, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "nitpick", "weight": 8, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "gremlin", "weight": 6, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "goto", "weight": 6, "min_floor": 2, "max_floor": 255 },
+      { "species_id": "copilot", "weight": 5, "min_floor": 2, "max_floor": 255 },
+      { "species_id": "stack_overflow", "weight": 4, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "spaghetto", "weight": 4, "min_floor": 5, "max_floor": 255 },
+      { "species_id": "bikeshed", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "pandemonium", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "kernel_panic_critter", "weight": 3, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "autopilot", "weight": 3, "min_floor": 5, "max_floor": 255 }
+    ],
+    "boss_pool": [
+      { "species_id": "bikeshed", "level_bonus": 5 },
+      { "species_id": "pandemonium", "level_bonus": 5 },
+      { "species_id": "kernel_panic_critter", "level_bonus": 5 },
+      { "species_id": "hallucination", "level_bonus": 5 }
+    ],
+    "shop_bias": [
+      { "item_id": "print_statement", "weight": 25 },
+      { "item_id": "try_catch_tool", "weight": 20 },
+      { "item_id": "small_patch", "weight": 20 },
+      { "item_id": "hotfix", "weight": 15 },
+      { "item_id": "linter_tool", "weight": 10 },
+      { "item_id": "disc_buffer_overflow", "weight": 10 }
+    ],
+    "drop_table": [
+      { "item_id": "small_patch", "weight": 25 },
+      { "item_id": "print_statement", "weight": 20 },
+      { "item_id": "try_catch_tool", "weight": 15 },
+      { "item_id": "hotfix", "weight": 15 },
+      { "item_id": "linter_tool", "weight": 10 },
+      { "item_id": "disc_buffer_overflow", "weight": 10 },
+      { "item_id": "breakpoint_tool", "weight": 5 }
+    ]
   }
 ]

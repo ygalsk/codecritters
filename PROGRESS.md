@@ -220,3 +220,9 @@
 - **`renderToAnsi`** (`src/ui/sprite.zig`): New public method on `SpriteSheet` — same half-block technique as the TUI renderer but outputs `\x1b[38;2;R;G;Bm` / `\x1b[48;2;R;G;Bm` ANSI escapes instead of vaxis cells. Returns allocator-owned string. Transparent pixels rendered as spaces.
 - **Files changed**: `src/main.zig`, `src/ui/sprite.zig`, `AGENT_INSTRUCTIONS.md`, `PROGRESS.md`
 - 236 tests passing (no new tests — CLI output is integration-level)
+
+## Phase 22 — Four New Biomes + Detection [DONE]
+- **Expanded `detect.zig`** (`src/dungeon/detect.zig`): Added scoring for Rust (.rs, Cargo.toml/Cargo.lock), Go (.go, go.mod/go.sum), C (.c/.h, Makefile/CMakeLists.txt/meson.build), and Shell (.sh/.bash/.zsh). Winner selection uses array of (score, biome_id) tuples — highest score wins, tie-break order: python > node > rust > go > c > shell. Removed early-exit optimization (single-dir iteration fast enough).
+- **4 new biomes** (`data/biomes.json`): Rustacean Depths (debug/patience, orange/copper theme), Gopher Tunnels (patience/wisdom, cyan/teal theme), C Catacombs (legacy/chaos, dark gray/red theme), Shell Scripts (snark/chaos, terminal green theme). Each with full encounter table (~14 species, floor-gated), 4-boss pool, shop bias, and drop table.
+- **6 new detection tests**: Each new biome detection, tie-break priority, and score-beats-tiebreak.
+- **Files changed**: `src/dungeon/detect.zig`, `data/biomes.json`, `PROGRESS.md`

@@ -60,8 +60,8 @@ Enriched `status` CLI with full JSON (detailed favorite critter stats/moves/scar
 ### Phase 21 — Three-Stage Evolution Lines (All 7 Types)
 Complete every type's 3-stage common→common→uncommon line (Printf→Fprintf→Logstash, Segfault→Stack Overflow→Kernel Panic, etc.). +15 species, +14 moves, +15 sprites. Update all biome encounter tables.
 
-### Phase 22 — Four New Biomes + Detection
-Rustacean Depths (.rs), Gopher Tunnels (.go), C Catacombs (.c/.h), Shell Scripts (.sh). Complete detect.zig with language scoring. Each biome needs encounter table, boss pool, shop/drop bias, theme colors.
+### Phase 22 — Four New Biomes + Detection [DONE]
+Rustacean Depths (.rs), Gopher Tunnels (.go), C Catacombs (.c/.h), Shell Scripts (.sh). Completed detect.zig with 6-language scoring (manifests +10, extensions +1 capped at 20, highest-score-wins with tie-breaking). Each biome has encounter table, boss pool, shop/drop bias, theme colors. 6 new detection tests.
 
 ### Phase 23 — Two-Stage Lines + Standalone Rares
 Each type gets its uncommon→rare 2-stage line + standalone rare (Breakpoint→Watchpoint, Heisenbug, etc.). +21 species, +10 moves, +21 sprites.
