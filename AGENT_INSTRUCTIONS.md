@@ -54,8 +54,8 @@ Unified screen signaling via ScreenResult tagged union. All 10 screens' handleIn
 ### Phase 19 — Revive Cooldown Fix + Item Packing [DONE]
 Consolidated revive logic into `Critter.applyRevive()` — fixes cooldown not resetting on revive, eliminates duplication between inventory_screen and battle engine. Added item packing to party select screen: press `I`/`Tab` to switch to items tab, toggle items from persistent inventory to bring into dungeon runs (up to 6 slots). Packed items removed from DB at run start, seeded into dungeon `run_inventory`.
 
-### Phase 20 — CLI Enhancements: JSON + Statusline Sprite
-Enrich `status` CLI with full JSON output for chat personality (individual critter details, equipped moves, run state). Add `statusline --sprite` flag returning rendered sprite with info for Claude statusline.
+### Phase 20 — CLI Enhancements: JSON + Statusline Sprite [DONE]
+Enriched `status` CLI with full JSON (detailed favorite critter stats/moves/scars, roster summary, currency, active run state). New `roster` subcommand dumps full roster as JSON array. `statusline` now renders ANSI half-block sprite alongside critter info.
 
 ### Phase 21 — Three-Stage Evolution Lines (All 7 Types)
 Complete every type's 3-stage common→common→uncommon line (Printf→Fprintf→Logstash, Segfault→Stack Overflow→Kernel Panic, etc.). +15 species, +14 moves, +15 sprites. Update all biome encounter tables.

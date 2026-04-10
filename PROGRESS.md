@@ -212,3 +212,11 @@
 - **main.zig integration**: Loads persistent inventory before party select. On dungeon confirm, extracts packed items, removes from DB via `roster_db.removeInventoryItem()`, resolves item_id through `game_data.findItem()` for stable string pointers. Extracted `reloadInventory()` helper to deduplicate 3 identical free-load-copy blocks.
 - **Simplify pass**: Fixed scroll not persisting between frames (`scroll_offset`/`item_scroll` written back to struct), fixed stale doc comment on `isAvailable()`, fixed latent u16 overflow in `applyRevive()` (intermediate widened to u32).
 - 236 tests passing
+
+## Phase 20 — CLI Enhancements: JSON + Statusline Sprite [DONE]
+- **Enriched `status` command** (`src/main.zig`): Full JSON output with detailed favorite critter (stats with base/effective values, equipped moves resolved to name/type/power/accuracy, scars list, XP + XP to next level, cooldown status), roster summary (count, on_cooldown), persistent currency, active run state (biome, floor, currency) or null, pending events count. Uses `ArrayList(u8)` writer for dynamic-length output.
+- **New `roster` subcommand** (`src/main.zig`): Dumps entire roster as JSON array, each critter with same detail level as `status` favorite. Uses shared `writeCritterJson` helper.
+- **`statusline` sprite rendering** (`src/main.zig`, `src/ui/sprite.zig`): `statusline` now loads the favorite critter's PNG sprite and renders it to stdout using ANSI 24-bit color escape codes via new `SpriteSheet.renderToAnsi()` method. Info text (name, level, HP) positioned to the right of the sprite on the middle row. Falls back to plain text if sprite not found.
+- **`renderToAnsi`** (`src/ui/sprite.zig`): New public method on `SpriteSheet` — same half-block technique as the TUI renderer but outputs `\x1b[38;2;R;G;Bm` / `\x1b[48;2;R;G;Bm` ANSI escapes instead of vaxis cells. Returns allocator-owned string. Transparent pixels rendered as spaces.
+- **Files changed**: `src/main.zig`, `src/ui/sprite.zig`, `AGENT_INSTRUCTIONS.md`, `PROGRESS.md`
+- 236 tests passing (no new tests — CLI output is integration-level)

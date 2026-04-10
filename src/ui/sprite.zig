@@ -199,6 +199,45 @@ pub const SpriteSheet = struct {
         };
     }
 
+    /// Render sprite frame as ANSI escape code string (for CLI output without vaxis).
+    /// Returns allocated string with half-block characters and 24-bit color escapes.
+    /// Each row ends with a reset and newline. Caller must free returned slice.
+    pub fn renderToAnsi(self: *const SpriteSheet, alloc: std.mem.Allocator, frame: u8) ![]u8 {
+        var out: std.ArrayList(u8) = .{};
+        errdefer out.deinit(alloc);
+        const w = out.writer(alloc);
+
+        const cell_rows: u32 = self.height / 2;
+        var cy: u32 = 0;
+        while (cy < cell_rows) : (cy += 1) {
+            const top_y = cy * 2;
+            const bot_y = cy * 2 + 1;
+            var cx: u32 = 0;
+            while (cx < self.frame_width) : (cx += 1) {
+                const top = self.getFramePixel(frame, cx, top_y);
+                const bot = self.getFramePixel(frame, cx, bot_y);
+
+                const top_vis = top.a >= ALPHA_THRESHOLD;
+                const bot_vis = bot.a >= ALPHA_THRESHOLD;
+
+                if (!top_vis and !bot_vis) {
+                    try w.writeAll(" ");
+                } else if (top_vis and bot_vis) {
+                    try w.print("\x1b[38;2;{d};{d};{d}m\x1b[48;2;{d};{d};{d}m" ++ half_block, .{
+                        bot.r, bot.g, bot.b, top.r, top.g, top.b,
+                    });
+                } else if (top_vis) {
+                    try w.print("\x1b[38;2;{d};{d};{d}m" ++ upper_half, .{ top.r, top.g, top.b });
+                } else {
+                    try w.print("\x1b[38;2;{d};{d};{d}m" ++ half_block, .{ bot.r, bot.g, bot.b });
+                }
+            }
+            try w.writeAll("\x1b[0m\n");
+        }
+
+        return out.toOwnedSlice(alloc);
+    }
+
     pub fn deinit(self: *SpriteSheet) void {
         self.alloc.free(self.pixels);
     }
