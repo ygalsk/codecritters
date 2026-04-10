@@ -4,10 +4,12 @@ const dungeon_mod = @import("dungeon");
 const game_data_mod = @import("game_data");
 const species_mod = @import("species");
 const critter_mod = @import("critter");
+const items_mod = @import("items");
 const ui = @import("ui_common.zig");
 const theme = @import("theme.zig");
 const layout = @import("layout.zig");
 const widgets = @import("widgets.zig");
+const input = @import("input.zig");
 
 const floor_gen = dungeon_mod.floor_gen;
 const biome_mod = dungeon_mod.biome;
@@ -18,6 +20,11 @@ const writeFmt = ui.writeFmt;
 
 const VISIBILITY_RADIUS: i16 = 5;
 
+const MenuMode = enum {
+    exploring,
+    quick_menu,
+};
+
 pub const DungeonScreen = struct {
     dungeon: *dungeon_mod.DungeonState,
     game_data: *const game_data_mod.GameData,
@@ -27,10 +34,16 @@ pub const DungeonScreen = struct {
 
     log: ui.MessageLog,
 
-    // Transition signal (checked by main.zig after handleInput)
+    // Transition signals (checked by main.zig after handleInput)
     pending_battle: ?dungeon_mod.EncounterInfo,
     pending_is_boss: bool,
     pending_shop: bool,
+    pending_inventory: bool,
+    pending_roster: bool,
+
+    // Quick menu state
+    menu_mode: MenuMode,
+    menu_cursor: u8,
 
     dirty: bool,
 
@@ -46,6 +59,10 @@ pub const DungeonScreen = struct {
             .pending_battle = null,
             .pending_is_boss = false,
             .pending_shop = false,
+            .pending_inventory = false,
+            .pending_roster = false,
+            .menu_mode = .exploring,
+            .menu_cursor = 0,
             .dirty = true,
         };
         screen.updateVisited();
@@ -54,6 +71,20 @@ pub const DungeonScreen = struct {
     }
 
     pub fn handleInput(self: *DungeonScreen, key: vaxis.Key) void {
+        switch (self.menu_mode) {
+            .exploring => self.handleExploring(key),
+            .quick_menu => self.handleQuickMenu(key),
+        }
+    }
+
+    fn handleExploring(self: *DungeonScreen, key: vaxis.Key) void {
+        if (key.matches('m', .{})) {
+            self.menu_mode = .quick_menu;
+            self.menu_cursor = 0;
+            self.dirty = true;
+            return;
+        }
+
         const dir: ?dungeon_mod.Direction = if (key.matches(vaxis.Key.up, .{}))
             .up
         else if (key.matches(vaxis.Key.down, .{}))
@@ -94,6 +125,35 @@ pub const DungeonScreen = struct {
         }
     }
 
+    fn handleQuickMenu(self: *DungeonScreen, key: vaxis.Key) void {
+        const action = input.applyCursor(&self.menu_cursor, 3, input.menuNav(key));
+        if (action != .none) self.dirty = true;
+        switch (action) {
+            .back => {
+                self.menu_mode = .exploring;
+            },
+            .confirm => {
+                switch (self.menu_cursor) {
+                    0 => { // Items
+                        self.pending_inventory = true;
+                        self.menu_mode = .exploring;
+                    },
+                    1 => { // Party
+                        self.pending_roster = true;
+                        self.menu_mode = .exploring;
+                    },
+                    2 => { // Close
+                        self.menu_mode = .exploring;
+                    },
+                    else => {},
+                }
+            },
+            else => {},
+        }
+    }
+
+    // ─── Rendering ───
+
     pub fn render(self: *const DungeonScreen, win: Window) void {
         win.clear();
         if (layout.tooSmall(win, 30, 14)) return;
@@ -112,11 +172,34 @@ pub const DungeonScreen = struct {
         const msg_row = map_row + map_height + 1;
         self.log.render(win, msg_row, 2);
 
-        const ctrl_row = msg_row + @as(u16, @min(self.log.msg_count, 2)) + 1;
-        if (ctrl_row < win.height) {
-            _ = writeText(win, 2, ctrl_row, "[arrows] Move", theme.hint);
+        switch (self.menu_mode) {
+            .exploring => {
+                const ctrl_row = msg_row + @as(u16, @min(self.log.msg_count, 2)) + 1;
+                if (ctrl_row < win.height) {
+                    _ = writeText(win, 2, ctrl_row, "[arrows] Move  [m] Menu", theme.hint);
+                }
+            },
+            .quick_menu => self.renderQuickMenu(win),
         }
     }
+
+    fn renderQuickMenu(self: *const DungeonScreen, win: Window) void {
+        const col: u16 = 2;
+        const row: u16 = 3;
+
+        _ = writeText(win, col, row, "Quick Menu", theme.heading);
+
+        const items = [_]widgets.MenuItem{
+            .{ .label = "Items" },
+            .{ .label = "Party" },
+            .{ .label = "Close" },
+        };
+        widgets.renderMenu(win, &items, self.menu_cursor, col, row + 2);
+
+        widgets.renderHintAt(win, 2, "[Up/Down] Select  [Enter] Confirm  [Esc] Close");
+    }
+
+    // ─── Map / HUD ───
 
     fn renderHud(self: *const DungeonScreen, win: Window, col: u16) void {
         var c = writeFmt(win, col, 0, theme.heading, "Floor {d}", .{self.dungeon.floor_number});

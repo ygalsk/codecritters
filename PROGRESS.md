@@ -178,3 +178,12 @@
 - **XP persistence fix**: All `catch {}` in persistence functions (`savePartyState`, `persistCatches`, `persistPendingScars`, `persistRunInventory`, `decrementCooldowns`, equip handler) replaced with `catch |err| { std.log.err(...) }` for visibility. Death logic index fix also resolves potential `run_party_ids` mapping drift.
 - **Hub inventory item use**: `InventoryScreen` now interactive — press Enter on healing/revive items to select a target critter. Two-step flow: browse → select target → apply effect. Healing restricted to alive critters below max HP; revive restricted to fainted critters. Item consumption persisted to DB. Separate rendering for target selection mode.
 - 3 new tests: initBattle with fainted party member, checkPlayerLoss with one alive, checkPlayerLoss with all fainted
+
+## Phase 15 — Dungeon Quick Menu + In-Dungeon Item Use [DONE]
+- **Quick menu**: Press `m` during dungeon exploration to open overlay with Items / Party / Close options. Uses `widgets.renderMenu` + `input.applyCursor` for consistent UX.
+- **In-dungeon item use**: "Items" transitions to existing `InventoryScreen` populated from `run_inventory`. Item effects (healing/revive) applied directly to `dungeon_state.party` — no DB persistence during runs. Run inventory decremented on use.
+- **In-dungeon party view**: "Party" transitions to existing `RosterScreen` showing dungeon party (read-only, disc equipping disabled via empty inventory).
+- **Screen reuse pattern**: `from_dungeon` flag in main.zig routes inventory/roster return transitions back to dungeon instead of hub. `compactDungeonParty` helper converts sparse `party[3]?Critter` to compact arrays for screen init, with sparse index mapping for copy-back.
+- **dungeon_screen.zig**: Added `MenuMode` enum (exploring/quick_menu), `pending_inventory`/`pending_roster` transition flags. Hint text shows `[m] Menu`.
+- **main.zig**: Handles dungeon→inventory/roster transitions (run_inventory→InventoryEntry conversion, party compaction). Inventory return applies HP changes via index mapping and decrements run_inventory. Roster return is a simple transition back.
+- 234 tests passing (no new tests — feature is UI-only screen wiring)

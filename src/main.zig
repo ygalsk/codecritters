@@ -196,6 +196,12 @@ pub fn main() !void {
     // Boss flag for XP calculation (set when battle starts)
     var last_was_boss: bool = false;
 
+    var from_dungeon: bool = false;
+    var dg_inv_entries: [dungeon_mod.MAX_RUN_ITEMS]inventory_screen_mod.InventoryEntry = undefined;
+    var dg_party_buf: [3]critter_mod.Critter = undefined;
+    var dg_party_species_buf: [3]?*const species_mod.Species = undefined;
+    var dg_party_map: [3]u8 = undefined; // compact index → sparse party index
+
     // TUI setup
     var tty_buf: [4096]u8 = undefined;
     var tty = try vaxis.Tty.init(&tty_buf);
@@ -413,28 +419,56 @@ pub fn main() !void {
                     roster_screen.pending_equip = null;
                 }
                 if (roster_screen.done) {
-                    hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
-                    transition_pending = .hub;
+                    if (from_dungeon) {
+                        from_dungeon = false;
+                        transition_pending = .dungeon;
+                        dg_screen.dirty = true;
+                    } else {
+                        hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                        transition_pending = .hub;
+                    }
                     transition_start_ms = std.time.milliTimestamp();
                 }
             },
             .inventory => {
                 if (inv_screen.use_result) |result| {
                     inv_screen.use_result = null;
-                    // Persist critter HP change
-                    if (result.target_idx < roster_buf.len) {
-                        _ = roster_db.saveCritter(&database, &roster_buf[result.target_idx]) catch |err| {
-                            std.log.err("inventory use: saveCritter failed: {}", .{err});
+                    if (from_dungeon) {
+                        // The inventory screen modified dg_party_buf in-place;
+                        // use the sparse index mapping to write back to dungeon_state.party
+                        if (result.target_idx < 3) {
+                            const sparse_idx = dg_party_map[result.target_idx];
+                            dungeon_state.party[sparse_idx] = dg_party_buf[result.target_idx];
+                        }
+                        for (dungeon_state.run_inventory[0..dungeon_state.run_inventory_count]) |*maybe_item| {
+                            if (maybe_item.*) |*run_item| {
+                                if (std.mem.eql(u8, run_item.item_id, result.item_id)) {
+                                    run_item.count -|= 1;
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        // Hub context: persist to DB
+                        if (result.target_idx < roster_buf.len) {
+                            _ = roster_db.saveCritter(&database, &roster_buf[result.target_idx]) catch |err| {
+                                std.log.err("inventory use: saveCritter failed: {}", .{err});
+                            };
+                        }
+                        roster_db.removeInventoryItem(&database, result.item_id, 1) catch |err| {
+                            std.log.err("inventory use: removeInventoryItem failed: {}", .{err});
                         };
                     }
-                    // Persist item consumption
-                    roster_db.removeInventoryItem(&database, result.item_id, 1) catch |err| {
-                        std.log.err("inventory use: removeInventoryItem failed: {}", .{err});
-                    };
                 }
                 if (inv_screen.done) {
-                    hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
-                    transition_pending = .hub;
+                    if (from_dungeon) {
+                        from_dungeon = false;
+                        transition_pending = .dungeon;
+                        dg_screen.dirty = true;
+                    } else {
+                        hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                        transition_pending = .hub;
+                    }
                     transition_start_ms = std.time.milliTimestamp();
                 }
             },
@@ -451,6 +485,50 @@ pub fn main() !void {
                     dungeon_mod.generateBetweenFloorShop(&dungeon_state, &gd);
                     shop_screen = ShopScreen.init(&dungeon_state, &gd);
                     transition_pending = .shop;
+                    transition_start_ms = std.time.milliTimestamp();
+                } else if (dg_screen.pending_inventory) {
+                    dg_screen.pending_inventory = false;
+                    from_dungeon = true;
+
+                    var dg_inv_count: usize = 0;
+                    for (dungeon_state.run_inventory[0..dungeon_state.run_inventory_count]) |maybe_item| {
+                        const run_item = maybe_item orelse continue;
+                        if (run_item.count == 0) continue;
+                        dg_inv_entries[dg_inv_count] = .{
+                            .item_id = run_item.item_id,
+                            .quantity = @intCast(run_item.count),
+                        };
+                        dg_inv_count += 1;
+                    }
+
+                    const dg_party_count = compactDungeonParty(&dungeon_state, &dg_party_buf, &dg_party_species_buf, &dg_party_map);
+
+                    inv_screen = InventoryScreen.init(
+                        dg_inv_entries[0..dg_inv_count],
+                        &gd,
+                        dungeon_state.currency,
+                        dg_party_buf[0..dg_party_count],
+                        dg_party_species_buf[0..dg_party_count],
+                    );
+                    transition_pending = .inventory;
+                    transition_start_ms = std.time.milliTimestamp();
+                } else if (dg_screen.pending_roster) {
+                    dg_screen.pending_roster = false;
+                    from_dungeon = true;
+
+                    const dg_party_count = compactDungeonParty(&dungeon_state, &dg_party_buf, &dg_party_species_buf, &dg_party_map);
+
+                    // Empty inventory disables disc equipping in dungeon
+                    const empty_inv: []const RosterScreen.InventoryEntry = &.{};
+                    roster_screen = RosterScreen.init(
+                        dg_party_buf[0..dg_party_count],
+                        dg_party_species_buf[0..dg_party_count],
+                        empty_inv,
+                        &gd,
+                        &sprite_map,
+                        use_kitty,
+                    );
+                    transition_pending = .roster_view;
                     transition_start_ms = std.time.milliTimestamp();
                 }
             },
@@ -618,6 +696,25 @@ fn seedStartersIfEmpty(database: *db.Db, gd: *const game_data_mod.GameData) !voi
 
     _ = try roster_db.saveCritter(database, &println);
     _ = try roster_db.saveCritter(database, &goto_c);
+}
+
+/// Copy non-null dungeon party members into compact buffers, returning count and sparse index mapping.
+fn compactDungeonParty(
+    state: *const dungeon_mod.DungeonState,
+    buf: *[3]critter_mod.Critter,
+    sp_buf: *[3]?*const species_mod.Species,
+    map: *[3]u8,
+) usize {
+    var count: usize = 0;
+    for (state.party, 0..) |maybe, i| {
+        if (maybe) |c| {
+            buf[count] = c;
+            sp_buf[count] = state.party_species[i];
+            map[count] = @intCast(i);
+            count += 1;
+        }
+    }
+    return count;
 }
 
 fn rosterCount(database: *db.Db) u16 {
