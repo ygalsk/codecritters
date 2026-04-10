@@ -2,6 +2,8 @@ const std = @import("std");
 const vaxis = @import("vaxis");
 const critter_mod = @import("critter");
 const species_mod = @import("species");
+const items_mod = @import("items");
+const game_data_mod = @import("game_data");
 const ui = @import("ui_common.zig");
 const theme = @import("theme.zig");
 const layout = @import("layout.zig");
@@ -15,6 +17,14 @@ const writeFmt = ui.writeFmt;
 
 pub const MAX_ROSTER = 64;
 pub const MAX_PARTY = 3;
+pub const MAX_PACK_SLOTS: u8 = 6;
+
+pub const PackedItem = struct {
+    item_id: []const u8,
+    quantity: i64,
+};
+
+const Tab = enum { party, items };
 
 pub const PartySelectScreen = struct {
     roster: []const critter_mod.Critter,
@@ -26,9 +36,20 @@ pub const PartySelectScreen = struct {
     dirty: bool,
     swap_mark: ?u8, // party slot index (0-2) being swapped
 
+    // Item packing
+    tab: Tab,
+    inventory: []const ui.InventoryEntry,
+    game_data: *const game_data_mod.GameData,
+    packed_items: [MAX_PACK_SLOTS]?PackedItem,
+    pack_count: u8,
+    item_cursor: u8,
+    item_scroll: u8,
+
     pub fn init(
         roster: []const critter_mod.Critter,
         roster_species: []const ?*const species_mod.Species,
+        inventory: []const ui.InventoryEntry,
+        game_data: *const game_data_mod.GameData,
     ) PartySelectScreen {
         return .{
             .roster = roster,
@@ -39,6 +60,13 @@ pub const PartySelectScreen = struct {
             .scroll_offset = 0,
             .dirty = true,
             .swap_mark = null,
+            .tab = .party,
+            .inventory = inventory,
+            .game_data = game_data,
+            .packed_items = .{null} ** MAX_PACK_SLOTS,
+            .pack_count = 0,
+            .item_cursor = 0,
+            .item_scroll = 0,
         };
     }
 
@@ -90,8 +118,24 @@ pub const PartySelectScreen = struct {
         return !self.roster[idx].isAvailable();
     }
 
+    // ─── Input ───
+
     pub fn handleInput(self: *PartySelectScreen, key: vaxis.Key) ?ScreenResult {
         self.dirty = true;
+
+        // Tab switching
+        if (key.matches('i', .{}) or key.matches(vaxis.Key.tab, .{})) {
+            self.tab = if (self.tab == .party) .items else .party;
+            return null;
+        }
+
+        return switch (self.tab) {
+            .party => self.handlePartyInput(key),
+            .items => self.handleItemsInput(key),
+        };
+    }
+
+    fn handlePartyInput(self: *PartySelectScreen, key: vaxis.Key) ?ScreenResult {
         const roster_len: u8 = @intCast(@min(self.roster.len, MAX_ROSTER));
 
         const action = input.applyCursor(&self.cursor, roster_len, input.menuNav(key));
@@ -130,10 +174,91 @@ pub const PartySelectScreen = struct {
         return null;
     }
 
-    pub fn render(self: *const PartySelectScreen, win: Window) void {
+    fn handleItemsInput(self: *PartySelectScreen, key: vaxis.Key) ?ScreenResult {
+        const total = self.countValidItems();
+        if (total == 0) {
+            const action = input.applyCursor(&self.item_cursor, 0, input.menuNav(key));
+            if (action == .back) self.tab = .party;
+            return null;
+        }
+
+        const action = input.applyCursor(&self.item_cursor, total, input.menuNav(key));
+        switch (action) {
+            .confirm => self.togglePackItem(),
+            .back => self.tab = .party,
+            else => {},
+        }
+        return null;
+    }
+
+    // ─── Item packing ───
+
+    fn countValidItems(self: *const PartySelectScreen) u8 {
+        var count: u8 = 0;
+        for (self.inventory) |e| {
+            if (e.quantity > 0 and self.game_data.findItem(e.item_id) != null) count += 1;
+        }
+        return count;
+    }
+
+    fn togglePackItem(self: *PartySelectScreen) void {
+        const entry = self.lookupItemIdx(self.item_cursor) orelse return;
+
+        // Check if already packed — unpack it
+        for (&self.packed_items) |*slot| {
+            if (slot.*) |pack_entry| {
+                if (std.mem.eql(u8, pack_entry.item_id, entry.item_id)) {
+                    slot.* = null;
+                    self.pack_count -= 1;
+                    return;
+                }
+            }
+        }
+
+        // Not packed yet — add if room
+        if (self.pack_count >= MAX_PACK_SLOTS) return;
+        for (&self.packed_items) |*slot| {
+            if (slot.* == null) {
+                slot.* = .{ .item_id = entry.item_id, .quantity = entry.quantity };
+                self.pack_count += 1;
+                return;
+            }
+        }
+    }
+
+    fn lookupItemIdx(self: *const PartySelectScreen, target: u8) ?*const ui.InventoryEntry {
+        var idx: u8 = 0;
+        for (self.inventory) |*entry| {
+            if (entry.quantity <= 0) continue;
+            if (self.game_data.findItem(entry.item_id) == null) continue;
+            if (idx == target) return entry;
+            idx += 1;
+        }
+        return null;
+    }
+
+    fn isItemPacked(self: *const PartySelectScreen, item_id: []const u8) bool {
+        for (self.packed_items) |maybe| {
+            if (maybe) |pack_entry| {
+                if (std.mem.eql(u8, pack_entry.item_id, item_id)) return true;
+            }
+        }
+        return false;
+    }
+
+    // ─── Rendering ───
+
+    pub fn render(self: *PartySelectScreen, win: Window) void {
         win.clear();
         if (layout.tooSmall(win, 40, 10)) return;
 
+        switch (self.tab) {
+            .party => self.renderParty(win),
+            .items => self.renderItems(win),
+        }
+    }
+
+    fn renderParty(self: *PartySelectScreen, win: Window) void {
         _ = writeFmt(win, 2, 0, theme.heading, "Select Party ({d}/{d})", .{ self.select_count, MAX_PARTY });
 
         if (self.roster.len == 0) {
@@ -147,12 +272,11 @@ pub const PartySelectScreen = struct {
         const roster_len: u8 = @intCast(@min(self.roster.len, MAX_ROSTER));
 
         // Auto-scroll to keep cursor visible
-        var scroll = self.scroll_offset;
-        if (self.cursor < scroll) scroll = self.cursor;
-        if (self.cursor >= scroll + list_height) scroll = self.cursor - list_height + 1;
+        if (self.cursor < self.scroll_offset) self.scroll_offset = self.cursor;
+        if (self.cursor >= self.scroll_offset + list_height) self.scroll_offset = self.cursor - list_height + 1;
 
         var row: u16 = 2;
-        var i: u8 = scroll;
+        var i: u8 = self.scroll_offset;
         while (i < roster_len and row < 2 + @as(u16, list_height)) : (i += 1) {
             const critter = &self.roster[i];
             const sp = if (i < self.roster_species.len) self.roster_species[i] else null;
@@ -220,11 +344,96 @@ pub const PartySelectScreen = struct {
             }
         }
 
+        // Pack summary (compact)
+        if (self.pack_count > 0) {
+            row += 1;
+            if (row < win.height) {
+                _ = writeFmt(win, 2, row, theme.heading, "Packed: {d}/{d} items", .{ self.pack_count, MAX_PACK_SLOTS });
+            }
+        }
+
         // Controls
         const hint = if (self.swap_mark != null)
             "[S] Swap With  [Esc] Cancel  [Enter] Toggle  [C] Confirm"
         else
-            "[Enter] Toggle  [S] Swap Slot  [C] Confirm  [Esc] Back";
+            "[Enter] Toggle  [S] Swap  [I] Pack Items  [C] Confirm  [Esc] Back";
         widgets.renderHintAt(win, 2, hint);
+    }
+
+    fn renderItems(self: *PartySelectScreen, win: Window) void {
+        _ = writeFmt(win, 2, 0, theme.heading, "Pack Items ({d}/{d})", .{ self.pack_count, MAX_PACK_SLOTS });
+
+        // Compact party summary on line 1
+        var c: u16 = 2;
+        c = writeText(win, c, 1, "Party: ", .{ .fg = theme.muted });
+        for (self.selected) |maybe| {
+            if (maybe) |idx| {
+                if (idx < self.roster.len) {
+                    const sp = if (idx < self.roster_species.len) self.roster_species[idx] else null;
+                    const name = if (sp) |s| s.name else "???";
+                    c = writeText(win, c, 1, name, .{ .fg = theme.party_green });
+                    c = writeText(win, c, 1, "  ", theme.body);
+                }
+            }
+        }
+
+        const total = self.countValidItems();
+        if (total == 0) {
+            _ = writeText(win, 2, 3, "No items in inventory.", .{ .fg = theme.muted, .italic = true });
+            widgets.renderHintAt(win, 2, "[I/Tab] Party  [Esc] Back to Party");
+            return;
+        }
+
+        // Scrollable item list starting at row 3
+        const list_height: u8 = @intCast(@min(win.height -| 8, 16));
+        if (self.item_cursor < self.item_scroll) self.item_scroll = self.item_cursor;
+        if (self.item_cursor >= self.item_scroll + list_height) self.item_scroll = self.item_cursor - list_height + 1;
+
+        var row: u16 = 3;
+        var display_idx: u8 = 0;
+        for (self.inventory) |entry| {
+            if (entry.quantity <= 0) continue;
+            const item = self.game_data.findItem(entry.item_id) orelse continue;
+
+            if (display_idx < self.item_scroll) {
+                display_idx += 1;
+                continue;
+            }
+            if (row >= 3 + @as(u16, list_height)) break;
+
+            const is_cur = self.item_cursor == display_idx;
+            const is_packed = self.isItemPacked(entry.item_id);
+
+            const marker: []const u8 = if (is_packed) "[*]" else "[ ]";
+            const prefix: []const u8 = if (is_cur) "> " else "  ";
+
+            var style: theme.Style = if (is_cur) theme.heading else theme.body;
+            if (is_packed) style = .{ .fg = theme.party_green, .bold = true };
+
+            var col = writeText(win, 2, row, prefix, style);
+            col = writeText(win, col, row, marker, style);
+            col = writeText(win, col, row, " ", style);
+            col = writeText(win, col, row, item.name, style);
+            _ = writeFmt(win, col, row, style, "  x{d}", .{entry.quantity});
+
+            row += 1;
+            display_idx += 1;
+        }
+
+        // Packed items summary at bottom
+        row = win.height -| (2 + @as(u16, self.pack_count));
+        if (self.pack_count > 0 and row > 3 + @as(u16, list_height)) {
+            _ = writeText(win, 2, row, "Packed:", theme.heading);
+            row += 1;
+            for (self.packed_items) |maybe| {
+                if (maybe) |pack_entry| {
+                    const item = self.game_data.findItem(pack_entry.item_id) orelse continue;
+                    _ = writeFmt(win, 4, row, .{ .fg = theme.party_green }, "{s} x{d}", .{ item.name, pack_entry.quantity });
+                    row += 1;
+                }
+            }
+        }
+
+        widgets.renderHintAt(win, 2, "[Enter] Toggle  [I/Tab] Party  [Esc] Back to Party");
     }
 };

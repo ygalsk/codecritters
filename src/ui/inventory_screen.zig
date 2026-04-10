@@ -124,11 +124,7 @@ pub const InventoryScreen = struct {
                     critter.current_hp = @min(max_hp, old_hp + heal);
                     heal_amount = critter.current_hp - old_hp;
                 } else if (item.kind == .revive) {
-                    const pct = item.revive_percent orelse 50;
-                    const max_hp = critter.effectiveStat(.hp);
-                    const restore = @max(1, @as(u16, max_hp) * pct / 100);
-                    critter.current_hp = restore;
-                    heal_amount = restore;
+                    heal_amount = critter.applyRevive(item.revive_percent orelse 50);
                 }
 
                 self.entries[lookup.entry_idx].quantity -= 1;

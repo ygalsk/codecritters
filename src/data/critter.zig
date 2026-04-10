@@ -48,9 +48,18 @@ pub const Critter = struct {
         };
     }
 
-    /// Base stat minus accumulated scar penalties, floored at 1.
+    /// Returns true if the critter can be selected for a run (not on cooldown and not fainted).
     pub fn isAvailable(self: *const Critter) bool {
         return self.cooldown_runs == 0 and self.current_hp > 0;
+    }
+
+    /// Apply revive: restore HP to percent of max and clear cooldown.
+    pub fn applyRevive(self: *Critter, revive_percent: u8) u16 {
+        const max_hp = self.effectiveStat(.hp);
+        const restore: u16 = @intCast(@max(1, @as(u32, max_hp) * revive_percent / 100));
+        self.current_hp = restore;
+        self.cooldown_runs = 0;
+        return restore;
     }
 
     pub fn effectiveStat(self: *const Critter, stat: StatKind) u16 {

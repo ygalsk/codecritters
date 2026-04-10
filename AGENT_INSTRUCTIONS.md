@@ -51,31 +51,37 @@ Roster and party select screens gain position-swap controls. Item/inventory scre
 ### Phase 18 — Game Event Loop Engine [DONE]
 Unified screen signaling via ScreenResult tagged union. All 10 screens' handleInput returns ?ScreenResult. 333-line transition switch eliminated. from_dungeon flag replaced by ScreenContext carried in results. InventoryEntry types unified. RunOverScreen promoted to proper screen struct. RunContext struct defined for future use.
 
-### Phase 19 — CLI Enhancements: JSON + Statusline Sprite
+### Phase 19 — Revive Cooldown Fix + Item Packing [DONE]
+Consolidated revive logic into `Critter.applyRevive()` — fixes cooldown not resetting on revive, eliminates duplication between inventory_screen and battle engine. Added item packing to party select screen: press `I`/`Tab` to switch to items tab, toggle items from persistent inventory to bring into dungeon runs (up to 6 slots). Packed items removed from DB at run start, seeded into dungeon `run_inventory`.
+
+### Phase 20 — CLI Enhancements: JSON + Statusline Sprite
 Enrich `status` CLI with full JSON output for chat personality (individual critter details, equipped moves, run state). Add `statusline --sprite` flag returning rendered sprite with info for Claude statusline.
 
-### Phase 20 — Three-Stage Evolution Lines (All 7 Types)
+### Phase 21 — Three-Stage Evolution Lines (All 7 Types)
 Complete every type's 3-stage common→common→uncommon line (Printf→Fprintf→Logstash, Segfault→Stack Overflow→Kernel Panic, etc.). +15 species, +14 moves, +15 sprites. Update all biome encounter tables.
 
-### Phase 21 — Four New Biomes + Detection
+### Phase 22 — Four New Biomes + Detection
 Rustacean Depths (.rs), Gopher Tunnels (.go), C Catacombs (.c/.h), Shell Scripts (.sh). Complete detect.zig with language scoring. Each biome needs encounter table, boss pool, shop/drop bias, theme colors.
 
-### Phase 22 — Two-Stage Lines + Standalone Rares
+### Phase 23 — Two-Stage Lines + Standalone Rares
 Each type gets its uncommon→rare 2-stage line + standalone rare (Breakpoint→Watchpoint, Heisenbug, etc.). +21 species, +10 moves, +21 sprites.
 
-### Phase 23 — Epics + Legendaries + Sound Cues
+### Phase 24 — Epics + Legendaries + Sound Cues
 7 epics (stats reflect drawbacks, no special engine hooks yet) + 3 legendaries (not in encounter tables). Sound system emitting BEL on key events. +10 species, +8 moves, +10 sprites. Full 61-critter roster complete.
 
-### Phase 24 — Dungeon Graphics + Biome Tilesets + Attack Animations + Visual Overhaul
+### Phase 25 — Dungeon Graphics + Biome Tilesets + Attack Animations + Visual Overhaul
 Sprite-based dungeon rendering with biome-specific tilesets for each dungeon type. Battle attack animations per move type. Visual pass on all screens: title, hub, roster, shop, recap. Target 80×24 minimum.
 
-### Phase 25 — Sprite Audit + Final Visual Polish
+### Phase 26 — Sprite Audit + Final Visual Polish
 Verify all 61 sprites exist. Hub shows favorite critter. Roster shows sprite previews. Battle handles long names. All screens clean at 80×24.
 
-### Phase 26 — README + Build Streamlining
+### Phase 27 — Meta Shop + Meta Progression HUD
+Add meta shop and meta progression display in the HUD.
+
+### Phase 28 — README + Build Streamlining
 Enhance README with actual screenshots, GIFs, and visual appeal. Streamline build and install process (single-command setup, clearer install instructions).
 
-### Phase 27 — Balance Pass + Final Polish
+### Phase 29 — Balance Pass + Final Polish
 Stat totals by rarity tier, move power/accuracy curves, XP curve verification, catch rate review, biome encounter balance, shop pricing, edge case testing. Content-complete.
 
 ---

@@ -204,3 +204,11 @@
 - **from_dungeon flag removed**: Was a form of temporal coupling. Context now flows through ScreenResult.
 - Design grounded in: Ousterhout (deep modules — uniform interface), Raymond (nothing left to take away — unified types), Gabriel (Worse is Better — simple tagged union, no vtables)
 - 236 tests passing, no new tests (architecture refactor, not new behavior)
+
+## Phase 19 — Revive Cooldown Fix + Item Packing [DONE]
+- **Critter.applyRevive()** (`src/data/critter.zig`): Consolidated revive logic into single method. Restores HP to percent of max AND resets `cooldown_runs` to 0. Previously revive code was duplicated in `inventory_screen.zig` and `battle.zig` — both restored HP but neither cleared cooldown, leaving revived critters unavailable.
+- **Item packing on party select** (`src/ui/party_select_screen.zig`): Tab-based UI — press `I` or `Tab` to switch between party selection and item packing. Items tab shows persistent inventory with toggle markers `[*]/[ ]`. Up to 6 distinct item stacks can be packed (full quantity each). Packed items summary shown at bottom.
+- **Dungeon run seeding** (`src/dungeon/dungeon.zig`): `startRun()` now accepts `initial_items: []const RunItem` parameter. Packed items populate `run_inventory` at run start. Items are removed from persistent DB on run confirmation — lost on wipe (roguelike risk), returned on successful extraction (existing behavior).
+- **main.zig integration**: Loads persistent inventory before party select. On dungeon confirm, extracts packed items, removes from DB via `roster_db.removeInventoryItem()`, resolves item_id through `game_data.findItem()` for stable string pointers. Extracted `reloadInventory()` helper to deduplicate 3 identical free-load-copy blocks.
+- **Simplify pass**: Fixed scroll not persisting between frames (`scroll_offset`/`item_scroll` written back to struct), fixed stale doc comment on `isAvailable()`, fixed latent u16 overflow in `applyRevive()` (intermediate widened to u32).
+- 236 tests passing

@@ -487,11 +487,9 @@ fn resolveItem(
 ) void {
     if (item.kind == .revive) {
         if (state.revive_used) return;
-        const pct = item.revive_percent orelse 50;
         if (state.player_party[target]) |*bc| {
             if (bc.critter.current_hp != 0) return; // not fainted
-            const restore = @max(1, @as(u16, bc.critter.effectiveStat(.hp)) * pct / 100);
-            bc.critter.current_hp = restore;
+            const restore = bc.critter.applyRevive(item.revive_percent orelse 50);
             state.revive_used = true;
             result.addEvent(.{ .item_used = .{
                 .item_name = item.name,

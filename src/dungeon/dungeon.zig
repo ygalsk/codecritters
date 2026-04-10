@@ -108,6 +108,7 @@ pub fn startRun(
     party_species: []const *const species_mod.Species,
     biome_ptr: *const biome.Biome,
     seed: u64,
+    initial_items: []const RunItem,
 ) DungeonState {
     var party: [3]?critter_mod.Critter = .{ null, null, null };
     var species_ptrs: [3]?*const species_mod.Species = .{ null, null, null };
@@ -116,6 +117,14 @@ pub fn startRun(
         if (i >= 3) break;
         party[i] = c;
         species_ptrs[i] = party_species[i];
+    }
+
+    var inv: [MAX_RUN_ITEMS]?RunItem = .{null} ** MAX_RUN_ITEMS;
+    var inv_count: u8 = 0;
+    for (initial_items) |item| {
+        if (inv_count >= MAX_RUN_ITEMS) break;
+        inv[inv_count] = item;
+        inv_count += 1;
     }
 
     var rng = std.Random.DefaultPrng.init(seed);
@@ -130,8 +139,8 @@ pub fn startRun(
         .party = party,
         .party_species = species_ptrs,
         .currency = 0,
-        .run_inventory = .{null} ** MAX_RUN_ITEMS,
-        .run_inventory_count = 0,
+        .run_inventory = inv,
+        .run_inventory_count = inv_count,
         .catches = .{null} ** MAX_RUN_CATCHES,
         .catch_count = 0,
         .phase = .exploring,
@@ -422,7 +431,7 @@ test "startRun initializes state correctly" {
     };
     const species_ptrs = [_]*const species_mod.Species{ sp, sp, sp };
 
-    const state = startRun(&critters, &species_ptrs, b, 42);
+    const state = startRun(&critters, &species_ptrs, b, 42, &.{});
 
     try std.testing.expectEqual(@as(u8, 1), state.floor_number);
     try std.testing.expectEqual(RunPhase.exploring, state.phase);
@@ -449,7 +458,7 @@ test "movePlayer onto floor tile" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
 
     // Find a floor tile adjacent to player
     const result = findAdjacentFloorMove(&state);
@@ -480,7 +489,7 @@ test "movePlayer into wall returns blocked" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
 
     // Move to grid edge (0,0 is always a wall) — place player at (1,1) if floor, or find a wall neighbor
     // Alternatively: moving off the grid boundary is always blocked
@@ -503,7 +512,7 @@ test "movePlayer onto encounter tile triggers encounter" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
 
     // Navigate towards an encounter tile using BFS
     if (findPathToTile(&state, .encounter)) |path| {
@@ -539,7 +548,7 @@ test "boss floor triggers on floor 5" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
 
     // Advance to floor 5
     state.floor_number = 4;
@@ -582,7 +591,7 @@ test "resolveEncounter updates party and awards currency" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
     state.phase = .encounter;
 
     // Simulate battle — critter took some damage
@@ -609,7 +618,7 @@ test "resolveEncounter wipe when all fainted" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
     state.phase = .encounter;
 
     var updated = state.party;
@@ -634,7 +643,7 @@ test "resolveEncounter generates scar when critter faints" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
     state.phase = .encounter;
 
     // Critter starts alive, faints during battle
@@ -661,7 +670,7 @@ test "resolveEncounter no scar for already-fainted critter" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
     state.phase = .encounter;
 
     // Critter was already fainted before this battle
@@ -687,7 +696,7 @@ test "resolveEncounter records catch" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
     state.phase = .encounter;
 
     _ = resolveEncounter(&state, .caught, state.party, "glitch", 8);
@@ -710,7 +719,7 @@ test "advanceFloor increments and regenerates" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
     state.phase = .between_floors;
 
     advanceFloor(&state);
@@ -734,7 +743,7 @@ test "extract sets outcome" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
     state.phase = .between_floors;
 
     extract(&state);
@@ -756,7 +765,7 @@ test "addRunItem stacks duplicates" {
     const critters = [_]critter_mod.Critter{makeTestCritter(1, 100)};
     const species_ptrs = [_]*const species_mod.Species{sp};
 
-    var state = startRun(&critters, &species_ptrs, b, 42);
+    var state = startRun(&critters, &species_ptrs, b, 42, &.{});
 
     addRunItem(&state, "small_patch", 2);
     addRunItem(&state, "small_patch", 1);
@@ -888,7 +897,7 @@ test "full run simulation: 5 floors with encounters, boss, extraction" {
     };
     const species_ptrs = [_]*const species_mod.Species{ sp, sp };
 
-    var state = startRun(&critters, &species_ptrs, b, 777);
+    var state = startRun(&critters, &species_ptrs, b, 777, &.{});
 
     // Simulate 5 floors
     var floors_completed: u8 = 0;

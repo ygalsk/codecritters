@@ -285,43 +285,27 @@ pub fn main() !void {
                                         if (allUnavailable(roster_buf)) {
                                             decrementCooldowns(roster_buf, &database);
                                         }
-                                        party_select_screen = PartySelectScreen.init(roster_buf, roster_species_buf[0..roster_buf.len]);
+                                        const pack_inv_len = reloadInventory(alloc, &database, &inventory_buf, &inv_screen_entries);
+                                        party_select_screen = PartySelectScreen.init(
+                                            roster_buf,
+                                            roster_species_buf[0..roster_buf.len],
+                                            inv_screen_entries[0..pack_inv_len],
+                                            &gd,
+                                        );
                                         transition_pending = .party_select;
                                         transition_start_ms = std.time.milliTimestamp();
                                     },
                                     .goto_roster => {
                                         reloadRoster(alloc, &database, &gd, &roster_buf, &roster_species_buf);
-                                        if (inventory_buf.len > 0) {
-                                            roster_db.freeInventory(alloc, inventory_buf);
-                                            inventory_buf = &.{};
-                                        }
-                                        inventory_buf = roster_db.loadInventory(&database, alloc) catch &.{};
                                         var inv_entries: [roster_screen_mod.MAX_DISCS]RosterScreen.InventoryEntry = undefined;
-                                        const inv_len = @min(inventory_buf.len, roster_screen_mod.MAX_DISCS);
-                                        for (0..inv_len) |i| {
-                                            inv_entries[i] = .{
-                                                .item_id = inventory_buf[i].item_id,
-                                                .quantity = inventory_buf[i].quantity,
-                                            };
-                                        }
+                                        const inv_len = reloadInventory(alloc, &database, &inventory_buf, &inv_entries);
                                         roster_screen = RosterScreen.init(roster_buf, roster_species_buf[0..roster_buf.len], inv_entries[0..inv_len], &gd, &sprite_map, false, .from_hub);
                                         transition_pending = .roster_view;
                                         transition_start_ms = std.time.milliTimestamp();
                                     },
                                     .goto_inventory => {
                                         reloadRoster(alloc, &database, &gd, &roster_buf, &roster_species_buf);
-                                        if (inventory_buf.len > 0) {
-                                            roster_db.freeInventory(alloc, inventory_buf);
-                                            inventory_buf = &.{};
-                                        }
-                                        inventory_buf = roster_db.loadInventory(&database, alloc) catch &.{};
-                                        const inv_len = @min(inventory_buf.len, inv_screen_entries.len);
-                                        for (0..inv_len) |i| {
-                                            inv_screen_entries[i] = .{
-                                                .item_id = inventory_buf[i].item_id,
-                                                .quantity = inventory_buf[i].quantity,
-                                            };
-                                        }
+                                        const inv_len = reloadInventory(alloc, &database, &inventory_buf, &inv_screen_entries);
                                         inv_screen = InventoryScreen.init(inv_screen_entries[0..inv_len], &gd, roster_db.getCurrency(&database), roster_buf, roster_species_buf[0..roster_buf.len], .from_hub);
 
                                         transition_pending = .inventory;
@@ -358,12 +342,31 @@ pub fn main() !void {
 
                                         if (party_count > 0) {
                                             decrementCooldowns(roster_buf, &database);
+
+                                            // Extract packed items and remove from persistent inventory
+                                            var initial_items: [party_select_mod.MAX_PACK_SLOTS]dungeon_mod.RunItem = undefined;
+                                            var initial_item_count: u8 = 0;
+                                            for (party_select_screen.packed_items) |maybe| {
+                                                if (maybe) |pack_entry| {
+                                                    // Use game-data pointer for stable item_id lifetime
+                                                    if (gd.findItem(pack_entry.item_id)) |gd_item| {
+                                                        roster_db.removeInventoryItem(&database, pack_entry.item_id, pack_entry.quantity) catch {};
+                                                        initial_items[initial_item_count] = .{
+                                                            .item_id = gd_item.id,
+                                                            .count = @intCast(pack_entry.quantity),
+                                                        };
+                                                        initial_item_count += 1;
+                                                    }
+                                                }
+                                            }
+
                                             const seed: u64 = @intCast(std.time.milliTimestamp());
                                             dungeon_state = dungeon_mod.startRun(
                                                 party_critters[0..party_count],
                                                 party_species[0..party_count],
                                                 biome_ptr,
                                                 seed,
+                                                initial_items[0..initial_item_count],
                                             );
                                             dg_screen = DungeonScreen.init(&dungeon_state, &gd);
                                             transition_pending = .dungeon;
@@ -730,6 +733,27 @@ fn compactDungeonParty(
 
 fn rosterCount(database: *db.Db) u16 {
     return roster_db.countCritters(database);
+}
+
+fn reloadInventory(
+    alloc: std.mem.Allocator,
+    database: *db.Db,
+    inventory_buf: *[]roster_db.InventoryEntry,
+    dest: []inventory_screen_mod.InventoryEntry,
+) usize {
+    if (inventory_buf.len > 0) {
+        roster_db.freeInventory(alloc, inventory_buf.*);
+        inventory_buf.* = &.{};
+    }
+    inventory_buf.* = roster_db.loadInventory(database, alloc) catch &.{};
+    const len = @min(inventory_buf.len, dest.len);
+    for (0..len) |i| {
+        dest[i] = .{
+            .item_id = inventory_buf.*[i].item_id,
+            .quantity = inventory_buf.*[i].quantity,
+        };
+    }
+    return len;
 }
 
 fn reloadRoster(
