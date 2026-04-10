@@ -49,6 +49,10 @@ pub const Critter = struct {
     }
 
     /// Base stat minus accumulated scar penalties, floored at 1.
+    pub fn isAvailable(self: *const Critter) bool {
+        return self.cooldown_runs == 0 and self.current_hp > 0;
+    }
+
     pub fn effectiveStat(self: *const Critter, stat: StatKind) u16 {
         var penalty: i16 = 0;
         for (self.scars) |scar| {
@@ -84,12 +88,13 @@ pub const Critter = struct {
     /// Create a new critter instance from a species definition at a given level.
     pub fn createFromSpecies(sp: *const species_mod.Species, level: u8) Critter {
         const hp = calcStat(sp.base_stats.hp, level);
+        const l: u32 = @intCast(level);
         return .{
             .id = 0,
             .species_id = sp.id,
             .nickname = null,
             .level = level,
-            .xp = 0,
+            .xp = l * l * 10,
             .current_hp = hp,
             .max_hp = hp,
             .logic = calcStat(sp.base_stats.logic, level),

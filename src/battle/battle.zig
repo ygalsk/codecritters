@@ -175,9 +175,20 @@ pub fn initBattle(
         };
     }
 
+    // Find the first alive critter to be the active one
+    var first_alive: u2 = 0;
+    for (party, 0..) |slot, i| {
+        if (slot) |bc| {
+            if (bc.critter.current_hp > 0) {
+                first_alive = @intCast(i);
+                break;
+            }
+        }
+    }
+
     return .{
         .player_party = party,
-        .player_active = 0,
+        .player_active = first_alive,
         .wild = .{
             .critter = wild_critter,
             .species = wild_species,
@@ -909,4 +920,63 @@ test "getResults: extracts critter state" {
     try testing.expect(results.player_party[1] == null);
     try testing.expect(results.caught_critter == null);
     try testing.expectEqual(BattleOutcome.player_win, results.outcome);
+}
+
+test "initBattle: fainted critter in party, active set to first alive" {
+    const sp1 = makeTestSpecies("sp1", .debug);
+    const sp2 = makeTestSpecies("sp2", .chaos);
+    var fainted = makeTestCritter("sp1", "log_dump", 0); // fainted
+    fainted.max_hp = 100;
+    const alive = makeTestCritter("sp2", "log_dump", 80);
+
+    const wild_sp = makeTestSpecies("wild_sp", .debug);
+    const wild_c = makeTestCritter("wild_sp", "log_dump", 50);
+
+    const critters = [_]critter_mod.Critter{ fainted, alive };
+    const sp_ptrs = [_]*const species_mod.Species{ &sp1, &sp2 };
+    const state = initBattle(&critters, &sp_ptrs, wild_c, &wild_sp, 42);
+
+    // Active should be slot 1 (first alive), not slot 0 (fainted)
+    try testing.expectEqual(@as(u2, 1), state.player_active);
+    try testing.expect(state.player_party[0] != null);
+    try testing.expect(state.player_party[1] != null);
+    try testing.expectEqual(@as(u16, 0), state.player_party[0].?.critter.current_hp);
+    try testing.expectEqual(@as(u16, 80), state.player_party[1].?.critter.current_hp);
+}
+
+test "checkPlayerLoss: false when one alive critter remains" {
+    const sp1 = makeTestSpecies("sp1", .debug);
+    const sp2 = makeTestSpecies("sp2", .chaos);
+    var fainted = makeTestCritter("sp1", "log_dump", 0);
+    fainted.max_hp = 100;
+    const alive = makeTestCritter("sp2", "log_dump", 50);
+
+    const wild_sp = makeTestSpecies("wild_sp", .debug);
+    const wild_c = makeTestCritter("wild_sp", "log_dump", 50);
+
+    const critters = [_]critter_mod.Critter{ fainted, alive };
+    const sp_ptrs = [_]*const species_mod.Species{ &sp1, &sp2 };
+    const state = initBattle(&critters, &sp_ptrs, wild_c, &wild_sp, 42);
+
+    // One alive critter remains — not a loss
+    try testing.expect(!checkPlayerLoss(&state));
+}
+
+test "checkPlayerLoss: true when all critters fainted" {
+    const sp1 = makeTestSpecies("sp1", .debug);
+    const sp2 = makeTestSpecies("sp2", .chaos);
+    var fainted1 = makeTestCritter("sp1", "log_dump", 0);
+    fainted1.max_hp = 100;
+    var fainted2 = makeTestCritter("sp2", "log_dump", 0);
+    fainted2.max_hp = 100;
+
+    const wild_sp = makeTestSpecies("wild_sp", .debug);
+    const wild_c = makeTestCritter("wild_sp", "log_dump", 50);
+
+    const critters = [_]critter_mod.Critter{ fainted1, fainted2 };
+    const sp_ptrs = [_]*const species_mod.Species{ &sp1, &sp2 };
+    const state = initBattle(&critters, &sp_ptrs, wild_c, &wild_sp, 42);
+
+    // All fainted — loss
+    try testing.expect(checkPlayerLoss(&state));
 }

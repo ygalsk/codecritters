@@ -165,3 +165,16 @@
 - **main.zig**: sprite_ids expanded from 10 to 15 entries
 - Data totals: 15 species, 16 moves, 3 biomes
 - 234 tests passing (2 updated: biome encounter count, evolution missing-target test now uses monad→functor)
+
+## Phase 13 — Title Screen + Screen Transitions [DONE]
+- See commit history for details
+
+## Phase 13.5 — Graphics Engine Layer [DONE]
+- See commit history for details
+
+## Phase 14 — Bug Fixes: Death Logic + Cooldown Blocking + XP [DONE]
+- **Death logic fix**: `startBattle()` no longer compact-packs party, preserving fainted critters at their original indices. `initBattle()` sets `player_active` to first alive critter. Battle screen forced-swap kicks in when active critter faints but others remain.
+- **Cooldown blocking fix**: `decrementCooldowns()` moved to before `PartySelectScreen` creation (on entering "New Run"), preventing deadlock when all critters are on cooldown.
+- **XP persistence fix**: All `catch {}` in persistence functions (`savePartyState`, `persistCatches`, `persistPendingScars`, `persistRunInventory`, `decrementCooldowns`, equip handler) replaced with `catch |err| { std.log.err(...) }` for visibility. Death logic index fix also resolves potential `run_party_ids` mapping drift.
+- **Hub inventory item use**: `InventoryScreen` now interactive — press Enter on healing/revive items to select a target critter. Two-step flow: browse → select target → apply effect. Healing restricted to alive critters below max HP; revive restricted to fainted critters. Item consumption persisted to DB. Separate rendering for target selection mode.
+- 3 new tests: initBattle with fainted party member, checkPlayerLoss with one alive, checkPlayerLoss with all fainted

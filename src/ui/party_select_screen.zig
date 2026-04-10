@@ -63,10 +63,10 @@ pub const PartySelectScreen = struct {
                 }
             }
         }
-        // Select if room and not on cooldown
+        // Select if room and not unavailable (cooldown or fainted)
         if (self.select_count >= MAX_PARTY) return;
         if (idx >= self.roster.len) return;
-        if (self.isOnCooldown(idx)) return;
+        if (self.isUnavailable(idx)) return;
 
         for (&self.selected) |*maybe| {
             if (maybe.* == null) {
@@ -77,9 +77,9 @@ pub const PartySelectScreen = struct {
         }
     }
 
-    fn isOnCooldown(self: *const PartySelectScreen, idx: usize) bool {
+    fn isUnavailable(self: *const PartySelectScreen, idx: usize) bool {
         if (idx >= self.roster.len) return false;
-        return self.roster[idx].cooldown_runs > 0;
+        return !self.roster[idx].isAvailable();
     }
 
     pub fn handleInput(self: *PartySelectScreen, key: vaxis.Key) void {
@@ -133,13 +133,13 @@ pub const PartySelectScreen = struct {
             const name = if (sp) |s| s.name else "???";
             const is_cur = self.cursor == i;
             const is_sel = self.isSelected(i);
-            const on_cd = self.isOnCooldown(i);
+            const unavail = self.isUnavailable(i);
 
             const marker: []const u8 = if (is_sel) "[*]" else "[ ]";
             const prefix: []const u8 = if (is_cur) "> " else "  ";
 
             var style: theme.Style = theme.body;
-            if (on_cd) {
+            if (unavail) {
                 style = .{ .fg = theme.cooldown_dim };
             } else if (is_cur) {
                 style = theme.heading;
@@ -163,8 +163,10 @@ pub const PartySelectScreen = struct {
             const hp_color = theme.hpColor(critter.current_hp, eff_hp);
             c = writeFmt(win, c, row, .{ .fg = hp_color }, " HP {d}/{d}", .{ critter.current_hp, eff_hp });
 
-            if (on_cd) {
+            if (critter.cooldown_runs > 0) {
                 _ = writeFmt(win, c, row, .{ .fg = theme.cooldown_red }, " [COOLDOWN {d} run(s)]", .{critter.cooldown_runs});
+            } else if (critter.current_hp == 0) {
+                _ = writeFmt(win, c, row, .{ .fg = theme.cooldown_red }, " [FAINTED]", .{});
             }
 
             row += 1;

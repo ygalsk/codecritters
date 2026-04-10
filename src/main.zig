@@ -296,6 +296,10 @@ pub fn main() !void {
                     switch (hub_screen.selection orelse .quit) {
                         .new_run => {
                             reloadRoster(alloc, &database, &gd, &roster_buf, &roster_species_buf);
+                            // Auto-decrement cooldowns only if ALL critters are blocked
+                            if (allUnavailable(roster_buf)) {
+                                decrementCooldowns(roster_buf, &database);
+                            }
                             party_select_screen = PartySelectScreen.init(roster_buf, roster_species_buf[0..roster_buf.len]);
                             transition_pending = .party_select;
                             transition_start_ms = std.time.milliTimestamp();
@@ -320,6 +324,7 @@ pub fn main() !void {
                             transition_start_ms = std.time.milliTimestamp();
                         },
                         .view_inventory => {
+                            reloadRoster(alloc, &database, &gd, &roster_buf, &roster_species_buf);
                             if (inventory_buf.len > 0) {
                                 roster_db.freeInventory(alloc, inventory_buf);
                                 inventory_buf = &.{};
@@ -332,7 +337,7 @@ pub fn main() !void {
                                     .quantity = inventory_buf[i].quantity,
                                 };
                             }
-                            inv_screen = InventoryScreen.init(inv_screen_entries[0..inv_len], &gd, roster_db.getCurrency(&database));
+                            inv_screen = InventoryScreen.init(inv_screen_entries[0..inv_len], &gd, roster_db.getCurrency(&database), roster_buf, roster_species_buf[0..roster_buf.len]);
                             transition_pending = .inventory;
                             transition_start_ms = std.time.milliTimestamp();
                         },
@@ -366,9 +371,7 @@ pub fn main() !void {
                         }
 
                         if (party_count > 0) {
-                            // Decrement cooldowns for all roster critters
                             decrementCooldowns(roster_buf, &database);
-
                             const seed: u64 = @intCast(std.time.milliTimestamp());
                             dungeon_state = dungeon_mod.startRun(
                                 party_critters[0..party_count],
@@ -399,9 +402,13 @@ pub fn main() !void {
                     if (equip.critter_idx < roster_buf.len) {
                         const critter = &roster_buf[equip.critter_idx];
                         // Save updated critter to DB
-                        _ = roster_db.saveCritter(&database, critter) catch {};
+                        _ = roster_db.saveCritter(&database, critter) catch |err| {
+                            std.log.err("equip: saveCritter failed: {}", .{err});
+                        };
                         // Consume disc from inventory
-                        roster_db.removeInventoryItem(&database, equip.item_id, 1) catch {};
+                        roster_db.removeInventoryItem(&database, equip.item_id, 1) catch |err| {
+                            std.log.err("equip: removeInventoryItem failed: {}", .{err});
+                        };
                     }
                     roster_screen.pending_equip = null;
                 }
@@ -412,6 +419,19 @@ pub fn main() !void {
                 }
             },
             .inventory => {
+                if (inv_screen.use_result) |result| {
+                    inv_screen.use_result = null;
+                    // Persist critter HP change
+                    if (result.target_idx < roster_buf.len) {
+                        _ = roster_db.saveCritter(&database, &roster_buf[result.target_idx]) catch |err| {
+                            std.log.err("inventory use: saveCritter failed: {}", .{err});
+                        };
+                    }
+                    // Persist item consumption
+                    roster_db.removeInventoryItem(&database, result.item_id, 1) catch |err| {
+                        std.log.err("inventory use: removeInventoryItem failed: {}", .{err});
+                    };
+                }
                 if (inv_screen.done) {
                     hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
                     transition_pending = .hub;
@@ -447,17 +467,19 @@ pub fn main() !void {
                         }
                     }
 
-                    // Award XP on win/catch
+                    // Award XP to the active critter on win/catch
                     const b_outcome = battle_state.outcome orelse .player_lose;
                     if (b_outcome == .player_win or b_outcome == .caught) {
-                        awardPartyXp(&dungeon_state, &gd, battle_state.wild.critter.level, last_was_boss);
+                        const xp_amount = awardBattleXp(&dungeon_state, &gd, battle_state.player_active, battle_state.wild.critter.level, last_was_boss);
+                        var xp_buf: [64]u8 = undefined;
+                        const xp_msg = std.fmt.bufPrint(&xp_buf, "+{d} XP", .{xp_amount}) catch "+XP";
+                        dg_screen.log.push(xp_msg);
                     }
 
                     if (dungeon_state.phase == .run_over) {
                         // Persist catches and inventory on extraction
                         if (dungeon_state.outcome == .extracted) {
-                            persistCatches(&dungeon_state, &gd, &database);
-                            persistRunInventory(&dungeon_state, &database);
+                            handleExtraction(&dungeon_state, &gd, &database);
                         }
                         // Apply cooldowns on wipe
                         if (dungeon_state.outcome == .wiped) {
@@ -489,8 +511,7 @@ pub fn main() !void {
                 if (shop_screen.done) {
                     if (shop_screen.extracted) {
                         dungeon_mod.extract(&dungeon_state);
-                        persistCatches(&dungeon_state, &gd, &database);
-                        persistRunInventory(&dungeon_state, &database);
+                        handleExtraction(&dungeon_state, &gd, &database);
                         persistPendingScars(&dungeon_state, &database, &run_party_ids);
                         savePartyState(&dungeon_state, &database, &run_party_ids);
                         transition_pending = .run_over;
@@ -573,7 +594,7 @@ pub fn main() !void {
                 .dungeon => dg_screen.render(win),
                 .battle => battle_screen.render(win),
                 .shop => shop_screen.render(win),
-                .run_over => renderRunOver(win, &dungeon_state),
+                .run_over => renderRunOver(win, &dungeon_state, &gd),
             }
             try vx.render(writer);
             try writer.flush();
@@ -641,9 +662,9 @@ fn startBattle(
     for (dungeon_state.party, 0..) |maybe, i| {
         if (maybe) |c| {
             if (dungeon_state.party_species[i]) |sp| {
-                party_critters[party_count] = c;
-                party_species[party_count] = sp;
-                party_count += 1;
+                party_critters[i] = c;
+                party_species[i] = sp;
+                party_count = i + 1;
             }
         }
     }
@@ -718,26 +739,27 @@ fn finishBattle(
     return enc_result;
 }
 
-fn awardPartyXp(
+fn awardBattleXp(
     dungeon_state: *dungeon_mod.DungeonState,
     gd: *const game_data_mod.GameData,
+    active_idx: u2,
     enemy_level: u8,
     is_boss: bool,
-) void {
+) u32 {
     const xp_amount = leveling.battleXpAward(enemy_level, is_boss);
+    const i: usize = active_idx;
 
-    for (&dungeon_state.party, 0..) |*maybe_critter, i| {
-        if (maybe_critter.*) |*critter| {
-            if (critter.current_hp == 0) continue;
-            const result = leveling.awardXp(critter, xp_amount, gd);
+    if (dungeon_state.party[i]) |*critter| {
+        if (critter.current_hp == 0) return xp_amount;
+        const result = leveling.awardXp(critter, xp_amount, gd);
 
-            if (result.evolved) {
-                if (result.new_species_id) |new_id| {
-                    dungeon_state.party_species[i] = gd.findSpecies(new_id);
-                }
+        if (result.evolved) {
+            if (result.new_species_id) |new_id| {
+                dungeon_state.party_species[i] = gd.findSpecies(new_id);
             }
         }
     }
+    return xp_amount;
 }
 
 fn persistCatches(
@@ -749,8 +771,58 @@ fn persistCatches(
         const catch_rec = maybe_catch orelse continue;
         const sp = gd.findSpecies(catch_rec.species_id) orelse continue;
         var new_critter = critter_mod.Critter.createFromSpecies(sp, catch_rec.level);
-        _ = roster_db.saveCritter(database, &new_critter) catch {};
+        _ = roster_db.saveCritter(database, &new_critter) catch |err| {
+            std.log.err("persistCatches: saveCritter failed: {}", .{err});
+        };
     }
+}
+
+fn handleExtraction(
+    dungeon_state: *dungeon_mod.DungeonState,
+    gd: *const game_data_mod.GameData,
+    database: *db.Db,
+) void {
+    persistCatches(dungeon_state, gd, database);
+    persistRunInventory(dungeon_state, database);
+    awardExtractionXp(dungeon_state, gd);
+    healPartyOnExtraction(dungeon_state);
+}
+
+fn awardExtractionXp(
+    dungeon_state: *dungeon_mod.DungeonState,
+    gd: *const game_data_mod.GameData,
+) void {
+    const bonus = 5 + @as(u32, dungeon_state.floor_number) * 2;
+    for (&dungeon_state.party, 0..) |*maybe_critter, i| {
+        if (maybe_critter.*) |*critter| {
+            if (critter.current_hp == 0) continue;
+            const result = leveling.awardXp(critter, bonus, gd);
+            if (result.evolved) {
+                if (result.new_species_id) |new_id| {
+                    dungeon_state.party_species[i] = gd.findSpecies(new_id);
+                }
+            }
+        }
+    }
+}
+
+fn healPartyOnExtraction(dungeon_state: *dungeon_mod.DungeonState) void {
+    for (&dungeon_state.party) |*maybe_critter| {
+        if (maybe_critter.*) |*c| {
+            if (c.current_hp > 0) {
+                c.current_hp = c.effectiveStat(.hp);
+            } else {
+                c.cooldown_runs = 1;
+            }
+        }
+    }
+}
+
+fn allUnavailable(roster: []const critter_mod.Critter) bool {
+    for (roster) |critter| {
+        if (critter.isAvailable()) return false;
+    }
+    return true;
 }
 
 fn decrementCooldowns(roster: []critter_mod.Critter, database: *db.Db) void {
@@ -761,7 +833,9 @@ fn decrementCooldowns(roster: []critter_mod.Critter, database: *db.Db) void {
             if (critter.cooldown_runs == 0) {
                 critter.current_hp = critter.effectiveStat(.hp);
             }
-            _ = roster_db.saveCritter(database, critter) catch {};
+            _ = roster_db.saveCritter(database, critter) catch |err| {
+                std.log.err("decrementCooldowns: saveCritter failed: {}", .{err});
+            };
         }
     }
 }
@@ -774,7 +848,9 @@ fn persistPendingScars(
     for (dungeon_state.pending_scars[0..dungeon_state.pending_scar_count]) |scar| {
         const critter_id = run_party_ids[scar.party_index];
         if (critter_id != 0) {
-            roster_db.addScar(database, @intCast(critter_id), scar.stat, -1) catch {};
+            roster_db.addScar(database, @intCast(critter_id), scar.stat, -1) catch |err| {
+                std.log.err("persistPendingScars: addScar failed: {}", .{err});
+            };
         }
     }
 }
@@ -789,7 +865,9 @@ fn savePartyState(
             if (run_party_ids[i] != 0) {
                 var save_critter = critter;
                 save_critter.id = run_party_ids[i];
-                _ = roster_db.saveCritter(database, &save_critter) catch {};
+                _ = roster_db.saveCritter(database, &save_critter) catch |err| {
+                    std.log.err("savePartyState: saveCritter failed: {}", .{err});
+                };
             }
         }
     }
@@ -802,11 +880,15 @@ fn persistRunInventory(
     for (dungeon_state.run_inventory[0..dungeon_state.run_inventory_count]) |maybe_item| {
         const item = maybe_item orelse continue;
         if (item.count > 0) {
-            roster_db.addInventoryItem(database, item.item_id, @intCast(item.count)) catch {};
+            roster_db.addInventoryItem(database, item.item_id, @intCast(item.count)) catch |err| {
+                std.log.err("persistRunInventory: addInventoryItem failed: {}", .{err});
+            };
         }
     }
     if (dungeon_state.currency > 0) {
-        roster_db.addCurrency(database, dungeon_state.currency) catch {};
+        roster_db.addCurrency(database, dungeon_state.currency) catch |err| {
+            std.log.err("persistRunInventory: addCurrency failed: {}", .{err});
+        };
     }
 }
 
@@ -837,7 +919,7 @@ fn markAllDirty(
     }
 }
 
-fn renderRunOver(win: vaxis.Window, dungeon_state: *const dungeon_mod.DungeonState) void {
+fn renderRunOver(win: vaxis.Window, dungeon_state: *const dungeon_mod.DungeonState, gd: *const game_data_mod.GameData) void {
     win.clear();
 
     const title = switch (dungeon_state.outcome) {
@@ -888,8 +970,28 @@ fn renderRunOver(win: vaxis.Window, dungeon_state: *const dungeon_mod.DungeonSta
         row += 1;
     }
 
-    // Show cooldown on wipe
-    if (dungeon_state.outcome == .wiped) {
+    if (dungeon_state.outcome == .extracted) {
+        // Show party summary with XP on extraction
+        _ = ui.writeText(win, 2, row, "Party:", theme.heading);
+        row += 1;
+        for (dungeon_state.party) |maybe_critter| {
+            const critter = maybe_critter orelse continue;
+            if (row >= win.height -| 2) break;
+            const sp = gd.findSpecies(critter.species_id);
+            const name = if (sp) |s| s.name else critter.species_id;
+            if (critter.level < 100) {
+                const current_xp = critter.xp;
+                const next_level_xp = leveling.xpForLevel(critter.level + 1);
+                const prev_level_xp = leveling.xpForLevel(critter.level);
+                const xp_into = current_xp -| prev_level_xp;
+                const xp_needed = next_level_xp -| prev_level_xp;
+                _ = ui.writeFmt(win, 4, row, theme.xp, "{s} Lv{d}  XP: {d}/{d}", .{ name, critter.level, xp_into, xp_needed });
+            } else {
+                _ = ui.writeFmt(win, 4, row, theme.xp, "{s} Lv{d}  MAX", .{ name, critter.level });
+            }
+            row += 1;
+        }
+    } else if (dungeon_state.outcome == .wiped) {
         _ = ui.writeText(win, 2, row, "Your critters need 2 runs to recover.", .{ .fg = theme.status_red, .bold = true });
     }
 

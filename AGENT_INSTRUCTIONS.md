@@ -33,20 +33,14 @@ For each phase:
 
 ## Roadmap
 
-### Phases 0–12 — Core Systems + Starter Chains [DONE]
-All game systems built through Phase 11. Phase 12 completed all 3 starter evolution chains (9 species): Println→Tracer→Profiler, Glitch→Gremlin→Pandemonium, Goto→Spaghetto→Dependency. 15 species, 16 moves, 234 tests passing. See PROGRESS.md for details.
+### Phases 0–13.5 — Core Systems + Starter Chains + Title + Graphics Engine [DONE]
+All game systems built through Phase 12. Phase 13 added title screen and transitions. Phase 13.5 refactored UI into reusable layers. 15 species, 16 moves. See PROGRESS.md for details.
 
-### Phase 13 — Title Screen + Screen Transitions
-New title_screen.zig with ASCII art logo. Transition system in main.zig (brief visual wipe/fade between screen changes). Polish phase — no data changes.
+### Phase 14 — Bug Fixes: Death Logic + Cooldown Blocking + XP + Hub Item Use [DONE]
+Fixed death logic (fainted critters no longer excluded from battle party), cooldown deadlock (cooldowns decrement before party select), XP persistence (silent catch {} replaced with error logging, index mapping fixed). Hub inventory now interactive — healing/revive items usable on roster critters.
 
-### Phase 13.5 — Graphics Engine Layer [DONE]
-Refactored UI rendering into reusable layers: theme.zig (colors/styles), layout.zig (centering/positioning), widgets.zig (menu/HP bar/separator/hint), anim.zig (AnimTimer), input.zig (NavAction/menuNav/gridNav). All 9 screens migrated. No game logic changes.
-
-### Phase 14 — Bug Fixes: Death Logic + Cooldown Blocking + XP
-Fix "when 1 critter dies both die and run is over" — investigate battle→dungeon state sync for edge cases with 2-critter parties. Fix party select blocking when entire roster is on cooldown (no way to start a new adventure). Fix no-XP-gain bug — trace battle reward path through XP award and leveling logic. Allow item use outside of battle (hub inventory screen, in-dungeon).
-
-### Phase 15 — Dungeon Quick Menu + Item Use Outside Battle
-Press `m` in dungeon for quick menu: swap active roster order, open inventory to use items, view party. Wire healing/consumable item effects through dungeon and hub contexts (inventory_screen becomes interactive).
+### Phase 15 — Dungeon Quick Menu + In-Dungeon Item Use
+Press `m` in dungeon for quick menu: swap active roster order, open inventory to use items, view party. Wire healing/consumable item effects through dungeon context (hub inventory already interactive from Phase 14).
 
 ### Phase 16 — Roster Swap + Item Screen Improvements
 Roster and party select screens gain position-swap controls. Item/inventory screen shows full descriptions, effect values, and item sprites. Items display rarity indicators.
