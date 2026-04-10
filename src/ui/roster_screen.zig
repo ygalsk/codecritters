@@ -11,6 +11,8 @@ const widgets = @import("widgets.zig");
 const input = @import("input.zig");
 const anim_mod = @import("anim.zig");
 const sprite_mod = @import("sprite.zig");
+const screen_result = @import("screen_result.zig");
+const ScreenResult = screen_result.ScreenResult;
 
 const Window = ui.Window;
 const writeText = ui.writeText;
@@ -22,16 +24,6 @@ const ViewMode = enum {
     browsing,
     equip_disc,
     swapping,
-};
-
-pub const DiscEquipEvent = struct {
-    critter_idx: u8,
-    item_id: []const u8,
-};
-
-pub const SwapEvent = struct {
-    id_a: u64,
-    id_b: u64,
 };
 
 pub const RosterScreen = struct {
@@ -46,18 +38,13 @@ pub const RosterScreen = struct {
     disc_cursor: u8,
     disc_count: u8,
     disc_ids: [MAX_DISCS][]const u8,
-    done: bool,
     dirty: bool,
     log: ui.MessageLog,
-    pending_equip: ?DiscEquipEvent,
-    pending_swap: ?SwapEvent,
     swap_origin: ?u8,
     anim_timer: anim_mod.AnimTimer,
+    screen_context: ScreenResult.ScreenContext,
 
-    pub const InventoryEntry = struct {
-        item_id: []const u8,
-        quantity: i64,
-    };
+    pub const InventoryEntry = ui.InventoryEntry;
 
     pub fn init(
         roster: []critter_mod.Critter,
@@ -66,6 +53,7 @@ pub const RosterScreen = struct {
         game_data: *const game_data_mod.GameData,
         sprite_map: *const sprite_mod.SpriteMap,
         use_kitty: bool,
+        context: ScreenResult.ScreenContext,
     ) RosterScreen {
         var screen = RosterScreen{
             .roster = roster,
@@ -79,13 +67,11 @@ pub const RosterScreen = struct {
             .disc_cursor = 0,
             .disc_count = 0,
             .disc_ids = undefined,
-            .done = false,
             .dirty = true,
             .log = ui.MessageLog.init(),
-            .pending_equip = null,
-            .pending_swap = null,
             .swap_origin = null,
             .anim_timer = anim_mod.AnimTimer.init(500),
+            .screen_context = context,
         };
         screen.buildDiscList();
         return screen;
@@ -109,16 +95,16 @@ pub const RosterScreen = struct {
         }
     }
 
-    pub fn handleInput(self: *RosterScreen, key: vaxis.Key) void {
+    pub fn handleInput(self: *RosterScreen, key: vaxis.Key) ?ScreenResult {
         self.dirty = true;
-        switch (self.mode) {
+        return switch (self.mode) {
             .browsing => self.handleBrowsing(key),
             .equip_disc => self.handleEquipDisc(key),
             .swapping => self.handleSwapping(key),
-        }
+        };
     }
 
-    fn handleBrowsing(self: *RosterScreen, key: vaxis.Key) void {
+    fn handleBrowsing(self: *RosterScreen, key: vaxis.Key) ?ScreenResult {
         const roster_len: u8 = @intCast(@min(self.roster.len, 255));
         if (key.matches(vaxis.Key.left, .{})) {
             if (self.cursor > 0) self.cursor -= 1;
@@ -135,11 +121,15 @@ pub const RosterScreen = struct {
                 self.swap_origin = self.cursor;
             }
         } else if (key.matches(vaxis.Key.escape, .{}) or key.matches(vaxis.Key.backspace, .{})) {
-            self.done = true;
+            return switch (self.screen_context) {
+                .from_hub => .goto_hub,
+                .from_dungeon => .goto_dungeon,
+            };
         }
+        return null;
     }
 
-    fn handleSwapping(self: *RosterScreen, key: vaxis.Key) void {
+    fn handleSwapping(self: *RosterScreen, key: vaxis.Key) ?ScreenResult {
         const roster_len: u8 = @intCast(@min(self.roster.len, 255));
         if (key.matches(vaxis.Key.left, .{})) {
             if (self.cursor > 0) self.cursor -= 1;
@@ -148,10 +138,9 @@ pub const RosterScreen = struct {
         } else if (key.matches('s', .{}) or key.matches(vaxis.Key.enter, .{}) or key.matches(vaxis.Key.space, .{})) {
             const origin = self.swap_origin orelse {
                 self.mode = .browsing;
-                return;
+                return null;
             };
             if (self.cursor != origin) {
-                // Perform the swap
                 const id_a = self.roster[origin].id;
                 const id_b = self.roster[self.cursor].id;
 
@@ -163,12 +152,10 @@ pub const RosterScreen = struct {
                 self.roster_species[origin] = self.roster_species[self.cursor];
                 self.roster_species[self.cursor] = tmp_species;
 
-                self.pending_swap = .{
-                    .id_a = id_a,
-                    .id_b = id_b,
-                };
-
                 self.log.push("Swapped positions!");
+                self.swap_origin = null;
+                self.mode = .browsing;
+                return ScreenResult{ .persist_swap = .{ .id_a = id_a, .id_b = id_b } };
             }
             self.swap_origin = null;
             self.mode = .browsing;
@@ -176,34 +163,29 @@ pub const RosterScreen = struct {
             self.swap_origin = null;
             self.mode = .browsing;
         }
+        return null;
     }
 
-    fn handleEquipDisc(self: *RosterScreen, key: vaxis.Key) void {
+    fn handleEquipDisc(self: *RosterScreen, key: vaxis.Key) ?ScreenResult {
         const action = input.applyCursor(&self.disc_cursor, self.disc_count, input.menuNav(key));
         switch (action) {
-            .confirm => self.doEquip(),
+            .confirm => return self.doEquip(),
             .back => self.mode = .browsing,
             else => {},
         }
+        return null;
     }
 
-    fn doEquip(self: *RosterScreen) void {
-        if (self.cursor >= self.roster.len) return;
-        if (self.disc_cursor >= self.disc_count) return;
+    fn doEquip(self: *RosterScreen) ?ScreenResult {
+        if (self.cursor >= self.roster.len) return null;
+        if (self.disc_cursor >= self.disc_count) return null;
 
         const disc_item_id = self.disc_ids[self.disc_cursor];
-        const item = self.game_data.findItem(disc_item_id) orelse return;
-        if (item.kind != .move_disc) return;
-        const move_id = item.move_id orelse return;
+        const item = self.game_data.findItem(disc_item_id) orelse return null;
+        if (item.kind != .move_disc) return null;
+        const move_id = item.move_id orelse return null;
 
-        // Apply equip to critter
         self.roster[self.cursor].move_slot_3 = move_id;
-
-        // Store pending equip event for main.zig to persist
-        self.pending_equip = .{
-            .critter_idx = self.cursor,
-            .item_id = disc_item_id,
-        };
 
         var buf: [ui.MSG_BUF_LEN]u8 = undefined;
         const move = self.game_data.findMove(move_id);
@@ -212,6 +194,7 @@ pub const RosterScreen = struct {
         self.log.push(msg);
 
         self.mode = .browsing;
+        return ScreenResult{ .persist_equip = .{ .critter_idx = self.cursor, .item_id = disc_item_id } };
     }
 
     pub fn render(self: *const RosterScreen, win: Window) void {

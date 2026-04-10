@@ -13,6 +13,7 @@ const theme = @import("theme.zig");
 const layout = @import("layout.zig");
 const widgets = @import("widgets.zig");
 const input = @import("input.zig");
+const ScreenResult = @import("screen_result.zig").ScreenResult;
 const anim_mod = @import("anim.zig");
 
 const Window = ui.Window;
@@ -50,7 +51,6 @@ pub const BattleScreen = struct {
     log: ui.MessageLog,
     inventory: []InventorySlot,
     pending_heal_item: ?struct { slot_idx: usize, item: *const items_mod.Item } = null,
-    done: bool,
     outcome: ?battle.BattleOutcome,
     sprites: *const SpriteMap,
     use_kitty: bool,
@@ -74,7 +74,6 @@ pub const BattleScreen = struct {
             .log = ui.MessageLog.init(),
             .inventory = inventory,
             .pending_heal_item = null,
-            .done = false,
             .outcome = null,
             .sprites = sprites,
             .use_kitty = use_kitty,
@@ -85,7 +84,7 @@ pub const BattleScreen = struct {
         return screen;
     }
 
-    pub fn handleInput(self: *BattleScreen, key: vaxis.Key) void {
+    pub fn handleInput(self: *BattleScreen, key: vaxis.Key) ?ScreenResult {
         self.dirty = true;
         switch (self.menu_state) {
             .main_menu => self.handleMainMenu(key),
@@ -96,9 +95,10 @@ pub const BattleScreen = struct {
             .select_catch_tool => self.handleSelectCatchTool(key),
             .animating => self.handleAnimating(key),
             .battle_over => {
-                self.done = true;
+                return .goto_dungeon;
             },
         }
+        return null;
     }
 
     fn handleMainMenu(self: *BattleScreen, key: vaxis.Key) void {

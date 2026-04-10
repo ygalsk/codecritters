@@ -5,10 +5,10 @@ const layout = @import("layout.zig");
 const widgets = @import("widgets.zig");
 const anim = @import("anim.zig");
 const sprite_mod = @import("sprite.zig");
+const ScreenResult = @import("screen_result.zig").ScreenResult;
 
 pub const TitleScreen = struct {
     dirty: bool,
-    done: bool,
     title_sprite: ?*const sprite_mod.SpriteSheet,
     critter_sprite: ?*const sprite_mod.SpriteSheet,
     use_kitty: bool,
@@ -26,7 +26,6 @@ pub const TitleScreen = struct {
     ) TitleScreen {
         return .{
             .dirty = true,
-            .done = false,
             .title_sprite = title_sprite,
             .critter_sprite = critter_sprite,
             .use_kitty = use_kitty,
@@ -35,11 +34,12 @@ pub const TitleScreen = struct {
         };
     }
 
-    pub fn handleInput(self: *TitleScreen, key: vaxis.Key) void {
+    pub fn handleInput(self: *TitleScreen, key: vaxis.Key) ?ScreenResult {
         _ = key;
         if (self.frames_shown >= INPUT_GUARD_FRAMES) {
-            self.done = true;
+            return .goto_hub;
         }
+        return null;
     }
 
     pub fn updateAnimation(self: *TitleScreen) void {

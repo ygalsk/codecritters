@@ -48,8 +48,8 @@ Fixed two battle bugs: (1) items, catches, and swaps now have priority over atta
 ### Phase 17 — Roster Swap + Item Screen Improvements
 Roster and party select screens gain position-swap controls. Item/inventory screen shows full descriptions, effect values, and item sprites. Items display rarity indicators.
 
-### Phase 18 — Game Event Loop Engine (Research Phase)
-Research and design a reusable game event loop engine. The UI rendering layer (theme/layout/widgets/anim/input) exists but there's no centralized game event loop. Needs discussion on scope and architecture before implementation.
+### Phase 18 — Game Event Loop Engine [DONE]
+Unified screen signaling via ScreenResult tagged union. All 10 screens' handleInput returns ?ScreenResult. 333-line transition switch eliminated. from_dungeon flag replaced by ScreenContext carried in results. InventoryEntry types unified. RunOverScreen promoted to proper screen struct. RunContext struct defined for future use.
 
 ### Phase 19 — CLI Enhancements: JSON + Statusline Sprite
 Enrich `status` CLI with full JSON output for chat personality (individual critter details, equipped moves, run state). Add `statusline --sprite` flag returning rendered sprite with info for Claude statusline.

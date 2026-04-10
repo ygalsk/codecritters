@@ -7,6 +7,7 @@ const theme = @import("theme.zig");
 const layout = @import("layout.zig");
 const widgets = @import("widgets.zig");
 const input = @import("input.zig");
+const ScreenResult = @import("screen_result.zig").ScreenResult;
 
 const Window = ui.Window;
 const writeText = ui.writeText;
@@ -22,8 +23,6 @@ pub const PartySelectScreen = struct {
     select_count: u8,
     cursor: u8,
     scroll_offset: u8,
-    done: bool,
-    confirmed: bool,
     dirty: bool,
     swap_mark: ?u8, // party slot index (0-2) being swapped
 
@@ -38,8 +37,6 @@ pub const PartySelectScreen = struct {
             .select_count = 0,
             .cursor = 0,
             .scroll_offset = 0,
-            .done = false,
-            .confirmed = false,
             .dirty = true,
             .swap_mark = null,
         };
@@ -93,7 +90,7 @@ pub const PartySelectScreen = struct {
         return !self.roster[idx].isAvailable();
     }
 
-    pub fn handleInput(self: *PartySelectScreen, key: vaxis.Key) void {
+    pub fn handleInput(self: *PartySelectScreen, key: vaxis.Key) ?ScreenResult {
         self.dirty = true;
         const roster_len: u8 = @intCast(@min(self.roster.len, MAX_ROSTER));
 
@@ -104,24 +101,20 @@ pub const PartySelectScreen = struct {
                 if (self.swap_mark != null) {
                     self.swap_mark = null;
                 } else {
-                    self.done = true;
-                    self.confirmed = false;
+                    return .goto_hub;
                 }
             },
             else => {
                 if (key.matches('c', .{})) {
                     if (self.select_count > 0) {
-                        self.done = true;
-                        self.confirmed = true;
+                        return .goto_dungeon;
                     }
                 } else if (key.matches('s', .{})) {
                     if (self.selectedSlot(self.cursor)) |slot| {
                         if (self.swap_mark) |mark| {
                             if (mark == slot) {
-                                // Same slot — cancel
                                 self.swap_mark = null;
                             } else {
-                                // Swap the two selected slots
                                 const tmp = self.selected[mark];
                                 self.selected[mark] = self.selected[slot];
                                 self.selected[slot] = tmp;
@@ -134,6 +127,7 @@ pub const PartySelectScreen = struct {
                 }
             },
         }
+        return null;
     }
 
     pub fn render(self: *const PartySelectScreen, win: Window) void {

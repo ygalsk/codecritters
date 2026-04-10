@@ -102,3 +102,10 @@ pub fn findSpeciesForCritter(dungeon_state: *const dungeon_mod.DungeonState, cri
 }
 
 pub const dim_style: Style = .{ .fg = .{ .rgb = .{ 100, 100, 100 } } };
+
+/// Shared inventory entry type used by RosterScreen and InventoryScreen.
+/// Replaces the duplicate per-screen definitions.
+pub const InventoryEntry = struct {
+    item_id: []const u8,
+    quantity: i64,
+};

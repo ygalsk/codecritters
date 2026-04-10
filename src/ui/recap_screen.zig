@@ -3,10 +3,10 @@ const ui = @import("ui_common.zig");
 const theme = @import("theme.zig");
 const layout = @import("layout.zig");
 const widgets = @import("widgets.zig");
+const ScreenResult = @import("screen_result.zig").ScreenResult;
 
 pub const RecapScreen = struct {
     dirty: bool,
-    done: bool,
     xp_awarded: u32,
     events_processed: u32,
     level_before: u8,
@@ -22,9 +22,10 @@ pub const RecapScreen = struct {
         name_len: u8,
     };
 
-    pub fn handleInput(self: *RecapScreen, key: vaxis.Key) void {
+    pub fn handleInput(self: *RecapScreen, key: vaxis.Key) ?ScreenResult {
         _ = key;
-        self.done = true;
+        _ = self;
+        return .goto_hub;
     }
 
     pub fn render(self: *const RecapScreen, win: vaxis.Window) void {

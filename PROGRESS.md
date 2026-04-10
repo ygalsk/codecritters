@@ -193,3 +193,14 @@
 - **Item/catch/swap priority**: Items, catch attempts, and swaps now have priority over attacks — they always resolve before the wild's attack move, regardless of speed. Speed-based ordering only applies to attack-vs-attack turns.
 - 2 new tests: fainted critter doesn't act after KO; item use has priority even when player is slower
 - 236 tests passing
+
+## Phase 18 — Game Event Loop Engine [DONE]
+- **ScreenResult tagged union** (`src/ui/screen_result.zig`): Unified transition type replacing per-screen flags (done, selection, pending_*, extracted, etc.). Every screen's `handleInput` now returns `?ScreenResult` instead of `void`. Variants: `goto_hub`, `goto_party_select`, `goto_roster(ScreenContext)`, `goto_inventory(ScreenContext)`, `goto_dungeon`, `goto_battle(BattleRequest)`, `goto_shop`, `goto_run_over`, `start_extraction`, `persist_swap`, `persist_equip`, `persist_item_use(ItemUseRequest)`, `quit`.
+- **ScreenContext enum** (`from_hub`/`from_dungeon`): Replaces the old `from_dungeon: bool` flag in main.zig. Context carried in the result itself, not ambient mutable state.
+- **Unified InventoryEntry** (`src/ui/ui_common.zig`): Three duplicate `InventoryEntry` types (RosterScreen, InventoryScreen, ad-hoc in main.zig) consolidated into one shared type.
+- **RunOverScreen** (`src/ui/run_over_screen.zig`): Promoted from inline `renderRunOver` function + `run_over_dirty` bool to proper screen struct with `handleInput`/`render`/`dirty`.
+- **Dead field cleanup**: Removed ~12 dead state fields across 8 screens (`done`, `selection`, `confirmed`, `pending_swap`, `pending_equip`, `use_result`, `pending_battle`, `pending_is_boss`, `pending_shop`, `pending_inventory`, `pending_roster`, `extracted`) plus dead type definitions (`HubChoice`, `DiscEquipEvent`, `SwapEvent`, `ItemUseResult`).
+- **333-line transition switch eliminated**: The old `if (transition_pending == null) switch (active_screen)` block (checking per-screen flags) is gone. All transition logic now co-located with input handling in the input dispatch switch.
+- **from_dungeon flag removed**: Was a form of temporal coupling. Context now flows through ScreenResult.
+- Design grounded in: Ousterhout (deep modules — uniform interface), Raymond (nothing left to take away — unified types), Gabriel (Worse is Better — simple tagged union, no vtables)
+- 236 tests passing, no new tests (architecture refactor, not new behavior)

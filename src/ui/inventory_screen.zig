@@ -9,21 +9,15 @@ const theme = @import("theme.zig");
 const layout = @import("layout.zig");
 const widgets = @import("widgets.zig");
 const input = @import("input.zig");
+const screen_result = @import("screen_result.zig");
+const ScreenResult = screen_result.ScreenResult;
 
 const Window = ui.Window;
 const writeText = ui.writeText;
 const writeFmt = ui.writeFmt;
 
-pub const InventoryEntry = struct {
-    item_id: []const u8,
-    quantity: i64,
-};
+pub const InventoryEntry = ui.InventoryEntry;
 
-pub const ItemUseResult = struct {
-    item_id: []const u8,
-    target_idx: u8,
-    heal_amount: u16,
-};
 
 const Mode = enum {
     browsing,
@@ -36,14 +30,13 @@ pub const InventoryScreen = struct {
     currency: u32,
     cursor: u8,
     total_count: u8,
-    done: bool,
     dirty: bool,
     mode: Mode,
     pending_item_idx: u8,
     target_cursor: u8,
     roster: []critter_mod.Critter,
     roster_species: []const ?*const species_mod.Species,
-    use_result: ?ItemUseResult,
+    screen_context: ScreenResult.ScreenContext,
 
     pub fn init(
         entries: []InventoryEntry,
@@ -51,6 +44,7 @@ pub const InventoryScreen = struct {
         currency: u32,
         roster: []critter_mod.Critter,
         roster_species: []const ?*const species_mod.Species,
+        context: ScreenResult.ScreenContext,
     ) InventoryScreen {
         var count: u8 = 0;
         for (entries) |entry| {
@@ -62,30 +56,32 @@ pub const InventoryScreen = struct {
             .currency = currency,
             .cursor = 0,
             .total_count = count,
-            .done = false,
             .dirty = true,
             .mode = .browsing,
             .pending_item_idx = 0,
             .target_cursor = 0,
             .roster = roster,
             .roster_species = roster_species,
-            .use_result = null,
+            .screen_context = context,
         };
     }
 
-    pub fn handleInput(self: *InventoryScreen, key: vaxis.Key) void {
+    pub fn handleInput(self: *InventoryScreen, key: vaxis.Key) ?ScreenResult {
         self.dirty = true;
-        switch (self.mode) {
+        return switch (self.mode) {
             .browsing => self.handleBrowsing(key),
             .select_target => self.handleSelectTarget(key),
-        }
+        };
     }
 
-    fn handleBrowsing(self: *InventoryScreen, key: vaxis.Key) void {
+    fn handleBrowsing(self: *InventoryScreen, key: vaxis.Key) ?ScreenResult {
         const action = input.applyCursor(&self.cursor, self.total_count, input.menuNav(key));
         switch (action) {
             .back => {
-                self.done = true;
+                return switch (self.screen_context) {
+                    .from_hub => .goto_hub,
+                    .from_dungeon => .goto_dungeon,
+                };
             },
             .confirm => {
                 if (self.lookupDisplayIdx(self.cursor)) |lookup| {
@@ -101,9 +97,10 @@ pub const InventoryScreen = struct {
             },
             else => {},
         }
+        return null;
     }
 
-    fn handleSelectTarget(self: *InventoryScreen, key: vaxis.Key) void {
+    fn handleSelectTarget(self: *InventoryScreen, key: vaxis.Key) ?ScreenResult {
         const roster_len: u8 = @intCast(@min(self.roster.len, 255));
         const action = input.applyCursor(&self.target_cursor, roster_len, input.menuNav(key));
         switch (action) {
@@ -111,18 +108,17 @@ pub const InventoryScreen = struct {
                 self.mode = .browsing;
             },
             .confirm => {
-                const lookup = self.lookupDisplayIdx(self.pending_item_idx) orelse return;
+                const lookup = self.lookupDisplayIdx(self.pending_item_idx) orelse return null;
                 const item = lookup.item;
                 const idx = self.target_cursor;
-                if (idx >= self.roster.len) return;
-                if (!self.isValidTarget(item, idx)) return;
+                if (idx >= self.roster.len) return null;
+                if (!self.isValidTarget(item, idx)) return null;
 
-                // Apply the effect
                 const critter = &self.roster[idx];
                 var heal_amount: u16 = 0;
 
                 if (item.kind == .healing) {
-                    const heal = item.heal_amount orelse return;
+                    const heal = item.heal_amount orelse return null;
                     const max_hp = critter.effectiveStat(.hp);
                     const old_hp = critter.current_hp;
                     critter.current_hp = @min(max_hp, old_hp + heal);
@@ -135,13 +131,6 @@ pub const InventoryScreen = struct {
                     heal_amount = restore;
                 }
 
-                self.use_result = .{
-                    .item_id = item.id,
-                    .target_idx = idx,
-                    .heal_amount = heal_amount,
-                };
-
-                // Decrement local quantity for display
                 self.entries[lookup.entry_idx].quantity -= 1;
                 if (self.entries[lookup.entry_idx].quantity <= 0) {
                     self.total_count -|= 1;
@@ -151,9 +140,16 @@ pub const InventoryScreen = struct {
                 }
 
                 self.mode = .browsing;
+                return ScreenResult{ .persist_item_use = .{
+                    .item_id = item.id,
+                    .target_idx = idx,
+                    .heal_amount = heal_amount,
+                    .context = self.screen_context,
+                } };
             },
             else => {},
         }
+        return null;
     }
 
     pub fn render(self: *const InventoryScreen, win: Window) void {

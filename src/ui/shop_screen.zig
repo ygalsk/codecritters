@@ -8,6 +8,7 @@ const theme = @import("theme.zig");
 const layout = @import("layout.zig");
 const widgets = @import("widgets.zig");
 const input = @import("input.zig");
+const ScreenResult = @import("screen_result.zig").ScreenResult;
 
 const shop_mod = dungeon_mod.shop;
 
@@ -20,8 +21,6 @@ pub const ShopScreen = struct {
     game_data: *const game_data_mod.GameData,
     cursor: u8,
     log: ui.MessageLog,
-    done: bool,
-    extracted: bool,
     dirty: bool,
 
     pub fn init(
@@ -33,39 +32,35 @@ pub const ShopScreen = struct {
             .game_data = game_data,
             .cursor = 0,
             .log = ui.MessageLog.init(),
-            .done = false,
-            .extracted = false,
             .dirty = true,
         };
         screen.log.push("Welcome to the shop!");
         return screen;
     }
 
-    pub fn handleInput(self: *ShopScreen, key: vaxis.Key) void {
+    pub fn handleInput(self: *ShopScreen, key: vaxis.Key) ?ScreenResult {
         self.dirty = true;
 
         const shop_state = self.dungeon.current_shop orelse {
             if (key.matches('c', .{})) {
-                self.done = true;
+                return .goto_dungeon;
             } else if (key.matches('e', .{})) {
-                self.done = true;
-                self.extracted = true;
+                return .start_extraction;
             }
-            return;
+            return null;
         };
 
         const action = input.applyCursor(&self.cursor, shop_state.slot_count, input.menuNav(key));
         if (action == .confirm) {
             self.tryBuy();
         } else if (action == .none) {
-            // Handle non-menu keys
             if (key.matches('c', .{})) {
-                self.done = true;
+                return .goto_dungeon;
             } else if (key.matches('e', .{})) {
-                self.done = true;
-                self.extracted = true;
+                return .start_extraction;
             }
         }
+        return null;
     }
 
     fn tryBuy(self: *ShopScreen) void {

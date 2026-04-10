@@ -10,6 +10,8 @@ const theme = @import("theme.zig");
 const layout = @import("layout.zig");
 const widgets = @import("widgets.zig");
 const input = @import("input.zig");
+const screen_result = @import("screen_result.zig");
+const ScreenResult = screen_result.ScreenResult;
 
 const floor_gen = dungeon_mod.floor_gen;
 const biome_mod = dungeon_mod.biome;
@@ -34,13 +36,6 @@ pub const DungeonScreen = struct {
 
     log: ui.MessageLog,
 
-    // Transition signals (checked by main.zig after handleInput)
-    pending_battle: ?dungeon_mod.EncounterInfo,
-    pending_is_boss: bool,
-    pending_shop: bool,
-    pending_inventory: bool,
-    pending_roster: bool,
-
     // Quick menu state
     menu_mode: MenuMode,
     menu_cursor: u8,
@@ -56,11 +51,6 @@ pub const DungeonScreen = struct {
             .game_data = game_data,
             .visited = .{.{false} ** floor_gen.FLOOR_WIDTH} ** floor_gen.FLOOR_HEIGHT,
             .log = ui.MessageLog.init(),
-            .pending_battle = null,
-            .pending_is_boss = false,
-            .pending_shop = false,
-            .pending_inventory = false,
-            .pending_roster = false,
             .menu_mode = .exploring,
             .menu_cursor = 0,
             .dirty = true,
@@ -70,19 +60,19 @@ pub const DungeonScreen = struct {
         return screen;
     }
 
-    pub fn handleInput(self: *DungeonScreen, key: vaxis.Key) void {
-        switch (self.menu_mode) {
+    pub fn handleInput(self: *DungeonScreen, key: vaxis.Key) ?ScreenResult {
+        return switch (self.menu_mode) {
             .exploring => self.handleExploring(key),
             .quick_menu => self.handleQuickMenu(key),
-        }
+        };
     }
 
-    fn handleExploring(self: *DungeonScreen, key: vaxis.Key) void {
+    fn handleExploring(self: *DungeonScreen, key: vaxis.Key) ?ScreenResult {
         if (key.matches('m', .{})) {
             self.menu_mode = .quick_menu;
             self.menu_cursor = 0;
             self.dirty = true;
-            return;
+            return null;
         }
 
         const dir: ?dungeon_mod.Direction = if (key.matches(vaxis.Key.up, .{}))
@@ -107,25 +97,32 @@ pub const DungeonScreen = struct {
                 .blocked => {},
                 .encounter_triggered => |info| {
                     self.updateVisited();
-                    self.pending_battle = info;
-                    self.pending_is_boss = false;
                     self.log.push("A wild critter appeared!");
+                    return ScreenResult{ .goto_battle = .{
+                        .species_id = info.species_id,
+                        .level = info.level,
+                        .is_boss = false,
+                    } };
                 },
                 .boss_triggered => |info| {
                     self.updateVisited();
-                    self.pending_battle = info;
-                    self.pending_is_boss = true;
                     self.log.push("A powerful boss blocks your path!");
+                    return ScreenResult{ .goto_battle = .{
+                        .species_id = info.species_id,
+                        .level = info.level,
+                        .is_boss = true,
+                    } };
                 },
                 .stairs_reached => {
                     self.updateVisited();
-                    self.pending_shop = true;
+                    return .goto_shop;
                 },
             }
         }
+        return null;
     }
 
-    fn handleQuickMenu(self: *DungeonScreen, key: vaxis.Key) void {
+    fn handleQuickMenu(self: *DungeonScreen, key: vaxis.Key) ?ScreenResult {
         const action = input.applyCursor(&self.menu_cursor, 3, input.menuNav(key));
         if (action != .none) self.dirty = true;
         switch (action) {
@@ -135,12 +132,12 @@ pub const DungeonScreen = struct {
             .confirm => {
                 switch (self.menu_cursor) {
                     0 => { // Items
-                        self.pending_inventory = true;
                         self.menu_mode = .exploring;
+                        return ScreenResult{ .goto_inventory = .from_dungeon };
                     },
                     1 => { // Party
-                        self.pending_roster = true;
                         self.menu_mode = .exploring;
+                        return ScreenResult{ .goto_roster = .from_dungeon };
                     },
                     2 => { // Close
                         self.menu_mode = .exploring;
@@ -150,6 +147,7 @@ pub const DungeonScreen = struct {
             },
             else => {},
         }
+        return null;
     }
 
     // ─── Rendering ───
