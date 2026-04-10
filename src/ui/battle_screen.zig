@@ -15,6 +15,7 @@ const widgets = @import("widgets.zig");
 const input = @import("input.zig");
 const ScreenResult = @import("screen_result.zig").ScreenResult;
 const anim_mod = @import("anim.zig");
+const sound = @import("sound.zig");
 
 const Window = ui.Window;
 const Style = theme.Style;
@@ -260,6 +261,13 @@ pub const BattleScreen = struct {
             const msg = text.formatEvent(event, &buf);
             self.log.push(msg);
             self.event_index += 1;
+            // Sound cues for key battle events
+            switch (event) {
+                .critter_fainted => sound.beep(),
+                .catch_result => |e| if (e.success) sound.beep(),
+                .damage_dealt => |e| if (e.effectiveness == .strong) sound.beep(),
+                else => {},
+            }
         } else {
             self.current_result = null;
             if (result.outcome) |outcome| {

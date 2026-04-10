@@ -817,6 +817,181 @@ def draw_cobol(d, pri, dark, offset_y=0):
                 d.rectangle([x, py, x+1, py+1], fill=pri)
 
 
+def draw_valgrind(d, pri, dark, offset_y=0):
+    """Magnifying glass over memory chip - DEBUG epic."""
+    y = 1 + offset_y
+    # Memory chip body
+    d.rectangle([2, y+3, 13, y+11], fill=dark, outline=pri)
+    # Chip pins (left/right)
+    for i in range(3):
+        py = y + 4 + i * 2
+        d.rectangle([0, py, 2, py+1], fill=pri)
+        d.rectangle([13, py, 15, py+1], fill=pri)
+    # Grid lines on chip
+    d.line([5, y+4, 5, y+10], fill=pri, width=1)
+    d.line([10, y+4, 10, y+10], fill=pri, width=1)
+    d.line([3, y+7, 12, y+7], fill=pri, width=1)
+    # V label
+    d.line([6, y+1, 7, y+3], fill=(255, 200, 0, 255), width=1)
+    d.line([7, y+3, 8, y+1], fill=(255, 200, 0, 255), width=1)
+
+def draw_race_condition(d, pri, dark, offset_y=0):
+    """Two arrows racing/colliding - CHAOS epic."""
+    y = 1 + offset_y
+    # Arrow 1 (going right)
+    d.line([1, y+4, 10, y+4], fill=pri, width=2)
+    d.polygon([(10, y+2), (13, y+4), (10, y+6)], fill=pri)
+    # Arrow 2 (going left)
+    d.line([14, y+9, 5, y+9], fill=dark, width=2)
+    d.polygon([(5, y+7), (2, y+9), (5, y+11)], fill=dark)
+    # Collision sparks at center
+    d.rectangle([7, y+6, 8, y+7], fill=(255, 255, 0, 255))
+    d.rectangle([6, y+5, 7, y+6], fill=(255, 200, 0, 255))
+    d.rectangle([8, y+7, 9, y+8], fill=(255, 200, 0, 255))
+
+def draw_load_balancer(d, pri, dark, offset_y=0):
+    """Scale/balance with server racks - PATIENCE epic."""
+    y = 1 + offset_y
+    # Central pillar
+    d.rectangle([7, y+2, 8, y+10], fill=dark)
+    # Balance beam
+    d.line([2, y+2, 13, y+2], fill=pri, width=2)
+    # Left pan (server)
+    d.rectangle([1, y+3, 5, y+7], fill=dark, outline=pri)
+    d.rectangle([2, y+4, 4, y+5], fill=pri)
+    # Right pan (server)
+    d.rectangle([10, y+3, 14, y+7], fill=dark, outline=pri)
+    d.rectangle([11, y+4, 13, y+5], fill=pri)
+    # Base
+    d.rectangle([4, y+10, 11, y+11], fill=dark, outline=pri)
+
+def draw_turing_machine(d, pri, dark, offset_y=0):
+    """Tape head reading infinite tape - WISDOM epic."""
+    y = 1 + offset_y
+    # Tape (horizontal strip)
+    d.rectangle([0, y+5, 15, y+8], fill=dark, outline=pri)
+    # Tape cells
+    for i in range(5):
+        x = 1 + i * 3
+        d.line([x+2, y+5, x+2, y+8], fill=pri, width=1)
+        # Binary data in cells
+        if i % 2 == 0:
+            d.rectangle([x, y+6, x+1, y+7], fill=pri)
+    # Read/write head
+    d.polygon([(6, y+3), (9, y+3), (8, y+5), (7, y+5)], fill=pri, outline=dark)
+    # Head arm
+    d.rectangle([7, y+1, 8, y+3], fill=dark)
+    # State indicator
+    d.rectangle([6, y, 9, y+1], fill=(255, 200, 0, 255))
+
+def draw_regex(d, pri, dark, offset_y=0):
+    """Tangled pattern with asterisks - SNARK epic."""
+    y = 1 + offset_y
+    # Central .*  pattern
+    d.rectangle([4, y+2, 11, y+10], fill=dark, outline=pri)
+    # Dots and stars inside
+    d.rectangle([5, y+4, 6, y+5], fill=pri)  # .
+    d.rectangle([8, y+3, 9, y+4], fill=(255, 200, 0, 255))  # *
+    d.rectangle([6, y+7, 7, y+8], fill=pri)  # .
+    d.rectangle([10, y+6, 11, y+7], fill=(255, 200, 0, 255))  # *
+    # Backslash escapes
+    d.line([2, y+1, 4, y+4], fill=pri, width=1)
+    d.line([11, y+8, 13, y+11], fill=pri, width=1)
+    # Question marks for confusion
+    d.rectangle([13, y+1, 14, y+2], fill=(255, 100, 0, 255))
+    d.rectangle([1, y+9, 2, y+10], fill=(255, 100, 0, 255))
+
+def draw_prompt_engineer(d, pri, dark, offset_y=0):
+    """Chat bubble with magic wand - VIBE epic."""
+    y = 1 + offset_y
+    # Chat bubble
+    d.rectangle([1, y+1, 12, y+7], fill=dark, outline=pri)
+    d.polygon([(3, y+7), (5, y+10), (7, y+7)], fill=dark)
+    # "..." in bubble
+    d.rectangle([3, y+3, 4, y+4], fill=pri)
+    d.rectangle([6, y+3, 7, y+4], fill=pri)
+    d.rectangle([9, y+3, 10, y+4], fill=pri)
+    # Magic wand
+    d.line([11, y+4, 14, y+11], fill=(255, 200, 0, 255), width=2)
+    # Sparkle at wand tip
+    d.rectangle([14, y+10, 15, y+11], fill=(255, 255, 200, 255))
+    d.rectangle([13, y+12, 14, y+13], fill=(255, 255, 200, 255))
+
+def draw_mainframe(d, pri, dark, offset_y=0):
+    """Giant server tower with blinking lights - LEGACY epic."""
+    y = 0 + offset_y
+    # Tall server body (fills most of frame)
+    d.rectangle([2, y+0, 13, y+14], fill=dark, outline=pri)
+    # Rack sections
+    d.line([2, y+5, 13, y+5], fill=pri, width=1)
+    d.line([2, y+10, 13, y+10], fill=pri, width=1)
+    # Blinking lights (green/amber/red)
+    d.rectangle([4, y+2, 5, y+3], fill=(0, 255, 0, 255))
+    d.rectangle([7, y+2, 8, y+3], fill=(255, 200, 0, 255))
+    d.rectangle([10, y+2, 11, y+3], fill=(255, 0, 0, 255))
+    # Drive bays
+    d.rectangle([4, y+6, 11, y+7], fill=pri)
+    d.rectangle([4, y+8, 11, y+9], fill=pri)
+    # Vent grill
+    for i in range(4):
+        x = 4 + i * 2
+        d.line([x, y+11, x, y+13], fill=pri, width=1)
+
+def draw_root(d, pri, dark, offset_y=0):
+    """Crown with # prompt - LEGACY legendary."""
+    y = 1 + offset_y
+    # Crown
+    d.polygon([(2, y+5), (3, y+1), (5, y+3), (7, y), (9, y+3), (11, y+1), (12, y+5)], fill=(255, 215, 0, 255), outline=dark)
+    # Crown jewels
+    d.rectangle([5, y+3, 6, y+4], fill=(255, 0, 0, 255))
+    d.rectangle([9, y+3, 10, y+4], fill=(0, 100, 255, 255))
+    # Terminal below
+    d.rectangle([2, y+6, 13, y+12], fill=dark, outline=pri)
+    # # prompt
+    d.rectangle([3, y+8, 4, y+9], fill=(255, 215, 0, 255))
+    d.rectangle([3, y+7, 4, y+8], fill=(255, 215, 0, 255))
+    d.rectangle([5, y+8, 6, y+9], fill=(255, 215, 0, 255))
+    d.rectangle([5, y+7, 6, y+8], fill=(255, 215, 0, 255))
+    # Blinking cursor
+    d.rectangle([8, y+9, 9, y+10], fill=pri)
+
+def draw_zero_day(d, pri, dark, offset_y=0):
+    """Hooded figure with exploit code - CHAOS legendary."""
+    y = 1 + offset_y
+    # Hood
+    d.polygon([(4, y+4), (7, y), (10, y+4)], fill=dark, outline=pri)
+    # Face (shadowed)
+    d.ellipse([5, y+3, 10, y+7], fill=(40, 0, 0, 255))
+    # Glowing eyes
+    d.rectangle([6, y+4, 7, y+5], fill=(255, 0, 0, 255))
+    d.rectangle([8, y+4, 9, y+5], fill=(255, 0, 0, 255))
+    # Cloak body
+    d.polygon([(3, y+7), (7, y+6), (11, y+7), (12, y+12), (2, y+12)], fill=dark, outline=pri)
+    # Code fragments floating
+    d.rectangle([1, y+2, 3, y+3], fill=(0, 255, 0, 200))
+    d.rectangle([12, y+1, 14, y+2], fill=(0, 255, 0, 200))
+    d.rectangle([13, y+9, 15, y+10], fill=(0, 255, 0, 200))
+
+def draw_linus(d, pri, dark, offset_y=0):
+    """Penguin with kernel scroll - WISDOM legendary."""
+    y = 1 + offset_y
+    # Penguin body (Tux-inspired)
+    d.ellipse([3, y+2, 12, y+12], fill=(30, 30, 30, 255), outline=dark)
+    # White belly
+    d.ellipse([5, y+5, 10, y+11], fill=(220, 220, 220, 255))
+    # Eyes
+    d.rectangle([5, y+3, 6, y+4], fill=(255, 255, 255, 255))
+    d.rectangle([9, y+3, 10, y+4], fill=(255, 255, 255, 255))
+    d.rectangle([5, y+3, 5, y+3], fill=(0, 0, 0, 255))
+    d.rectangle([9, y+3, 9, y+3], fill=(0, 0, 0, 255))
+    # Beak
+    d.polygon([(6, y+5), (8, y+5), (7, y+6)], fill=(255, 165, 0, 255))
+    # Scroll/kernel
+    d.rectangle([12, y+3, 15, y+8], fill=(255, 220, 150, 255), outline=dark)
+    d.rectangle([13, y+4, 14, y+5], fill=pri)
+    d.rectangle([13, y+6, 14, y+7], fill=pri)
+
+
 SPRITES = {
     # DEBUG type
     "println":               (draw_println,               COLORS["debug"]),
@@ -876,6 +1051,18 @@ SPRITES = {
     "readme":                (draw_readme,                COLORS["vibe"]),
     "no_tests":              (draw_no_tests,              COLORS["vibe"]),
     "yolo":                  (draw_yolo,                  COLORS["vibe"]),
+    # EPIC tier
+    "valgrind":              (draw_valgrind,              COLORS["debug"]),
+    "race_condition":        (draw_race_condition,        COLORS["chaos"]),
+    "load_balancer":         (draw_load_balancer,         COLORS["patience"]),
+    "turing_machine":        (draw_turing_machine,        COLORS["wisdom"]),
+    "regex":                 (draw_regex,                 COLORS["snark"]),
+    "prompt_engineer":       (draw_prompt_engineer,       COLORS["vibe"]),
+    "mainframe":             (draw_mainframe,             COLORS["legacy"]),
+    # LEGENDARY tier
+    "root":                  (draw_root,                  COLORS["legacy"]),
+    "zero_day":              (draw_zero_day,              COLORS["chaos"]),
+    "linus":                 (draw_linus,                 COLORS["wisdom"]),
 }
 
 if __name__ == "__main__":

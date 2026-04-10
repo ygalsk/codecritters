@@ -39,6 +39,7 @@ const title_screen_mod = @import("ui/title_screen.zig");
 const TitleScreen = title_screen_mod.TitleScreen;
 const run_over_screen_mod = @import("ui/run_over_screen.zig");
 const RunOverScreen = run_over_screen_mod.RunOverScreen;
+const sound = @import("ui/sound.zig");
 
 const Event = union(enum) {
     key_press: vaxis.Key,
@@ -136,7 +137,7 @@ pub fn main() !void {
 
     // Load sprite sheets for known critters
     var sprite_map = SpriteMap{};
-    const sprite_ids = [_][]const u8{ "println", "tracer", "profiler", "glitch", "gremlin", "pandemonium", "goto", "spaghetto", "dependency", "monad", "copilot", "segfault", "mutex", "lgtm", "singleton", "printf", "fprintf", "logstash", "stack_overflow", "kernel_panic_critter", "god_object", "monolith", "semaphore", "deadlock", "functor", "burrito", "nitpick", "bikeshed", "autopilot", "hallucination", "breakpoint", "watchpoint", "heisenbug", "fuzzer", "chaos_monkey", "bobby_tables", "queue", "priority_queue", "cron", "hashmap", "b_tree", "rubber_duck", "todo", "fixme", "four_oh_four", "readme", "no_tests", "yolo", "makefile", "jenkins", "cobol" };
+    const sprite_ids = [_][]const u8{ "println", "tracer", "profiler", "glitch", "gremlin", "pandemonium", "goto", "spaghetto", "dependency", "monad", "copilot", "segfault", "mutex", "lgtm", "singleton", "printf", "fprintf", "logstash", "stack_overflow", "kernel_panic_critter", "god_object", "monolith", "semaphore", "deadlock", "functor", "burrito", "nitpick", "bikeshed", "autopilot", "hallucination", "breakpoint", "watchpoint", "heisenbug", "fuzzer", "chaos_monkey", "bobby_tables", "queue", "priority_queue", "cron", "hashmap", "b_tree", "rubber_duck", "todo", "fixme", "four_oh_four", "readme", "no_tests", "yolo", "makefile", "jenkins", "cobol", "valgrind", "race_condition", "load_balancer", "turing_machine", "regex", "prompt_engineer", "mainframe", "root", "zero_day", "linus" };
     var sprite_storage: [sprite_ids.len]sprite_mod.SpriteSheet = undefined;
     var sprite_count: usize = 0;
     for (sprite_ids) |id| {
@@ -476,6 +477,7 @@ pub fn main() !void {
                                         if (startBattle(&dungeon_state, info, &gd, &inv_bridge, &inv_bridge_count, &inv_pre_counts, &battle_state, &battle_screen, &sprite_map, use_kitty)) {
                                             transition_pending = .battle;
                                             transition_start_ms = std.time.milliTimestamp();
+                                            sound.beep();
                                         }
                                     },
                                     .goto_shop => {
@@ -892,6 +894,9 @@ fn awardBattleXp(
             if (result.new_species_id) |new_id| {
                 dungeon_state.party_species[i] = gd.findSpecies(new_id);
             }
+            sound.beep();
+        } else if (result.levels_gained > 0) {
+            sound.beep();
         }
     }
     return xp_amount;
@@ -936,6 +941,9 @@ fn awardExtractionXp(
                 if (result.new_species_id) |new_id| {
                     dungeon_state.party_species[i] = gd.findSpecies(new_id);
                 }
+                sound.beep();
+            } else if (result.levels_gained > 0) {
+                sound.beep();
             }
         }
     }

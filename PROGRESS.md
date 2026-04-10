@@ -234,3 +234,14 @@
 - **+21 sprites** (`tools/gen_sprites.py`, `assets/sprites/`): All new species have 32x16 2-frame sprite sheets using type color schemes.
 - **Totals**: 51 species, 42 moves, 52 sprites (including title.png), 7 biomes.
 - **Files changed**: `data/species.json`, `data/moves.json`, `data/biomes.json`, `tools/gen_sprites.py`, `assets/sprites/*.png`, `PROGRESS.md`, `AGENT_INSTRUCTIONS.md`
+
+## Phase 24 — Epics + Legendaries + Sound Cues [DONE]
+- **+7 epic species** (`data/species.json`): One per type with stats reflecting drawbacks (no engine hooks yet). Valgrind (debug, SPD=15), Race Condition (chaos, fragile glass cannon), Load Balancer (patience, LGC=30), Turing Machine (wisdom, slow), Regex (snark, power=120/acc=50 signature), Prompt Engineer (vibe, LGC=5), Mainframe (legacy, HP=200/SPD=5). BST ~390, extreme stat distributions.
+- **+3 legendary species**: Root (legacy, BST=450, signature=Sudo), Zero Day (chaos, BST=450, SPD=160), Linus (wisdom, BST=440, signature=Revert). Not in encounter tables — milestone-locked (acquisition TBD).
+- **+8 moves** (`data/moves.json`): Memory Scan (debug 95/90), Data Race (chaos 100/65), Regex Match (snark 120/50, highest power in game), Prompt (vibe 0/100, always applies in_the_zone), Core Dump (legacy 110/70), Sudo (legacy 90/90), Zero Day Exploit (chaos 100/85), Revert (wisdom 75/95). Load Balancer and Turing Machine reuse existing moves as signatures.
+- **Biome encounter updates** (`data/biomes.json`): 7 epics added to 1-2 biomes each at weight=1, min_floor=12 (deeper than rares). Legendaries excluded from all tables.
+- **+10 sprites** (`tools/gen_sprites.py`, `assets/sprites/`): All 10 new species have 32x16 2-frame sprite sheets.
+- **BEL sound system** (`src/ui/sound.zig`): New module with `beep()` writing `\x07` to stdout. Emits on: battle start, critter fainted, successful catch, super-effective hit, level up, evolution.
+- **Sprite capacity** (`src/ui/sprite.zig`): MAX_SPRITES bumped from 64 to 72.
+- **Totals**: 61 species (full roster complete), 50 moves, 62 sprites (including title.png), 7 biomes.
+- **Files changed**: `data/species.json`, `data/moves.json`, `data/biomes.json`, `tools/gen_sprites.py`, `assets/sprites/*.png`, `src/ui/sound.zig`, `src/ui/battle_screen.zig`, `src/ui/sprite.zig`, `src/main.zig`, `PROGRESS.md`, `AGENT_INSTRUCTIONS.md`

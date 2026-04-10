@@ -66,7 +66,7 @@ Rustacean Depths (.rs), Gopher Tunnels (.go), C Catacombs (.c/.h), Shell Scripts
 ### Phase 23 — Two-Stage Lines + Standalone Rares [DONE]
 Each type gets its uncommon→rare 2-stage line + standalone rare (Breakpoint→Watchpoint, Heisenbug, etc.). +21 species, +10 moves, +21 sprites.
 
-### Phase 24 — Epics + Legendaries + Sound Cues
+### Phase 24 — Epics + Legendaries + Sound Cues [DONE]
 7 epics (stats reflect drawbacks, no special engine hooks yet) + 3 legendaries (not in encounter tables). Sound system emitting BEL on key events. +10 species, +8 moves, +10 sprites. Full 61-critter roster complete.
 
 ### Phase 25 — Dungeon Graphics + Biome Tilesets + Attack Animations + Visual Overhaul

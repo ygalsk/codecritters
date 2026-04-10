@@ -37,7 +37,9 @@
       { "species_id": "watchpoint", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "chaos_monkey", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "heisenbug", "weight": 1, "min_floor": 10, "max_floor": 255 },
-      { "species_id": "bobby_tables", "weight": 1, "min_floor": 10, "max_floor": 255 }
+      { "species_id": "bobby_tables", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "valgrind", "weight": 1, "min_floor": 12, "max_floor": 255 },
+      { "species_id": "mainframe", "weight": 1, "min_floor": 12, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "tracer", "level_bonus": 5 },
@@ -98,7 +100,9 @@
       { "species_id": "no_tests", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "b_tree", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "rubber_duck", "weight": 1, "min_floor": 10, "max_floor": 255 },
-      { "species_id": "yolo", "weight": 1, "min_floor": 10, "max_floor": 255 }
+      { "species_id": "yolo", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "turing_machine", "weight": 1, "min_floor": 12, "max_floor": 255 },
+      { "species_id": "prompt_engineer", "weight": 1, "min_floor": 12, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "monad", "level_bonus": 5 },
@@ -154,7 +158,9 @@
       { "species_id": "chaos_monkey", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "no_tests", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "bobby_tables", "weight": 1, "min_floor": 10, "max_floor": 255 },
-      { "species_id": "yolo", "weight": 1, "min_floor": 10, "max_floor": 255 }
+      { "species_id": "yolo", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "race_condition", "weight": 1, "min_floor": 12, "max_floor": 255 },
+      { "species_id": "prompt_engineer", "weight": 1, "min_floor": 12, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "segfault", "level_bonus": 5 },
@@ -211,7 +217,9 @@
       { "species_id": "watchpoint", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "priority_queue", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "heisenbug", "weight": 1, "min_floor": 10, "max_floor": 255 },
-      { "species_id": "cron", "weight": 1, "min_floor": 10, "max_floor": 255 }
+      { "species_id": "cron", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "valgrind", "weight": 1, "min_floor": 12, "max_floor": 255 },
+      { "species_id": "load_balancer", "weight": 1, "min_floor": 12, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "profiler", "level_bonus": 5 },
@@ -268,7 +276,9 @@
       { "species_id": "priority_queue", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "b_tree", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "cron", "weight": 1, "min_floor": 10, "max_floor": 255 },
-      { "species_id": "rubber_duck", "weight": 1, "min_floor": 10, "max_floor": 255 }
+      { "species_id": "rubber_duck", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "load_balancer", "weight": 1, "min_floor": 12, "max_floor": 255 },
+      { "species_id": "turing_machine", "weight": 1, "min_floor": 12, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "deadlock", "level_bonus": 5 },
@@ -326,7 +336,9 @@
       { "species_id": "jenkins", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "chaos_monkey", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "cobol", "weight": 1, "min_floor": 10, "max_floor": 255 },
-      { "species_id": "bobby_tables", "weight": 1, "min_floor": 10, "max_floor": 255 }
+      { "species_id": "bobby_tables", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "regex", "weight": 1, "min_floor": 12, "max_floor": 255 },
+      { "species_id": "mainframe", "weight": 1, "min_floor": 12, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "kernel_panic_critter", "level_bonus": 5 },
@@ -383,7 +395,9 @@
       { "species_id": "fuzzer", "weight": 2, "min_floor": 7, "max_floor": 255 },
       { "species_id": "fixme", "weight": 1, "min_floor": 10, "max_floor": 255 },
       { "species_id": "four_oh_four", "weight": 1, "min_floor": 10, "max_floor": 255 },
-      { "species_id": "chaos_monkey", "weight": 1, "min_floor": 10, "max_floor": 255 }
+      { "species_id": "chaos_monkey", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "race_condition", "weight": 1, "min_floor": 12, "max_floor": 255 },
+      { "species_id": "regex", "weight": 1, "min_floor": 12, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "bikeshed", "level_bonus": 5 },
