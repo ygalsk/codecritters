@@ -22,6 +22,24 @@ pub const CritterType = enum {
     }
 };
 
+pub const Rarity = enum {
+    common,
+    uncommon,
+    rare,
+    epic,
+    legendary,
+
+    pub fn displayName(self: Rarity) []const u8 {
+        return switch (self) {
+            .common => "Common",
+            .uncommon => "Uncommon",
+            .rare => "Rare",
+            .epic => "Epic",
+            .legendary => "Legendary",
+        };
+    }
+};
+
 pub const Effectiveness = enum {
     weak,
     neutral,

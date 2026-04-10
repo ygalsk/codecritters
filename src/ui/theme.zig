@@ -57,3 +57,4 @@ pub const item_found: Style = .{ .fg = purple };
 
 pub const typeColor = colors_mod.typeColor;
 pub const hpColor = colors_mod.hpColor;
+pub const rarityColor = colors_mod.rarityColor;

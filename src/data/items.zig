@@ -20,7 +20,9 @@ pub const CatchTier = enum {
 pub const Item = struct {
     id: []const u8,
     name: []const u8,
+    description: []const u8 = "",
     kind: ItemKind,
+    rarity: types.Rarity = .common,
     catch_tier: ?CatchTier = null,
     base_catch_rate: ?u8 = null,
     heal_amount: ?u16 = null,
@@ -54,6 +56,8 @@ test "load items from JSON" {
     try std.testing.expectEqual(ItemKind.catch_tool, ps.?.kind);
     try std.testing.expectEqual(CatchTier.print_statement, ps.?.catch_tier.?);
     try std.testing.expectEqual(@as(u8, 20), ps.?.base_catch_rate.?);
+    try std.testing.expectEqual(types.Rarity.common, ps.?.rarity);
+    try std.testing.expect(ps.?.description.len > 0);
 
     // Check a healing item
     const hotfix = findById(parsed.value, "hotfix");

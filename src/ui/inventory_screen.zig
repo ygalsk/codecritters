@@ -171,6 +171,8 @@ pub const InventoryScreen = struct {
         _ = writeText(win, 2, 1, "Inventory", theme.title);
         _ = writeFmt(win, 14, 1, theme.currency, "  ${d}", .{self.currency});
 
+        const show_detail = win.width >= 60;
+
         var row: u16 = 3;
         var display_idx: u8 = 0;
 
@@ -210,8 +212,96 @@ pub const InventoryScreen = struct {
             _ = writeText(win, 2, row, "(empty)", .{ .fg = theme.muted, .italic = true });
         }
 
+        // Detail panel on right side
+        if (show_detail) {
+            if (self.lookupDisplayIdx(self.cursor)) |lookup| {
+                self.renderItemDetail(win, lookup.item, lookup.entry_idx);
+            }
+        }
+
         // Controls hint
         widgets.renderHintAt(win, 2, "[Up/Down] Navigate  [Enter] Use  [Esc] Back");
+    }
+
+    fn renderItemDetail(self: *const InventoryScreen, win: Window, item: *const items_mod.Item, entry_idx: usize) void {
+        const panel_x: u16 = win.width / 2 + 1;
+        const panel_w: u16 = win.width -| panel_x -| 1;
+        if (panel_w < 15) return;
+
+        var row: u16 = 2;
+
+        // Item name
+        _ = writeText(win, panel_x, row, item.name, theme.heading);
+        row += 1;
+
+        // Rarity badge
+        const rarity_color = theme.rarityColor(item.rarity);
+        _ = writeFmt(win, panel_x, row, .{ .fg = rarity_color, .bold = true }, "[{s}]", .{item.rarity.displayName()});
+        row += 1;
+
+        // Quantity
+        const qty = self.entries[entry_idx].quantity;
+        _ = writeFmt(win, panel_x, row, theme.body, "Qty: {d}", .{qty});
+        row += 2;
+
+        // Description (word-wrapped)
+        if (item.description.len > 0) {
+            row = renderWrappedText(win, panel_x, row, panel_w, item.description);
+            row += 1;
+        }
+
+        // Effect details
+        _ = writeText(win, panel_x, row, "Effects:", theme.header);
+        row += 1;
+
+        switch (item.kind) {
+            .catch_tool => {
+                if (item.base_catch_rate) |rate| {
+                    _ = writeFmt(win, panel_x + 1, row, theme.body, "Catch Rate: {d}%", .{rate});
+                    row += 1;
+                }
+            },
+            .healing => {
+                if (item.heal_amount) |heal| {
+                    if (heal >= 9999) {
+                        _ = writeText(win, panel_x + 1, row, "Restores: Full HP", theme.body);
+                    } else {
+                        _ = writeFmt(win, panel_x + 1, row, theme.body, "Restores: {d} HP", .{heal});
+                    }
+                    row += 1;
+                }
+            },
+            .revive => {
+                if (item.revive_percent) |pct| {
+                    _ = writeFmt(win, panel_x + 1, row, theme.body, "Revives at {d}% HP", .{pct});
+                    row += 1;
+                }
+            },
+            .move_disc => {
+                if (item.move_id) |move_id| {
+                    if (self.game_data.findMove(move_id)) |move| {
+                        const type_color = theme.typeColor(move.move_type);
+                        _ = writeFmt(win, panel_x + 1, row, theme.body, "Move: {s}", .{move.name});
+                        row += 1;
+                        const tc = writeText(win, panel_x + 1, row, "Type: ", theme.body);
+                        _ = writeText(win, tc, row, move.move_type.displayName(), .{ .fg = type_color, .bold = true });
+                        row += 1;
+                        _ = writeFmt(win, panel_x + 1, row, theme.body, "Power: {d}  Acc: {d}%", .{ move.power, move.accuracy });
+                        row += 1;
+                    }
+                }
+            },
+        }
+
+        // Prices
+        row += 1;
+        if (item.buy_price > 0) {
+            _ = writeFmt(win, panel_x, row, theme.currency, "Buy: ${d}", .{item.buy_price});
+            row += 1;
+        }
+        if (item.sell_price > 0) {
+            _ = writeFmt(win, panel_x, row, .{ .fg = theme.info_gray }, "Sell: ${d}", .{item.sell_price});
+        }
     }
 
     fn renderTargetSelect(self: *const InventoryScreen, win: Window) void {
@@ -267,6 +357,12 @@ pub const InventoryScreen = struct {
 
             const prefix: []const u8 = if (is_sel) "> " else "  ";
             var c = writeText(win, 2, row, prefix, style);
+
+            // Rarity indicator
+            const rarity_color = theme.rarityColor(item.rarity);
+            c = writeText(win, c, row, "*", .{ .fg = rarity_color, .bold = true });
+            c = writeText(win, c, row, " ", style);
+
             c = writeText(win, c, row, item.name, style);
             c = writeFmt(win, c, row, style, "  x{d}", .{entry.quantity});
 
@@ -334,3 +430,38 @@ pub const InventoryScreen = struct {
         return false;
     }
 };
+
+fn renderWrappedText(win: Window, start_col: u16, start_row: u16, max_width: u16, text: []const u8) u16 {
+    var row = start_row;
+    var col = start_col;
+    var i: usize = 0;
+
+    while (i < text.len) {
+        // Find next word
+        const word_start = i;
+        while (i < text.len and text[i] != ' ' and text[i] != '\n') : (i += 1) {}
+        const word = text[word_start..i];
+
+        // Check if word fits on current line
+        const word_len: u16 = @intCast(@min(word.len, 65535));
+        if (col > start_col and col + word_len > start_col + max_width) {
+            row += 1;
+            col = start_col;
+            if (row >= win.height -| 3) break;
+        }
+
+        col = writeText(win, col, row, word, theme.body);
+
+        // Consume whitespace
+        if (i < text.len) {
+            if (text[i] == '\n') {
+                row += 1;
+                col = start_col;
+            } else {
+                col = writeText(win, col, row, " ", theme.body);
+            }
+            i += 1;
+        }
+    }
+    return row;
+}

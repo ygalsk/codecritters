@@ -16,6 +16,17 @@ pub fn typeColor(t: types.CritterType) Color {
     };
 }
 
+/// Map each Rarity tier to a display color.
+pub fn rarityColor(r: types.Rarity) Color {
+    return switch (r) {
+        .common => .{ .rgb = .{ 200, 200, 200 } },
+        .uncommon => .{ .rgb = .{ 80, 255, 120 } },
+        .rare => .{ .rgb = .{ 80, 200, 255 } },
+        .epic => .{ .rgb = .{ 180, 140, 255 } },
+        .legendary => .{ .rgb = .{ 255, 200, 40 } },
+    };
+}
+
 /// HP bar color based on percentage remaining.
 pub fn hpColor(current: u16, max: u16) Color {
     if (max == 0) return .{ .rgb = .{ 255, 0, 0 } };

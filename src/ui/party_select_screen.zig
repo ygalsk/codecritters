@@ -25,6 +25,7 @@ pub const PartySelectScreen = struct {
     done: bool,
     confirmed: bool,
     dirty: bool,
+    swap_mark: ?u8, // party slot index (0-2) being swapped
 
     pub fn init(
         roster: []const critter_mod.Critter,
@@ -40,6 +41,7 @@ pub const PartySelectScreen = struct {
             .done = false,
             .confirmed = false,
             .dirty = true,
+            .swap_mark = null,
         };
     }
 
@@ -77,6 +79,15 @@ pub const PartySelectScreen = struct {
         }
     }
 
+    fn selectedSlot(self: *const PartySelectScreen, roster_idx: usize) ?u8 {
+        for (self.selected, 0..) |maybe, i| {
+            if (maybe) |s| {
+                if (s == roster_idx) return @intCast(i);
+            }
+        }
+        return null;
+    }
+
     fn isUnavailable(self: *const PartySelectScreen, idx: usize) bool {
         if (idx >= self.roster.len) return false;
         return !self.roster[idx].isAvailable();
@@ -90,14 +101,35 @@ pub const PartySelectScreen = struct {
         switch (action) {
             .confirm => self.toggleSelect(self.cursor),
             .back => {
-                self.done = true;
-                self.confirmed = false;
+                if (self.swap_mark != null) {
+                    self.swap_mark = null;
+                } else {
+                    self.done = true;
+                    self.confirmed = false;
+                }
             },
             else => {
                 if (key.matches('c', .{})) {
                     if (self.select_count > 0) {
                         self.done = true;
                         self.confirmed = true;
+                    }
+                } else if (key.matches('s', .{})) {
+                    if (self.selectedSlot(self.cursor)) |slot| {
+                        if (self.swap_mark) |mark| {
+                            if (mark == slot) {
+                                // Same slot — cancel
+                                self.swap_mark = null;
+                            } else {
+                                // Swap the two selected slots
+                                const tmp = self.selected[mark];
+                                self.selected[mark] = self.selected[slot];
+                                self.selected[slot] = tmp;
+                                self.swap_mark = null;
+                            }
+                        } else {
+                            self.swap_mark = slot;
+                        }
                     }
                 }
             },
@@ -178,20 +210,27 @@ pub const PartySelectScreen = struct {
             _ = writeText(win, 2, row, "Party:", theme.heading);
             row += 1;
         }
-        for (self.selected) |maybe| {
+        for (self.selected, 0..) |maybe, slot_i| {
             if (maybe) |idx| {
                 if (row >= win.height) break;
                 if (idx < self.roster.len) {
                     const critter = &self.roster[idx];
                     const sp = if (idx < self.roster_species.len) self.roster_species[idx] else null;
                     const name = if (sp) |s| s.name else "???";
-                    _ = writeFmt(win, 4, row, .{ .fg = theme.party_green }, "- {s} Lv{d}", .{ name, critter.level });
+                    const is_swap_marked = if (self.swap_mark) |m| m == @as(u8, @intCast(slot_i)) else false;
+                    const marker: []const u8 = if (is_swap_marked) "[S] " else "";
+                    const style: theme.Style = if (is_swap_marked) .{ .fg = theme.gold, .bold = true } else .{ .fg = theme.party_green };
+                    _ = writeFmt(win, 4, row, style, "{d}. {s}{s} Lv{d}", .{ slot_i + 1, marker, name, critter.level });
                     row += 1;
                 }
             }
         }
 
         // Controls
-        widgets.renderHintAt(win, 2, "[Enter] Toggle  [C] Confirm  [Esc] Back");
+        const hint = if (self.swap_mark != null)
+            "[S] Swap With  [Esc] Cancel  [Enter] Toggle  [C] Confirm"
+        else
+            "[Enter] Toggle  [S] Swap Slot  [C] Confirm  [Esc] Back";
+        widgets.renderHintAt(win, 2, hint);
     }
 };

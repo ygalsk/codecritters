@@ -21,6 +21,7 @@ pub const MAX_DISCS = 16;
 const ViewMode = enum {
     browsing,
     equip_disc,
+    swapping,
 };
 
 pub const DiscEquipEvent = struct {
@@ -28,9 +29,14 @@ pub const DiscEquipEvent = struct {
     item_id: []const u8,
 };
 
+pub const SwapEvent = struct {
+    id_a: u64,
+    id_b: u64,
+};
+
 pub const RosterScreen = struct {
     roster: []critter_mod.Critter,
-    roster_species: []const ?*const species_mod.Species,
+    roster_species: []?*const species_mod.Species,
     inventory: []const InventoryEntry,
     game_data: *const game_data_mod.GameData,
     sprite_map: *const sprite_mod.SpriteMap,
@@ -44,6 +50,8 @@ pub const RosterScreen = struct {
     dirty: bool,
     log: ui.MessageLog,
     pending_equip: ?DiscEquipEvent,
+    pending_swap: ?SwapEvent,
+    swap_origin: ?u8,
     anim_timer: anim_mod.AnimTimer,
 
     pub const InventoryEntry = struct {
@@ -53,7 +61,7 @@ pub const RosterScreen = struct {
 
     pub fn init(
         roster: []critter_mod.Critter,
-        roster_species: []const ?*const species_mod.Species,
+        roster_species: []?*const species_mod.Species,
         inventory: []const InventoryEntry,
         game_data: *const game_data_mod.GameData,
         sprite_map: *const sprite_mod.SpriteMap,
@@ -75,6 +83,8 @@ pub const RosterScreen = struct {
             .dirty = true,
             .log = ui.MessageLog.init(),
             .pending_equip = null,
+            .pending_swap = null,
+            .swap_origin = null,
             .anim_timer = anim_mod.AnimTimer.init(500),
         };
         screen.buildDiscList();
@@ -104,6 +114,7 @@ pub const RosterScreen = struct {
         switch (self.mode) {
             .browsing => self.handleBrowsing(key),
             .equip_disc => self.handleEquipDisc(key),
+            .swapping => self.handleSwapping(key),
         }
     }
 
@@ -118,8 +129,52 @@ pub const RosterScreen = struct {
                 self.mode = .equip_disc;
                 self.disc_cursor = 0;
             }
+        } else if (key.matches('s', .{})) {
+            if (roster_len > 1) {
+                self.mode = .swapping;
+                self.swap_origin = self.cursor;
+            }
         } else if (key.matches(vaxis.Key.escape, .{}) or key.matches(vaxis.Key.backspace, .{})) {
             self.done = true;
+        }
+    }
+
+    fn handleSwapping(self: *RosterScreen, key: vaxis.Key) void {
+        const roster_len: u8 = @intCast(@min(self.roster.len, 255));
+        if (key.matches(vaxis.Key.left, .{})) {
+            if (self.cursor > 0) self.cursor -= 1;
+        } else if (key.matches(vaxis.Key.right, .{})) {
+            if (self.cursor + 1 < roster_len) self.cursor += 1;
+        } else if (key.matches('s', .{}) or key.matches(vaxis.Key.enter, .{}) or key.matches(vaxis.Key.space, .{})) {
+            const origin = self.swap_origin orelse {
+                self.mode = .browsing;
+                return;
+            };
+            if (self.cursor != origin) {
+                // Perform the swap
+                const id_a = self.roster[origin].id;
+                const id_b = self.roster[self.cursor].id;
+
+                const tmp_critter = self.roster[origin];
+                self.roster[origin] = self.roster[self.cursor];
+                self.roster[self.cursor] = tmp_critter;
+
+                const tmp_species = self.roster_species[origin];
+                self.roster_species[origin] = self.roster_species[self.cursor];
+                self.roster_species[self.cursor] = tmp_species;
+
+                self.pending_swap = .{
+                    .id_a = id_a,
+                    .id_b = id_b,
+                };
+
+                self.log.push("Swapped positions!");
+            }
+            self.swap_origin = null;
+            self.mode = .browsing;
+        } else if (key.matches(vaxis.Key.escape, .{}) or key.matches(vaxis.Key.backspace, .{})) {
+            self.swap_origin = null;
+            self.mode = .browsing;
         }
     }
 
@@ -171,7 +226,11 @@ pub const RosterScreen = struct {
         }
 
         // Navigation indicator
-        _ = writeFmt(win, 2, 0, theme.heading, "Roster ({d}/{d})", .{ @as(u16, self.cursor) + 1, @as(u16, @intCast(self.roster.len)) });
+        var hc = writeFmt(win, 2, 0, theme.heading, "Roster ({d}/{d})", .{ @as(u16, self.cursor) + 1, @as(u16, @intCast(self.roster.len)) });
+        if (self.mode == .swapping) {
+            hc = writeText(win, hc, 0, "  ", theme.heading);
+            _ = writeText(win, hc, 0, "[SWAP]", .{ .fg = theme.gold, .bold = true });
+        }
 
         const critter = &self.roster[self.cursor];
         const sp = if (self.cursor < self.roster_species.len) self.roster_species[self.cursor] else null;
@@ -273,8 +332,9 @@ pub const RosterScreen = struct {
 
         // Controls
         const hint = switch (self.mode) {
-            .browsing => "[Left/Right] Browse  [D] Equip Disc  [Esc] Back",
+            .browsing => "[Left/Right] Browse  [S] Swap  [D] Equip Disc  [Esc] Back",
             .equip_disc => "[Up/Down] Select  [Enter] Equip  [Esc] Cancel",
+            .swapping => "[Left/Right] Target  [S/Enter] Confirm Swap  [Esc] Cancel",
         };
         widgets.renderHintAt(win, 2, hint);
     }

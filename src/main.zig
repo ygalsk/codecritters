@@ -403,6 +403,13 @@ pub fn main() !void {
                 }
             },
             .roster_view => {
+                // Handle pending swap events (persist to DB)
+                if (roster_screen.pending_swap) |swap| {
+                    roster_db.swapCritterOrder(&database, @intCast(swap.id_a), @intCast(swap.id_b)) catch |err| {
+                        std.log.err("swap: swapCritterOrder failed: {}", .{err});
+                    };
+                    roster_screen.pending_swap = null;
+                }
                 // Handle pending equip events (persist to DB)
                 if (roster_screen.pending_equip) |equip| {
                     if (equip.critter_idx < roster_buf.len) {

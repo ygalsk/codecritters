@@ -2,13 +2,7 @@ const std = @import("std");
 const types = @import("types.zig");
 const loader = @import("loader.zig");
 
-pub const Rarity = enum {
-    common,
-    uncommon,
-    rare,
-    epic,
-    legendary,
-};
+pub const Rarity = types.Rarity;
 
 pub const BaseStats = struct {
     hp: u16,

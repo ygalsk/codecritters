@@ -1,13 +1,117 @@
 [
-  { "id": "print_statement", "name": "Print Statement", "kind": "catch_tool", "catch_tier": "print_statement", "base_catch_rate": 20, "buy_price": 50, "sell_price": 25 },
-  { "id": "breakpoint_tool", "name": "Breakpoint", "kind": "catch_tool", "catch_tier": "breakpoint", "base_catch_rate": 40, "buy_price": 150, "sell_price": 75 },
-  { "id": "try_catch_tool", "name": "Try-Catch", "kind": "catch_tool", "catch_tier": "try_catch", "base_catch_rate": 60, "buy_price": 300, "sell_price": 150 },
-  { "id": "linter_tool", "name": "Linter", "kind": "catch_tool", "catch_tier": "linter", "base_catch_rate": 50, "buy_price": 500, "sell_price": 250 },
-  { "id": "formal_proof_tool", "name": "Formal Proof", "kind": "catch_tool", "catch_tier": "formal_proof", "base_catch_rate": 70, "buy_price": 800, "sell_price": 400 },
-  { "id": "small_patch", "name": "Small Patch", "kind": "healing", "heal_amount": 30, "buy_price": 40, "sell_price": 20 },
-  { "id": "hotfix", "name": "Hotfix", "kind": "healing", "heal_amount": 80, "buy_price": 100, "sell_price": 50 },
-  { "id": "full_rebuild", "name": "Full Rebuild", "kind": "healing", "heal_amount": 9999, "buy_price": 500, "sell_price": 250 },
-  { "id": "git_revert", "name": "Git Revert", "kind": "revive", "revive_percent": 50, "buy_price": 300, "sell_price": 150 },
-  { "id": "disc_buffer_overflow", "name": "Move Disc: Buffer Overflow", "kind": "move_disc", "move_id": "buffer_overflow", "buy_price": 400, "sell_price": 200 },
-  { "id": "disc_mutex_lock", "name": "Move Disc: Mutex Lock", "kind": "move_disc", "move_id": "mutex_lock", "buy_price": 350, "sell_price": 175 }
+  {
+    "id": "print_statement",
+    "name": "Print Statement",
+    "description": "A basic debugging tool. Prints critter state to stdout, sometimes catching them off guard.",
+    "kind": "catch_tool",
+    "rarity": "common",
+    "catch_tier": "print_statement",
+    "base_catch_rate": 20,
+    "buy_price": 50,
+    "sell_price": 25
+  },
+  {
+    "id": "breakpoint_tool",
+    "name": "Breakpoint",
+    "description": "Halts execution at a precise moment. More reliable than print debugging.",
+    "kind": "catch_tool",
+    "rarity": "uncommon",
+    "catch_tier": "breakpoint",
+    "base_catch_rate": 40,
+    "buy_price": 150,
+    "sell_price": 75
+  },
+  {
+    "id": "try_catch_tool",
+    "name": "Try-Catch",
+    "description": "Wraps the target in an exception handler. High success rate, but failures let the critter counter-attack.",
+    "kind": "catch_tool",
+    "rarity": "rare",
+    "catch_tier": "try_catch",
+    "base_catch_rate": 60,
+    "buy_price": 300,
+    "sell_price": 150
+  },
+  {
+    "id": "linter_tool",
+    "name": "Linter",
+    "description": "Statically analyzes the critter for vulnerabilities. Moderate catch rate but consistent results.",
+    "kind": "catch_tool",
+    "rarity": "epic",
+    "catch_tier": "linter",
+    "base_catch_rate": 50,
+    "buy_price": 500,
+    "sell_price": 250
+  },
+  {
+    "id": "formal_proof_tool",
+    "name": "Formal Proof",
+    "description": "A mathematically rigorous containment method. Highly effective but expensive to deploy.",
+    "kind": "catch_tool",
+    "rarity": "epic",
+    "catch_tier": "formal_proof",
+    "base_catch_rate": 70,
+    "buy_price": 800,
+    "sell_price": 400
+  },
+  {
+    "id": "small_patch",
+    "name": "Small Patch",
+    "description": "A quick code fix that patches over minor damage. Restores a small amount of HP.",
+    "kind": "healing",
+    "rarity": "common",
+    "heal_amount": 30,
+    "buy_price": 40,
+    "sell_price": 20
+  },
+  {
+    "id": "hotfix",
+    "name": "Hotfix",
+    "description": "An emergency production patch. Restores a moderate amount of HP in a pinch.",
+    "kind": "healing",
+    "rarity": "uncommon",
+    "heal_amount": 80,
+    "buy_price": 100,
+    "sell_price": 50
+  },
+  {
+    "id": "full_rebuild",
+    "name": "Full Rebuild",
+    "description": "Wipes the build cache and recompiles from scratch. Fully restores HP to maximum.",
+    "kind": "healing",
+    "rarity": "rare",
+    "heal_amount": 9999,
+    "buy_price": 500,
+    "sell_price": 250
+  },
+  {
+    "id": "git_revert",
+    "name": "Git Revert",
+    "description": "Rolls back to a known good state. Revives a fainted critter at half health.",
+    "kind": "revive",
+    "rarity": "rare",
+    "revive_percent": 50,
+    "buy_price": 300,
+    "sell_price": 150
+  },
+  {
+    "id": "disc_buffer_overflow",
+    "name": "Move Disc: Buffer Overflow",
+    "description": "A disc containing the Buffer Overflow technique. Equip to a critter's third move slot.",
+    "kind": "move_disc",
+    "rarity": "uncommon",
+    "move_id": "buffer_overflow",
+    "buy_price": 400,
+    "sell_price": 200
+  },
+  {
+    "id": "disc_mutex_lock",
+    "name": "Move Disc: Mutex Lock",
+    "description": "A disc containing the Mutex Lock technique. Equip to a critter's third move slot.",
+    "kind": "move_disc",
+    "rarity": "uncommon",
+    "move_id": "mutex_lock",
+    "buy_price": 350,
+    "sell_price": 175
+  }
 ]

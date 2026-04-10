@@ -117,6 +117,28 @@ pub const Db = struct {
             \\  processed  INTEGER NOT NULL DEFAULT 0
             \\)
         );
+
+        // --- Migrations ---
+        try self.migrate();
+    }
+
+    fn migrate(self: *Db) !void {
+        const version = blk: {
+            if (try self.conn.row("SELECT value FROM meta WHERE key = 'schema_version'", .{})) |row| {
+                defer row.deinit();
+                const v = std.fmt.parseInt(u32, row.text(0), 10) catch 1;
+                break :blk v;
+            }
+            break :blk @as(u32, 1);
+        };
+
+        if (version < 2) {
+            // Phase 17: add sort_order column for roster reordering
+            // ALTER TABLE fails if column already exists (idempotent); safe to ignore
+            self.conn.execNoArgs("ALTER TABLE critters ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0") catch {};
+            self.conn.execNoArgs("UPDATE critters SET sort_order = id WHERE sort_order = 0") catch {};
+            try self.conn.execNoArgs("UPDATE meta SET value = '2' WHERE key = 'schema_version'");
+        }
     }
 };
 
@@ -129,7 +151,7 @@ test "open in-memory database and init schema" {
     if (try db.conn.row("SELECT value FROM meta WHERE key = 'schema_version'", .{})) |row| {
         defer row.deinit();
         const version = row.text(0);
-        try std.testing.expect(std.mem.eql(u8, "1", version));
+        try std.testing.expect(std.mem.eql(u8, "2", version));
     } else {
         return error.TestUnexpectedResult;
     }

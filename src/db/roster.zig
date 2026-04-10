@@ -37,8 +37,10 @@ pub fn saveCritter(db: *Db, critter: *const Critter) !i64 {
         try db.conn.exec(
             \\INSERT INTO critters
             \\  (species_id, nickname, level, xp, current_hp, max_hp,
-            \\   logic, resolve, speed, move_slot_1, move_slot_2, move_slot_3, cooldown_runs)
-            \\VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)
+            \\   logic, resolve, speed, move_slot_1, move_slot_2, move_slot_3, cooldown_runs,
+            \\   sort_order)
+            \\VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,
+            \\  (SELECT COALESCE(MAX(sort_order),0)+1 FROM critters))
         , .{
             critter.species_id,
             critter.nickname,
@@ -156,7 +158,7 @@ pub fn loadRoster(db: *Db, allocator: std.mem.Allocator) ![]Critter {
         critters.deinit(allocator);
     }
 
-    var rows = try db.conn.rows("SELECT id FROM critters ORDER BY id", .{});
+    var rows = try db.conn.rows("SELECT id FROM critters ORDER BY sort_order, id", .{});
     defer rows.deinit();
 
     var ids: std.ArrayList(i64) = .{};
@@ -188,6 +190,23 @@ pub fn freeCritter(allocator: std.mem.Allocator, critter: *Critter) void {
 pub fn freeRoster(allocator: std.mem.Allocator, roster: []Critter) void {
     for (roster) |*c| freeCritter(allocator, c);
     allocator.free(roster);
+}
+
+pub fn swapCritterOrder(db: *Db, id_a: i64, id_b: i64) !void {
+    // Read both sort_order values
+    const order_a = blk: {
+        const row = (try db.conn.row("SELECT sort_order FROM critters WHERE id = ?1", .{id_a})) orelse return;
+        defer row.deinit();
+        break :blk row.int(0);
+    };
+    const order_b = blk: {
+        const row = (try db.conn.row("SELECT sort_order FROM critters WHERE id = ?1", .{id_b})) orelse return;
+        defer row.deinit();
+        break :blk row.int(0);
+    };
+    // Swap them
+    try db.conn.exec("UPDATE critters SET sort_order = ?2 WHERE id = ?1", .{ id_a, order_b });
+    try db.conn.exec("UPDATE critters SET sort_order = ?2 WHERE id = ?1", .{ id_b, order_a });
 }
 
 // --- Inventory ---
