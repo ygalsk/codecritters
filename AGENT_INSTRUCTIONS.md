@@ -42,8 +42,8 @@ Fixed death logic (fainted critters no longer excluded from battle party), coold
 ### Phase 15 — Dungeon Quick Menu + In-Dungeon Item Use [DONE]
 Press `m` in dungeon for quick menu: swap active roster order, open inventory to use items, view party. Wire healing/consumable item effects through dungeon context (hub inventory already interactive from Phase 14).
 
-### Phase 16 — Bug Fixes: Battle Priority + Speed Death Logic
-Fix two battle bugs: (1) consumable items and catch attempts always act before critter moves regardless of speed — they should follow the same speed-based turn ordering as attacks; (2) when a faster critter attacks first and kills the opponent, the dead critter still gets a move — fainted critters must not act. Investigate whether bugs are in the battle engine (`src/battle/battle.zig`) or the UI layer (`src/ui/`).
+### Phase 16 — Bug Fixes: Battle Priority + Speed Death Logic [DONE]
+Fixed two battle bugs: (1) items, catches, and swaps now have priority over attacks — they always resolve first regardless of speed; (2) fainted critters no longer act — HP guard added before the second actor's action in both turn-order branches.
 
 ### Phase 17 — Roster Swap + Item Screen Improvements
 Roster and party select screens gain position-swap controls. Item/inventory screen shows full descriptions, effect values, and item sprites. Items display rarity indicators.

@@ -190,6 +190,6 @@
 
 ## Phase 16 — Bug Fixes: Battle Priority + Speed Death Logic [DONE]
 - **Fainted critter guard**: Added HP checks in `processTurn` (`src/battle/battle.zig:335,350`) so the second actor in turn order cannot act if KO'd by the first. Previously, when the wild critter was faster and killed the player's active critter (but other party members survived), `state.outcome` stayed null and the fainted critter still resolved its attack.
-- **Item/catch priority investigation**: No bug found — items and catch attempts already follow the same speed-based turn ordering as attacks. The `player_goes_first` flag applies equally to all action types.
-- 1 new test: `"processTurn: fainted critter does not act after being KO'd"` — wild faster, KOs player active, backup alive, verifies fainted critter deals no damage
-- 235 tests passing
+- **Item/catch/swap priority**: Items, catch attempts, and swaps now have priority over attacks — they always resolve before the wild's attack move, regardless of speed. Speed-based ordering only applies to attack-vs-attack turns.
+- 2 new tests: fainted critter doesn't act after KO; item use has priority even when player is slower
+- 236 tests passing

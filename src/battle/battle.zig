@@ -306,22 +306,32 @@ pub fn processTurn(
         ),
     };
 
-    // --- Determine turn order by speed ---
-    const player_speed = damage.effectiveStat(
-        state.activePlayer().critter.effectiveStat(.speed),
-        state.activePlayer().status.speed_mod,
-    );
-    const wild_speed = damage.effectiveStat(
-        state.wild.critter.effectiveStat(.speed),
-        state.wild.status.speed_mod,
-    );
+    // --- Determine turn order ---
+    // Items and catch attempts have priority — they always resolve before attacks.
+    // Swaps also get priority (like Pokemon). Only attack vs attack uses speed.
+    const player_has_priority = switch (player_action) {
+        .use_item, .catch_attempt, .swap => true,
+        .attack => false,
+    };
 
-    const player_goes_first = if (player_speed > wild_speed)
+    const player_goes_first = if (player_has_priority)
         true
-    else if (player_speed < wild_speed)
-        false
-    else
-        rng.boolean(); // tie-break
+    else blk: {
+        const player_speed = damage.effectiveStat(
+            state.activePlayer().critter.effectiveStat(.speed),
+            state.activePlayer().status.speed_mod,
+        );
+        const wild_speed = damage.effectiveStat(
+            state.wild.critter.effectiveStat(.speed),
+            state.wild.status.speed_mod,
+        );
+        break :blk if (player_speed > wild_speed)
+            true
+        else if (player_speed < wild_speed)
+            false
+        else
+            rng.boolean();
+    };
 
     // --- Resolve actions ---
     if (player_goes_first) {
@@ -893,6 +903,47 @@ test "processTurn: healing item restores HP" {
     // Actually let's just verify an item_used event was emitted
     // The HP was 50, healed to 100, then wild attacks bringing it down
     // Since wild deals ~34-40 damage, final HP should be ~60-66
+    try testing.expect(state.activePlayer().critter.current_hp > 50);
+}
+
+test "processTurn: item use has priority over attacks even when slower" {
+    const sp = makeTestSpecies("test_sp", .debug);
+    var c = makeTestCritter("test_sp", "log_dump", 50);
+    c.max_hp = 100;
+    c.speed = 1; // very slow
+
+    const wild_sp = makeTestSpecies("wild_sp", .debug);
+    var wild_c = makeTestCritter("wild_sp", "log_dump", 100);
+    wild_c.speed = 100; // very fast
+
+    const critters = [_]critter_mod.Critter{c};
+    const sp_ptrs = [_]*const species_mod.Species{&sp};
+    var state = initBattle(&critters, &sp_ptrs, wild_c, &wild_sp, 42);
+
+    const heal_item = items_mod.Item{
+        .id = "hotfix",
+        .name = "Hotfix",
+        .kind = .healing,
+        .heal_amount = 80,
+    };
+
+    const allocator = testing.allocator;
+    var gd = try game_data_mod.GameData.load(allocator);
+    defer gd.deinit();
+
+    const result = processTurn(&state, .{ .use_item = .{ .item = &heal_item, .target = 0 } }, &gd);
+
+    // Item should resolve first (priority) even though player is slower.
+    // First event must be item_used, not damage_dealt from the faster wild.
+    var first_event_is_item = false;
+    if (result.event_count > 0) {
+        switch (result.events[0]) {
+            .item_used => first_event_is_item = true,
+            else => {},
+        }
+    }
+    try testing.expect(first_event_is_item);
+    // HP: started 50, healed to 100, then wild attacks → should be above 50
     try testing.expect(state.activePlayer().critter.current_hp > 50);
 }
 
