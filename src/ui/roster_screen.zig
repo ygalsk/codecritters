@@ -4,12 +4,15 @@ const critter_mod = @import("critter");
 const species_mod = @import("species");
 const items_mod = @import("items");
 const game_data_mod = @import("game_data");
-const colors = @import("colors.zig");
 const ui = @import("ui_common.zig");
+const theme = @import("theme.zig");
+const layout = @import("layout.zig");
+const widgets = @import("widgets.zig");
+const input = @import("input.zig");
+const anim_mod = @import("anim.zig");
+const sprite_mod = @import("sprite.zig");
 
 const Window = ui.Window;
-const Style = ui.Style;
-const Key = ui.Key;
 const writeText = ui.writeText;
 const writeFmt = ui.writeFmt;
 
@@ -30,6 +33,8 @@ pub const RosterScreen = struct {
     roster_species: []const ?*const species_mod.Species,
     inventory: []const InventoryEntry,
     game_data: *const game_data_mod.GameData,
+    sprite_map: *const sprite_mod.SpriteMap,
+    use_kitty: bool,
     cursor: u8,
     mode: ViewMode,
     disc_cursor: u8,
@@ -39,6 +44,7 @@ pub const RosterScreen = struct {
     dirty: bool,
     log: ui.MessageLog,
     pending_equip: ?DiscEquipEvent,
+    anim_timer: anim_mod.AnimTimer,
 
     pub const InventoryEntry = struct {
         item_id: []const u8,
@@ -50,12 +56,16 @@ pub const RosterScreen = struct {
         roster_species: []const ?*const species_mod.Species,
         inventory: []const InventoryEntry,
         game_data: *const game_data_mod.GameData,
+        sprite_map: *const sprite_mod.SpriteMap,
+        use_kitty: bool,
     ) RosterScreen {
         var screen = RosterScreen{
             .roster = roster,
             .roster_species = roster_species,
             .inventory = inventory,
             .game_data = game_data,
+            .sprite_map = sprite_map,
+            .use_kitty = use_kitty,
             .cursor = 0,
             .mode = .browsing,
             .disc_cursor = 0,
@@ -65,9 +75,14 @@ pub const RosterScreen = struct {
             .dirty = true,
             .log = ui.MessageLog.init(),
             .pending_equip = null,
+            .anim_timer = anim_mod.AnimTimer.init(500),
         };
         screen.buildDiscList();
         return screen;
+    }
+
+    pub fn updateAnimation(self: *RosterScreen) void {
+        if (self.anim_timer.tick()) self.dirty = true;
     }
 
     fn buildDiscList(self: *RosterScreen) void {
@@ -94,29 +109,26 @@ pub const RosterScreen = struct {
 
     fn handleBrowsing(self: *RosterScreen, key: vaxis.Key) void {
         const roster_len: u8 = @intCast(@min(self.roster.len, 255));
-        if (key.matches(Key.left, .{})) {
+        if (key.matches(vaxis.Key.left, .{})) {
             if (self.cursor > 0) self.cursor -= 1;
-        } else if (key.matches(Key.right, .{})) {
+        } else if (key.matches(vaxis.Key.right, .{})) {
             if (self.cursor + 1 < roster_len) self.cursor += 1;
         } else if (key.matches('d', .{})) {
             if (self.disc_count > 0 and self.roster.len > 0) {
                 self.mode = .equip_disc;
                 self.disc_cursor = 0;
             }
-        } else if (key.matches(Key.escape, .{}) or key.matches(Key.backspace, .{})) {
+        } else if (key.matches(vaxis.Key.escape, .{}) or key.matches(vaxis.Key.backspace, .{})) {
             self.done = true;
         }
     }
 
     fn handleEquipDisc(self: *RosterScreen, key: vaxis.Key) void {
-        if (key.matches(Key.up, .{})) {
-            if (self.disc_cursor > 0) self.disc_cursor -= 1;
-        } else if (key.matches(Key.down, .{})) {
-            if (self.disc_cursor + 1 < self.disc_count) self.disc_cursor += 1;
-        } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
-            self.doEquip();
-        } else if (key.matches(Key.escape, .{}) or key.matches(Key.backspace, .{})) {
-            self.mode = .browsing;
+        const action = input.applyCursor(&self.disc_cursor, self.disc_count, input.menuNav(key));
+        switch (action) {
+            .confirm => self.doEquip(),
+            .back => self.mode = .browsing,
+            else => {},
         }
     }
 
@@ -149,37 +161,42 @@ pub const RosterScreen = struct {
 
     pub fn render(self: *const RosterScreen, win: Window) void {
         win.clear();
-        if (win.height < 12 or win.width < 40) {
-            _ = writeText(win, 0, 0, "Terminal too small", .{ .fg = .{ .rgb = .{ 255, 60, 60 } } });
-            return;
-        }
-
-        const white_bold: Style = .{ .fg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true };
-        const header_style: Style = .{ .fg = .{ .rgb = .{ 180, 180, 180 } } };
+        if (layout.tooSmall(win, 40, 12)) return;
 
         if (self.roster.len == 0) {
-            _ = writeText(win, 2, 0, "Roster", white_bold);
-            _ = writeText(win, 2, 2, "No critters yet!", .{ .fg = .{ .rgb = .{ 255, 100, 100 } } });
-            _ = writeText(win, 2, 4, "[Esc] Back", ui.dim_style);
+            _ = writeText(win, 2, 0, "Roster", theme.heading);
+            _ = writeText(win, 2, 2, "No critters yet!", theme.err);
+            _ = writeText(win, 2, 4, "[Esc] Back", theme.hint);
             return;
         }
 
         // Navigation indicator
-        _ = writeFmt(win, 2, 0, white_bold, "Roster ({d}/{d})", .{ @as(u16, self.cursor) + 1, @as(u16, @intCast(self.roster.len)) });
+        _ = writeFmt(win, 2, 0, theme.heading, "Roster ({d}/{d})", .{ @as(u16, self.cursor) + 1, @as(u16, @intCast(self.roster.len)) });
 
         const critter = &self.roster[self.cursor];
         const sp = if (self.cursor < self.roster_species.len) self.roster_species[self.cursor] else null;
         const name = if (sp) |s| s.name else "???";
 
+        // Sprite in top-right
+        if (sp) |s| {
+            if (self.sprite_map.get(s.id)) |sheet| {
+                const sprite_cols: u16 = @intCast(sheet.frame_width);
+                const sprite_rows: u16 = @intCast(sheet.height / 2);
+                const col: u16 = if (win.width > sprite_cols + 4) win.width - sprite_cols - 4 else 0;
+                const srow: u16 = if (win.height > sprite_rows + 2) 2 else 0;
+                sheet.render(win, self.anim_timer.frameMod(2), srow, col, self.use_kitty);
+            }
+        }
+
         // Name and level
         var row: u16 = 2;
-        const c = writeText(win, 2, row, name, white_bold);
-        _ = writeFmt(win, c, row, white_bold, "  Lv{d}", .{critter.level});
+        const c = writeText(win, 2, row, name, theme.heading);
+        _ = writeFmt(win, c, row, theme.heading, "  Lv{d}", .{critter.level});
         row += 1;
 
         // Type badge
         if (sp) |s| {
-            const type_color = colors.typeColor(s.critter_type);
+            const type_color = theme.typeColor(s.critter_type);
             _ = writeText(win, 2, row, s.critter_type.displayName(), .{ .fg = type_color, .bold = true });
         }
         row += 1;
@@ -192,35 +209,35 @@ pub const RosterScreen = struct {
             const prev_level_xp = if (critter.level > 0) leveling.xpForLevel(critter.level) else 0;
             const xp_into_level = current_xp -| prev_level_xp;
             const xp_needed = next_level_xp -| prev_level_xp;
-            _ = writeFmt(win, 2, row, header_style, "XP: {d}/{d} to Lv{d}", .{ xp_into_level, xp_needed, critter.level + 1 });
+            _ = writeFmt(win, 2, row, theme.header, "XP: {d}/{d} to Lv{d}", .{ xp_into_level, xp_needed, critter.level + 1 });
         } else {
-            _ = writeText(win, 2, row, "XP: MAX LEVEL", header_style);
+            _ = writeText(win, 2, row, "XP: MAX LEVEL", theme.header);
         }
         row += 1;
 
         // Stats
         row += 1;
-        _ = writeText(win, 2, row, "Stats:", header_style);
+        _ = writeText(win, 2, row, "Stats:", theme.header);
         row += 1;
 
         const eff_hp = critter.effectiveStat(.hp);
-        const hp_color = colors.hpColor(critter.current_hp, eff_hp);
+        const hp_color = theme.hpColor(critter.current_hp, eff_hp);
         _ = writeFmt(win, 4, row, .{ .fg = hp_color }, "HP:      {d}/{d}", .{ critter.current_hp, eff_hp });
         self.renderScarNote(win, critter, .hp, row);
         row += 1;
-        _ = writeFmt(win, 4, row, header_style, "Logic:   {d}", .{critter.effectiveStat(.logic)});
+        _ = writeFmt(win, 4, row, theme.header, "Logic:   {d}", .{critter.effectiveStat(.logic)});
         self.renderScarNote(win, critter, .logic, row);
         row += 1;
-        _ = writeFmt(win, 4, row, header_style, "Resolve: {d}", .{critter.effectiveStat(.resolve)});
+        _ = writeFmt(win, 4, row, theme.header, "Resolve: {d}", .{critter.effectiveStat(.resolve)});
         self.renderScarNote(win, critter, .resolve, row);
         row += 1;
-        _ = writeFmt(win, 4, row, header_style, "Speed:   {d}", .{critter.effectiveStat(.speed)});
+        _ = writeFmt(win, 4, row, theme.header, "Speed:   {d}", .{critter.effectiveStat(.speed)});
         self.renderScarNote(win, critter, .speed, row);
         row += 1;
 
         // Moves
         row += 1;
-        _ = writeText(win, 2, row, "Moves:", header_style);
+        _ = writeText(win, 2, row, "Moves:", theme.header);
         row += 1;
         self.renderMoveSlot(win, critter.move_slot_1, "1", row);
         row += 1;
@@ -232,14 +249,14 @@ pub const RosterScreen = struct {
         // Cooldown
         if (critter.cooldown_runs > 0) {
             row += 1;
-            _ = writeFmt(win, 2, row, .{ .fg = .{ .rgb = .{ 255, 100, 100 } } }, "COOLDOWN: {d} run(s) remaining", .{critter.cooldown_runs});
+            _ = writeFmt(win, 2, row, .{ .fg = theme.status_red }, "COOLDOWN: {d} run(s) remaining", .{critter.cooldown_runs});
             row += 1;
         }
 
         // Scars
         if (critter.scars.len > 0) {
             row += 1;
-            _ = writeFmt(win, 2, row, .{ .fg = .{ .rgb = .{ 200, 100, 100 } } }, "Scars: {d}", .{critter.scars.len});
+            _ = writeFmt(win, 2, row, .{ .fg = theme.scar_label }, "Scars: {d}", .{critter.scars.len});
             row += 1;
         }
 
@@ -255,14 +272,11 @@ pub const RosterScreen = struct {
         }
 
         // Controls
-        const ctrl_row: u16 = if (win.height > 2) win.height - 2 else win.height;
-        if (ctrl_row < win.height) {
-            const hint = switch (self.mode) {
-                .browsing => "[Left/Right] Browse  [D] Equip Disc  [Esc] Back",
-                .equip_disc => "[Up/Down] Select  [Enter] Equip  [Esc] Cancel",
-            };
-            _ = writeText(win, 2, ctrl_row, hint, ui.dim_style);
-        }
+        const hint = switch (self.mode) {
+            .browsing => "[Left/Right] Browse  [D] Equip Disc  [Esc] Back",
+            .equip_disc => "[Up/Down] Select  [Enter] Equip  [Esc] Cancel",
+        };
+        widgets.renderHintAt(win, 2, hint);
     }
 
     fn renderScarNote(self: *const RosterScreen, win: Window, critter: *const critter_mod.Critter, stat: critter_mod.StatKind, row: u16) void {
@@ -272,7 +286,7 @@ pub const RosterScreen = struct {
             if (scar.stat == stat) total += scar.amount;
         }
         if (total != 0) {
-            _ = writeFmt(win, 22, row, .{ .fg = .{ .rgb = .{ 255, 80, 80 } } }, " ({d})", .{total});
+            _ = writeFmt(win, 22, row, .{ .fg = theme.scar_red }, " ({d})", .{total});
         }
     }
 
@@ -280,16 +294,16 @@ pub const RosterScreen = struct {
         if (slot) |move_id| {
             const move = self.game_data.findMove(move_id);
             if (move) |m| {
-                var c = writeFmt(win, 4, row, .{ .fg = .{ .rgb = .{ 200, 200, 200 } } }, "{s}. {s}", .{ label, m.name });
-                const type_color = colors.typeColor(m.move_type);
-                c = writeText(win, c, row, " ", .{});
-                c = writeText(win, c, row, m.move_type.displayName(), .{ .fg = type_color });
-                _ = writeFmt(win, c, row, .{ .fg = .{ .rgb = .{ 150, 150, 150 } } }, " pow:{d} acc:{d}%", .{ m.power, m.accuracy });
+                var mc = writeFmt(win, 4, row, theme.body, "{s}. {s}", .{ label, m.name });
+                const type_color = theme.typeColor(m.move_type);
+                mc = writeText(win, mc, row, " ", .{});
+                mc = writeText(win, mc, row, m.move_type.displayName(), .{ .fg = type_color });
+                _ = writeFmt(win, mc, row, .{ .fg = theme.move_info }, " pow:{d} acc:{d}%", .{ m.power, m.accuracy });
             } else {
-                _ = writeFmt(win, 4, row, .{ .fg = .{ .rgb = .{ 150, 150, 150 } } }, "{s}. {s}", .{ label, move_id });
+                _ = writeFmt(win, 4, row, .{ .fg = theme.move_info }, "{s}. {s}", .{ label, move_id });
             }
         } else {
-            _ = writeFmt(win, 4, row, .{ .fg = .{ .rgb = .{ 80, 80, 80 } } }, "{s}. (empty)", .{label});
+            _ = writeFmt(win, 4, row, theme.dim, "{s}. (empty)", .{label});
         }
     }
 
@@ -299,27 +313,24 @@ pub const RosterScreen = struct {
         const box_x: u16 = if (win.width > box_w + 2) win.width - box_w - 2 else 0;
         const box_y: u16 = 2;
 
-        _ = writeText(win, box_x, box_y, "Equip Move Disc:", .{ .fg = .{ .rgb = .{ 255, 200, 40 } }, .bold = true });
+        _ = writeText(win, box_x, box_y, "Equip Move Disc:", theme.category);
 
         var row = box_y + 1;
         var i: u8 = 0;
         while (i < self.disc_count) : (i += 1) {
             if (row >= win.height -| 3) break;
             const item = self.game_data.findItem(self.disc_ids[i]) orelse continue;
-            const selected = self.disc_cursor == i;
-            const prefix: []const u8 = if (selected) "> " else "  ";
-            const style: Style = if (selected)
-                .{ .fg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true }
-            else
-                .{ .fg = .{ .rgb = .{ 180, 180, 180 } } };
+            const is_sel = self.disc_cursor == i;
+            const prefix: []const u8 = if (is_sel) "> " else "  ";
+            const style: theme.Style = if (is_sel) theme.selected_text else theme.header;
 
-            var c = writeText(win, box_x, row, prefix, style);
-            c = writeText(win, c, row, item.name, style);
+            var dc = writeText(win, box_x, row, prefix, style);
+            dc = writeText(win, dc, row, item.name, style);
 
             // Show quantity
             for (self.inventory) |entry| {
                 if (std.mem.eql(u8, entry.item_id, self.disc_ids[i])) {
-                    _ = writeFmt(win, c, row, style, " x{d}", .{entry.quantity});
+                    _ = writeFmt(win, dc, row, style, " x{d}", .{entry.quantity});
                     break;
                 }
             }
@@ -327,7 +338,7 @@ pub const RosterScreen = struct {
         }
 
         if (self.disc_count == 0) {
-            _ = writeText(win, box_x + 2, row, "(no discs available)", .{ .fg = .{ .rgb = .{ 100, 100, 100 } } });
+            _ = writeText(win, box_x + 2, row, "(no discs available)", theme.dim);
         }
     }
 };

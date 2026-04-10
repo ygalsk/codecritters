@@ -39,6 +39,9 @@ All game systems built through Phase 11. Phase 12 completed all 3 starter evolut
 ### Phase 13 — Title Screen + Screen Transitions
 New title_screen.zig with ASCII art logo. Transition system in main.zig (brief visual wipe/fade between screen changes). Polish phase — no data changes.
 
+### Phase 13.5 — Graphics Engine Layer [DONE]
+Refactored UI rendering into reusable layers: theme.zig (colors/styles), layout.zig (centering/positioning), widgets.zig (menu/HP bar/separator/hint), anim.zig (AnimTimer), input.zig (NavAction/menuNav/gridNav). All 9 screens migrated. No game logic changes.
+
 ### Phase 14 — Three-Stage Evolution Lines (All 7 Types)
 Complete every type's 3-stage common→common→uncommon line (Printf→Fprintf→Logstash, Segfault→Stack Overflow→Kernel Panic, etc.). +15 species, +14 moves, +15 sprites. Update all biome encounter tables.
 

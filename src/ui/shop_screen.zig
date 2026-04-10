@@ -3,14 +3,15 @@ const vaxis = @import("vaxis");
 const dungeon_mod = @import("dungeon");
 const game_data_mod = @import("game_data");
 const critter_mod = @import("critter");
-const colors = @import("colors.zig");
 const ui = @import("ui_common.zig");
+const theme = @import("theme.zig");
+const layout = @import("layout.zig");
+const widgets = @import("widgets.zig");
+const input = @import("input.zig");
 
 const shop_mod = dungeon_mod.shop;
 
 const Window = ui.Window;
-const Style = ui.Style;
-const Key = ui.Key;
 const writeText = ui.writeText;
 const writeFmt = ui.writeFmt;
 
@@ -53,17 +54,17 @@ pub const ShopScreen = struct {
             return;
         };
 
-        if (key.matches(Key.up, .{})) {
-            if (self.cursor > 0) self.cursor -= 1;
-        } else if (key.matches(Key.down, .{})) {
-            if (self.cursor + 1 < shop_state.slot_count) self.cursor += 1;
-        } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
+        const action = input.applyCursor(&self.cursor, shop_state.slot_count, input.menuNav(key));
+        if (action == .confirm) {
             self.tryBuy();
-        } else if (key.matches('c', .{})) {
-            self.done = true;
-        } else if (key.matches('e', .{})) {
-            self.done = true;
-            self.extracted = true;
+        } else if (action == .none) {
+            // Handle non-menu keys
+            if (key.matches('c', .{})) {
+                self.done = true;
+            } else if (key.matches('e', .{})) {
+                self.done = true;
+                self.extracted = true;
+            }
         }
     }
 
@@ -90,19 +91,12 @@ pub const ShopScreen = struct {
 
     pub fn render(self: *const ShopScreen, win: Window) void {
         win.clear();
-        if (win.height < 10 or win.width < 30) {
-            _ = win.printSegment(.{ .text = "Terminal too small" }, .{});
-            return;
-        }
+        if (layout.tooSmall(win, 30, 10)) return;
 
-        const white_bold: Style = .{ .fg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true };
-        const gold: Style = .{ .fg = .{ .rgb = .{ 255, 200, 40 } }, .bold = true };
-        const header: Style = .{ .fg = .{ .rgb = .{ 180, 180, 180 } } };
+        _ = writeFmt(win, 2, 0, theme.heading, "Between Floors -- Floor {d} Complete!", .{self.dungeon.floor_number});
+        _ = writeFmt(win, 2, 1, theme.currency_bold, "Currency: ${d}", .{self.dungeon.currency});
 
-        _ = writeFmt(win, 2, 0, white_bold, "Between Floors -- Floor {d} Complete!", .{self.dungeon.floor_number});
-        _ = writeFmt(win, 2, 1, gold, "Currency: ${d}", .{self.dungeon.currency});
-
-        _ = writeText(win, 2, 3, "Shop:", header);
+        _ = writeText(win, 2, 3, "Shop:", theme.header);
 
         const shop_state = self.dungeon.current_shop;
         var shop_rows: u16 = 0;
@@ -111,11 +105,8 @@ pub const ShopScreen = struct {
             for (0..shop_mod.MAX_SHOP_SLOTS) |i| {
                 const slot = ss.slots[i] orelse continue;
                 const idx: u8 = @intCast(i);
-                const selected = self.cursor == idx;
-                const style: Style = if (selected)
-                    .{ .fg = .{ .rgb = .{ 0, 0, 0 } }, .bg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true }
-                else
-                    .{ .fg = .{ .rgb = .{ 200, 200, 200 } } };
+                const is_sel = self.cursor == idx;
+                const style: theme.Style = if (is_sel) theme.selected else theme.unselected;
 
                 const row = 4 + shop_rows;
                 if (row >= win.height) break;
@@ -123,7 +114,7 @@ pub const ShopScreen = struct {
                 const item = self.game_data.findItem(slot.item_id);
                 const name = if (item) |it| it.name else slot.item_id;
 
-                const prefix: []const u8 = if (selected) "> " else "  ";
+                const prefix: []const u8 = if (is_sel) "> " else "  ";
                 var c = writeText(win, 2, row, prefix, style);
                 c = writeText(win, c, row, name, style);
                 c = writeFmt(win, c, row, style, "  ${d}", .{slot.price});
@@ -133,13 +124,13 @@ pub const ShopScreen = struct {
         }
 
         if (shop_rows == 0) {
-            _ = writeText(win, 4, 4, "(no items available)", .{ .fg = .{ .rgb = .{ 100, 100, 100 } }, .italic = true });
+            _ = writeText(win, 4, 4, "(no items available)", .{ .fg = theme.dim_gray, .italic = true });
             shop_rows = 1;
         }
 
         const party_row = 4 + shop_rows + 1;
         if (party_row < win.height) {
-            _ = writeText(win, 2, party_row, "Party:", header);
+            _ = writeText(win, 2, party_row, "Party:", theme.header);
         }
 
         var pr: u16 = party_row + 1;
@@ -149,10 +140,10 @@ pub const ShopScreen = struct {
 
             const sp = ui.findSpeciesForCritter(self.dungeon, &critter);
             const name = if (sp) |s| s.name else "???";
-            const hp_color = colors.hpColor(critter.current_hp, critter.max_hp);
+            const hp_color = theme.hpColor(critter.current_hp, critter.max_hp);
 
-            var c = writeText(win, 4, pr, name, .{ .fg = .{ .rgb = .{ 200, 200, 200 } } });
-            c = writeFmt(win, c, pr, .{ .fg = .{ .rgb = .{ 200, 200, 200 } } }, "  Lv{d}", .{critter.level});
+            var c = writeText(win, 4, pr, name, theme.body);
+            c = writeFmt(win, c, pr, theme.body, "  Lv{d}", .{critter.level});
             _ = writeFmt(win, c, pr, .{ .fg = hp_color }, "  HP {d}/{d}", .{ critter.current_hp, critter.max_hp });
             pr += 1;
         }
@@ -162,7 +153,7 @@ pub const ShopScreen = struct {
 
         const ctrl_row = msg_row + @as(u16, @min(self.log.msg_count, 2)) + 1;
         if (ctrl_row < win.height) {
-            _ = writeText(win, 2, ctrl_row, "[Enter] Buy  [c] Continue  [e] Extract", ui.dim_style);
+            _ = writeText(win, 2, ctrl_row, "[Enter] Buy  [c] Continue  [e] Extract", theme.hint);
         }
     }
 };

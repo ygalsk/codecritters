@@ -6,15 +6,17 @@ const types = @import("types");
 const moves_mod = @import("moves");
 const items_mod = @import("items");
 const species_mod = @import("species");
-const colors = @import("colors.zig");
 const text = @import("text.zig");
 const sprite_mod = @import("sprite.zig");
 const ui = @import("ui_common.zig");
+const theme = @import("theme.zig");
+const layout = @import("layout.zig");
+const widgets = @import("widgets.zig");
+const input = @import("input.zig");
+const anim_mod = @import("anim.zig");
 
 const Window = ui.Window;
-const Color = ui.Color;
-const Style = ui.Style;
-const Key = ui.Key;
+const Style = theme.Style;
 const writeText = ui.writeText;
 const writeFmt = ui.writeFmt;
 
@@ -52,11 +54,8 @@ pub const BattleScreen = struct {
     outcome: ?battle.BattleOutcome,
     sprites: *const SpriteMap,
     use_kitty: bool,
-    anim_frame: u8,
-    last_anim_ms: i64,
+    anim_timer: anim_mod.AnimTimer,
     dirty: bool,
-
-    const ANIM_INTERVAL_MS: i64 = 500;
 
     pub fn init(
         state: *battle.BattleState,
@@ -79,8 +78,7 @@ pub const BattleScreen = struct {
             .outcome = null,
             .sprites = sprites,
             .use_kitty = use_kitty,
-            .anim_frame = 0,
-            .last_anim_ms = std.time.milliTimestamp(),
+            .anim_timer = anim_mod.AnimTimer.init(500),
             .dirty = true,
         };
         screen.log.push("A wild critter appeared!");
@@ -104,15 +102,8 @@ pub const BattleScreen = struct {
     }
 
     fn handleMainMenu(self: *BattleScreen, key: vaxis.Key) void {
-        if (key.matches(Key.up, .{})) {
-            if (self.cursor >= 2) self.cursor -= 2;
-        } else if (key.matches(Key.down, .{})) {
-            if (self.cursor + 2 < 4) self.cursor += 2;
-        } else if (key.matches(Key.left, .{})) {
-            if (self.cursor % 2 == 1) self.cursor -= 1;
-        } else if (key.matches(Key.right, .{})) {
-            if (self.cursor % 2 == 0 and self.cursor + 1 < 4) self.cursor += 1;
-        } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
+        const action = input.gridNav(key, &self.cursor, 2, 4);
+        if (action == .confirm) {
             switch (self.cursor) {
                 0 => {
                     self.menu_state = .select_attack;
@@ -137,113 +128,126 @@ pub const BattleScreen = struct {
 
     fn handleSelectAttack(self: *BattleScreen, key: vaxis.Key) void {
         const slot_count = self.countMoveSlots();
-        if (key.matches(Key.escape, .{}) or key.matches(Key.backspace, .{})) {
-            self.menu_state = .main_menu;
-            self.cursor = 0;
-            return;
-        }
-        if (key.matches(Key.up, .{})) {
-            if (self.cursor > 0) self.cursor -= 1;
-        } else if (key.matches(Key.down, .{})) {
-            if (self.cursor + 1 < slot_count) self.cursor += 1;
-        } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
-            if (self.cursor < slot_count) {
-                self.submitAction(.{ .attack = @intCast(self.cursor) });
-            }
+        const action = input.applyCursor(&self.cursor, slot_count, input.menuNav(key));
+        switch (action) {
+            .back => {
+                self.menu_state = .main_menu;
+                self.cursor = 0;
+            },
+            .confirm => {
+                if (self.cursor < slot_count) {
+                    self.submitAction(.{ .attack = @intCast(self.cursor) });
+                }
+            },
+            else => {},
         }
     }
 
     fn handleSelectSwap(self: *BattleScreen, key: vaxis.Key) void {
-        if (key.matches(Key.escape, .{}) or key.matches(Key.backspace, .{})) {
-            // Can't escape forced swap
-            if (!self.isForcedSwap()) {
+        const party_count = self.countAliveParty();
+        const action = input.applyCursor(&self.cursor, party_count, input.menuNav(key));
+        switch (action) {
+            .back => {
+                if (!self.isForcedSwap()) {
+                    self.menu_state = .main_menu;
+                    self.cursor = 0;
+                }
+            },
+            .confirm => {
+                if (self.getSwapTarget(self.cursor)) |target| {
+                    self.submitAction(.{ .swap = target });
+                }
+            },
+            else => {},
+        }
+    }
+
+    fn handleSelectItem(self: *BattleScreen, key: vaxis.Key) void {
+        const count = self.countItems(null);
+        if (count == 0) {
+            if (input.menuNav(key) == .back) {
                 self.menu_state = .main_menu;
                 self.cursor = 0;
             }
             return;
         }
-        const party_count = self.countAliveParty();
-        if (key.matches(Key.up, .{})) {
-            if (self.cursor > 0) self.cursor -= 1;
-        } else if (key.matches(Key.down, .{})) {
-            if (self.cursor + 1 < party_count) self.cursor += 1;
-        } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
-            if (self.getSwapTarget(self.cursor)) |target| {
-                self.submitAction(.{ .swap = target });
-            }
-        }
-    }
-
-    fn handleSelectItem(self: *BattleScreen, key: vaxis.Key) void {
-        if (key.matches(Key.escape, .{}) or key.matches(Key.backspace, .{})) {
-            self.menu_state = .main_menu;
-            self.cursor = 0;
-            return;
-        }
-        const count = self.countItems(null);
-        if (count == 0) return;
-        if (key.matches(Key.up, .{})) {
-            if (self.cursor > 0) self.cursor -= 1;
-        } else if (key.matches(Key.down, .{})) {
-            if (self.cursor + 1 < count) self.cursor += 1;
-        } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
-            if (self.getNthItem(null,self.cursor)) |slot_idx| {
-                const slot = &self.inventory[slot_idx];
-                if (slot.item.kind == .revive and self.state.revive_used) return;
-                self.pending_heal_item = .{ .slot_idx = slot_idx, .item = slot.item };
-                self.menu_state = .select_heal_target;
+        const action = input.applyCursor(&self.cursor, count, input.menuNav(key));
+        switch (action) {
+            .back => {
+                self.menu_state = .main_menu;
                 self.cursor = 0;
-            }
+            },
+            .confirm => {
+                if (self.getNthItem(null, self.cursor)) |slot_idx| {
+                    const slot = &self.inventory[slot_idx];
+                    if (slot.item.kind == .revive and self.state.revive_used) return;
+                    self.pending_heal_item = .{ .slot_idx = slot_idx, .item = slot.item };
+                    self.menu_state = .select_heal_target;
+                    self.cursor = 0;
+                }
+            },
+            else => {},
         }
     }
 
     fn handleSelectHealTarget(self: *BattleScreen, key: vaxis.Key) void {
-        if (key.matches(Key.escape, .{}) or key.matches(Key.backspace, .{})) {
-            self.pending_heal_item = null;
-            self.menu_state = .select_item;
-            self.cursor = 0;
-            return;
-        }
         const is_revive = if (self.pending_heal_item) |h| h.item.kind == .revive else false;
         const count = self.countPartyByHp(is_revive);
-        if (count == 0) return;
-        if (key.matches(Key.up, .{})) {
-            if (self.cursor > 0) self.cursor -= 1;
-        } else if (key.matches(Key.down, .{})) {
-            if (self.cursor + 1 < count) self.cursor += 1;
-        } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
-            if (self.pending_heal_item) |heal| {
-                const target = self.getPartyTarget(is_revive, self.cursor);
-                if (target) |t| {
-                    self.submitAction(.{ .use_item = .{
-                        .item = heal.item,
-                        .target = t,
-                    } });
-                    self.inventory[heal.slot_idx].count -|= 1;
-                    self.pending_heal_item = null;
-                }
+        if (count == 0) {
+            if (input.menuNav(key) == .back) {
+                self.pending_heal_item = null;
+                self.menu_state = .select_item;
+                self.cursor = 0;
             }
+            return;
+        }
+        const action = input.applyCursor(&self.cursor, count, input.menuNav(key));
+        switch (action) {
+            .back => {
+                self.pending_heal_item = null;
+                self.menu_state = .select_item;
+                self.cursor = 0;
+            },
+            .confirm => {
+                if (self.pending_heal_item) |heal| {
+                    const target = self.getPartyTarget(is_revive, self.cursor);
+                    if (target) |t| {
+                        self.submitAction(.{ .use_item = .{
+                            .item = heal.item,
+                            .target = t,
+                        } });
+                        self.inventory[heal.slot_idx].count -|= 1;
+                        self.pending_heal_item = null;
+                    }
+                }
+            },
+            else => {},
         }
     }
 
     fn handleSelectCatchTool(self: *BattleScreen, key: vaxis.Key) void {
-        if (key.matches(Key.escape, .{}) or key.matches(Key.backspace, .{})) {
-            self.menu_state = .main_menu;
-            self.cursor = 0;
+        const count = self.countItems(.catch_tool);
+        if (count == 0) {
+            if (input.menuNav(key) == .back) {
+                self.menu_state = .main_menu;
+                self.cursor = 0;
+            }
             return;
         }
-        const count = self.countItems(.catch_tool);
-        if (count == 0) return;
-        if (key.matches(Key.up, .{})) {
-            if (self.cursor > 0) self.cursor -= 1;
-        } else if (key.matches(Key.down, .{})) {
-            if (self.cursor + 1 < count) self.cursor += 1;
-        } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
-            if (self.getNthItem(.catch_tool,self.cursor)) |slot_idx| {
-                const slot = &self.inventory[slot_idx];
-                self.submitAction(.{ .catch_attempt = slot.item });
-                slot.count -|= 1;
-            }
+        const action = input.applyCursor(&self.cursor, count, input.menuNav(key));
+        switch (action) {
+            .back => {
+                self.menu_state = .main_menu;
+                self.cursor = 0;
+            },
+            .confirm => {
+                if (self.getNthItem(.catch_tool, self.cursor)) |slot_idx| {
+                    const slot = &self.inventory[slot_idx];
+                    self.submitAction(.{ .catch_attempt = slot.item });
+                    slot.count -|= 1;
+                }
+            },
+            else => {},
         }
     }
 
@@ -292,10 +296,7 @@ pub const BattleScreen = struct {
 
     pub fn render(self: *const BattleScreen, win: Window) void {
         win.clear();
-        if (win.height < 10 or win.width < 40) {
-            _ = win.printSegment(.{ .text = "Terminal too small" }, .{});
-            return;
-        }
+        if (layout.tooSmall(win, 40, 10)) return;
 
         // Layout zones — sprites are 16 cols × 8 rows (half-block)
         const info_height: u16 = 3;
@@ -316,76 +317,53 @@ pub const BattleScreen = struct {
         self.renderCritterInfo(win, player, false, player_info_row + sprite_height, 2);
 
         // Separator
-        self.renderSeparator(win, separator_row);
+        widgets.renderSeparator(win, separator_row);
 
         // Messages
         self.renderMessages(win, msg_start, menu_start);
 
         // Menu
-        self.renderMenu(win, menu_start);
+        self.renderBattleMenu(win, menu_start);
     }
 
     fn renderCritterInfo(self: *const BattleScreen, win: Window, bc: *const battle.BattleCritter, is_wild: bool, row: u16, col: u16) void {
-        const white_bold: Style = .{ .fg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true };
-        const type_color = colors.typeColor(bc.species.critter_type);
+        _ = self;
+        const type_color = theme.typeColor(bc.species.critter_type);
         const type_bold: Style = .{ .fg = type_color, .bold = true };
 
         // Line 1: Name  Lv##  [TYPE]
         var c = col;
-        if (is_wild) c = writeText(win, c, row, "Wild ", white_bold);
-        c = writeText(win, c, row, bc.species.name, white_bold);
-        c = writeFmt(win, c, row, white_bold, "  Lv{d}  ", .{bc.critter.level});
+        if (is_wild) c = writeText(win, c, row, "Wild ", theme.heading);
+        c = writeText(win, c, row, bc.species.name, theme.heading);
+        c = writeFmt(win, c, row, theme.heading, "  Lv{d}  ", .{bc.critter.level});
         c = writeText(win, c, row, "[", type_bold);
         c = writeText(win, c, row, bc.species.critter_type.displayName(), type_bold);
         _ = writeText(win, c, row, "]", type_bold);
 
         // Line 2: HP bar
-        self.renderHpBar(win, bc.critter.current_hp, bc.critter.effectiveStat(.hp), row + 1, col);
+        _ = widgets.renderHpBar(win, bc.critter.current_hp, bc.critter.effectiveStat(.hp), row + 1, col, .full);
 
         // Line 3: Status (if any)
         if (bc.status.effect != .none) {
-            const status_style: Style = .{ .fg = .{ .rgb = .{ 255, 100, 100 } } };
+            const status_style: Style = .{ .fg = theme.status_red };
             var sc = writeText(win, col, row + 2, "[", status_style);
             sc = writeText(win, sc, row + 2, text.statusName(bc.status.effect), status_style);
             _ = writeFmt(win, sc, row + 2, status_style, " {d}t]", .{bc.status.turns_remaining});
         }
     }
 
-    fn renderHpBar(_: *const BattleScreen, win: Window, current: u16, max: u16, row: u16, col: u16) void {
-        const bar_width: u16 = 20;
-        const hp_color = colors.hpColor(current, max);
-        const gray: Style = .{ .fg = .{ .rgb = .{ 200, 200, 200 } } };
-
-        var c = writeText(win, col, row, "HP ", gray);
-
-        const filled: u16 = if (max > 0) @intCast((@as(u32, current) * bar_width) / @as(u32, max)) else 0;
-
-        var i: u16 = 0;
-        while (i < bar_width) : (i += 1) {
-            if (c >= win.width) break;
-            if (i < filled) {
-                win.writeCell(c, row, .{ .char = .{ .grapheme = "█", .width = 1 }, .style = .{ .fg = hp_color } });
-            } else {
-                win.writeCell(c, row, .{ .char = .{ .grapheme = "░", .width = 1 }, .style = .{ .fg = .{ .rgb = .{ 60, 60, 60 } } } });
-            }
-            c += 1;
-        }
-
-        _ = writeFmt(win, c, row, gray, " {d}/{d}", .{ current, max });
-    }
-
     fn renderSprite(self: *const BattleScreen, win: Window, bc: *const battle.BattleCritter, row: u16, col: u16) void {
         // Try sprite sheet first
         if (self.sprites.get(bc.species.id)) |sheet| {
-            const frame = self.anim_frame % sheet.frame_count;
+            const frame = self.anim_timer.frameMod(sheet.frame_count);
             sheet.render(win, frame, row, col, self.use_kitty);
             return;
         }
 
-        // Fallback: colored rectangle (same as Phase 3)
+        // Fallback: colored rectangle
         const sprite_w: u16 = 16;
         const sprite_h: u16 = 8;
-        const tc = colors.typeColor(bc.species.critter_type);
+        const tc = theme.typeColor(bc.species.critter_type);
 
         var r: u16 = 0;
         while (r < sprite_h) : (r += 1) {
@@ -402,25 +380,12 @@ pub const BattleScreen = struct {
         const name_col = if (sprite_w > name_len) col + (sprite_w - name_len) / 2 else col;
         const name_row = row + sprite_h / 2;
         if (name_row < win.height) {
-            _ = writeText(win, name_col, name_row, name, .{ .fg = .{ .rgb = .{ 0, 0, 0 } }, .bg = tc, .bold = true });
+            _ = writeText(win, name_col, name_row, name, .{ .fg = theme.black, .bg = tc, .bold = true });
         }
     }
 
-    /// Advance animation frame based on elapsed time. Returns true if frame changed.
     pub fn updateAnimation(self: *BattleScreen) void {
-        const now = std.time.milliTimestamp();
-        if (now - self.last_anim_ms >= ANIM_INTERVAL_MS) {
-            self.anim_frame +%= 1;
-            self.last_anim_ms = now;
-            self.dirty = true;
-        }
-    }
-
-    fn renderSeparator(_: *const BattleScreen, win: Window, row: u16) void {
-        var i: u16 = 0;
-        while (i < win.width) : (i += 1) {
-            win.writeCell(i, row, .{ .char = .{ .grapheme = "─", .width = 1 }, .style = .{ .fg = .{ .rgb = .{ 80, 80, 80 } } } });
-        }
+        if (self.anim_timer.tick()) self.dirty = true;
     }
 
     fn renderMessages(self: *const BattleScreen, win: Window, start_row: u16, end_row: u16) void {
@@ -428,7 +393,7 @@ pub const BattleScreen = struct {
         self.log.render(win, start_row, available);
     }
 
-    fn renderMenu(self: *const BattleScreen, win: Window, start_row: u16) void {
+    fn renderBattleMenu(self: *const BattleScreen, win: Window, start_row: u16) void {
         switch (self.menu_state) {
             .main_menu => self.renderMainMenu(win, start_row),
             .select_attack => self.renderAttackMenu(win, start_row),
@@ -437,13 +402,13 @@ pub const BattleScreen = struct {
             .select_heal_target => self.renderHealTargetMenu(win, start_row),
             .select_catch_tool => self.renderItemList(win, start_row, .catch_tool),
             .animating => {
-                _ = writeText(win, 2, start_row + 1, "[Press any key to continue]", .{ .fg = .{ .rgb = .{ 150, 150, 150 } }, .italic = true });
+                _ = writeText(win, 2, start_row + 1, "[Press any key to continue]", .{ .fg = theme.press_key, .italic = true });
             },
             .battle_over => {
                 if (self.outcome) |outcome| {
-                    _ = writeText(win, 2, start_row, text.formatOutcome(outcome), .{ .fg = .{ .rgb = .{ 255, 255, 100 } }, .bold = true });
+                    _ = writeText(win, 2, start_row, text.formatOutcome(outcome), .{ .fg = theme.outcome_yellow, .bold = true });
                 }
-                _ = writeText(win, 2, start_row + 2, "[Press any key to exit]", .{ .fg = .{ .rgb = .{ 150, 150, 150 } }, .italic = true });
+                _ = writeText(win, 2, start_row + 2, "[Press any key to exit]", .{ .fg = theme.press_key, .italic = true });
             },
         }
     }
@@ -453,13 +418,10 @@ pub const BattleScreen = struct {
         for (labels, 0..) |label, i| {
             const menu_col: u16 = if (i % 2 == 0) 4 else 24;
             const menu_row: u16 = row + @as(u16, @intCast(i / 2));
-            const selected = self.cursor == @as(u8, @intCast(i));
-            const style: Style = if (selected)
-                .{ .fg = .{ .rgb = .{ 0, 0, 0 } }, .bg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true }
-            else
-                .{ .fg = .{ .rgb = .{ 200, 200, 200 } } };
+            const is_sel = self.cursor == @as(u8, @intCast(i));
+            const style: Style = if (is_sel) theme.selected else theme.unselected;
 
-            const prefix: []const u8 = if (selected) "> " else "  ";
+            const prefix: []const u8 = if (is_sel) "> " else "  ";
             const c = writeText(win, menu_col - 2, menu_row, prefix, style);
             _ = writeText(win, c, menu_row, label, style);
         }
@@ -469,7 +431,7 @@ pub const BattleScreen = struct {
         const player = self.state.activePlayer();
         const slots = [_]?[]const u8{ player.critter.move_slot_1, player.critter.move_slot_2, player.critter.move_slot_3 };
 
-        _ = writeText(win, 2, row, "Choose a move:", header_style);
+        _ = writeText(win, 2, row, "Choose a move:", theme.header);
 
         var display_idx: u8 = 0;
         for (slots, 0..) |slot, i| {
@@ -479,13 +441,10 @@ pub const BattleScreen = struct {
             const move_type_name = if (move) |m| m.move_type.displayName() else "???";
             const move_power: u16 = if (move) |m| m.power else 0;
 
-            const selected = self.cursor == display_idx;
-            const style: Style = if (selected)
-                .{ .fg = .{ .rgb = .{ 0, 0, 0 } }, .bg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true }
-            else
-                .{ .fg = .{ .rgb = .{ 200, 200, 200 } } };
+            const is_sel = self.cursor == display_idx;
+            const style: Style = if (is_sel) theme.selected else theme.unselected;
             const r = row + 1 + @as(u16, display_idx);
-            const prefix: []const u8 = if (selected) "> " else "  ";
+            const prefix: []const u8 = if (is_sel) "> " else "  ";
             var c = writeText(win, 2, r, prefix, style);
             c = writeFmt(win, c, r, style, "{d}. ", .{i + 1});
             c = writeText(win, c, r, move_name, style);
@@ -496,12 +455,12 @@ pub const BattleScreen = struct {
             display_idx += 1;
         }
 
-        _ = writeText(win, 2, row + 1 + @as(u16, display_idx) + 1, "[Esc] Back", dim_style);
+        _ = writeText(win, 2, row + 1 + @as(u16, display_idx) + 1, "[Esc] Back", theme.hint);
     }
 
     fn renderSwapMenu(self: *const BattleScreen, win: Window, row: u16) void {
         const label: []const u8 = if (self.isForcedSwap()) "Choose a replacement:" else "Swap to:";
-        _ = writeText(win, 2, row, label, header_style);
+        _ = writeText(win, 2, row, label, theme.header);
 
         var display_idx: u8 = 0;
         for (self.state.player_party, 0..) |slot, i| {
@@ -509,13 +468,10 @@ pub const BattleScreen = struct {
             if (i == self.state.player_active and bc.critter.current_hp > 0) continue;
             if (bc.critter.current_hp == 0) continue;
 
-            const selected = self.cursor == display_idx;
-            const style: Style = if (selected)
-                .{ .fg = .{ .rgb = .{ 0, 0, 0 } }, .bg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true }
-            else
-                .{ .fg = .{ .rgb = .{ 200, 200, 200 } } };
+            const is_sel = self.cursor == display_idx;
+            const style: Style = if (is_sel) theme.selected else theme.unselected;
             const r = row + 1 + @as(u16, display_idx);
-            const prefix: []const u8 = if (selected) "> " else "  ";
+            const prefix: []const u8 = if (is_sel) "> " else "  ";
             var c = writeText(win, 2, r, prefix, style);
             c = writeText(win, c, r, bc.species.name, style);
             _ = writeFmt(win, c, r, style, "  Lv{d}  HP:{d}/{d}", .{ bc.critter.level, bc.critter.current_hp, bc.critter.effectiveStat(.hp) });
@@ -523,28 +479,28 @@ pub const BattleScreen = struct {
         }
 
         if (!self.isForcedSwap()) {
-            _ = writeText(win, 2, row + 1 + @as(u16, display_idx) + 1, "[Esc] Back", dim_style);
+            _ = writeText(win, 2, row + 1 + @as(u16, display_idx) + 1, "[Esc] Back", theme.hint);
         }
     }
 
     fn renderItemList(self: *const BattleScreen, win: Window, row: u16, filter: ?items_mod.ItemKind) void {
         const label: []const u8 = if (filter != null and filter.? == .catch_tool) "Use catch tool:" else "Use item:";
-        _ = writeText(win, 2, row, label, header_style);
+        _ = writeText(win, 2, row, label, theme.header);
 
         var display_idx: u8 = 0;
         for (self.inventory) |slot| {
             if (!matchesItemFilter(slot.item.kind, filter) or slot.count == 0) continue;
 
             const is_blocked = slot.item.kind == .revive and self.state.revive_used;
-            const selected = self.cursor == display_idx;
+            const is_sel = self.cursor == display_idx;
             const style: Style = if (is_blocked)
-                .{ .fg = .{ .rgb = .{ 80, 80, 80 } } }
-            else if (selected)
-                .{ .fg = .{ .rgb = .{ 0, 0, 0 } }, .bg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true }
+                theme.dim
+            else if (is_sel)
+                theme.selected
             else
-                .{ .fg = .{ .rgb = .{ 200, 200, 200 } } };
+                theme.unselected;
             const r = row + 1 + @as(u16, display_idx);
-            const prefix: []const u8 = if (selected) "> " else "  ";
+            const prefix: []const u8 = if (is_sel) "> " else "  ";
             var c = writeText(win, 2, r, prefix, style);
             c = writeText(win, c, r, slot.item.name, style);
             if (is_blocked) {
@@ -556,14 +512,11 @@ pub const BattleScreen = struct {
         }
 
         if (display_idx == 0) {
-            _ = writeText(win, 2, row + 1, "  (none available)", .{ .fg = dim_style.fg, .italic = true });
+            _ = writeText(win, 2, row + 1, "  (none available)", .{ .fg = theme.dim_gray, .italic = true });
         }
 
-        _ = writeText(win, 2, row + 2 + @as(u16, display_idx), "[Esc] Back", dim_style);
+        _ = writeText(win, 2, row + 2 + @as(u16, display_idx), "[Esc] Back", theme.hint);
     }
-
-    const dim_style: Style = .{ .fg = .{ .rgb = .{ 100, 100, 100 } } };
-    const header_style: Style = .{ .fg = .{ .rgb = .{ 180, 180, 180 } } };
 
     fn countMoveSlots(self: *const BattleScreen) u8 {
         const player = self.state.activePlayer();
@@ -660,7 +613,7 @@ pub const BattleScreen = struct {
         const item_name = if (self.pending_heal_item) |h| h.item.name else "item";
         var label_buf: [64]u8 = undefined;
         const label = std.fmt.bufPrint(&label_buf, "Use {s} on:", .{item_name}) catch "Use item on:";
-        _ = writeText(win, 2, row, label, header_style);
+        _ = writeText(win, 2, row, label, theme.header);
 
         var display_idx: u8 = 0;
         for (self.state.player_party, 0..) |slot, i| {
@@ -672,14 +625,11 @@ pub const BattleScreen = struct {
                 if (bc.critter.current_hp == 0) continue;
             }
 
-            const selected = self.cursor == display_idx;
+            const is_sel = self.cursor == display_idx;
             const is_active = i == self.state.player_active;
-            const style: Style = if (selected)
-                .{ .fg = .{ .rgb = .{ 0, 0, 0 } }, .bg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true }
-            else
-                .{ .fg = .{ .rgb = .{ 200, 200, 200 } } };
+            const style: Style = if (is_sel) theme.selected else theme.unselected;
             const r = row + 1 + @as(u16, display_idx);
-            const prefix: []const u8 = if (selected) "> " else "  ";
+            const prefix: []const u8 = if (is_sel) "> " else "  ";
             var c = writeText(win, 2, r, prefix, style);
             c = writeText(win, c, r, bc.species.name, style);
             if (is_active) {
@@ -691,9 +641,9 @@ pub const BattleScreen = struct {
 
         if (display_idx == 0) {
             const msg: []const u8 = if (is_revive) "  (no fainted critters)" else "  (no targets)";
-            _ = writeText(win, 2, row + 1, msg, .{ .fg = dim_style.fg, .italic = true });
+            _ = writeText(win, 2, row + 1, msg, .{ .fg = theme.dim_gray, .italic = true });
         }
 
-        _ = writeText(win, 2, row + 2 + @as(u16, display_idx), "[Esc] Back", dim_style);
+        _ = writeText(win, 2, row + 2 + @as(u16, display_idx), "[Esc] Back", theme.hint);
     }
 };

@@ -28,10 +28,14 @@ const InventoryScreen = inventory_screen_mod.InventoryScreen;
 const sprite_mod = @import("ui/sprite.zig");
 const SpriteMap = sprite_mod.SpriteMap;
 const ui = @import("ui/ui_common.zig");
+const theme = @import("ui/theme.zig");
+const widgets = @import("ui/widgets.zig");
 const passive = @import("passive");
 const passive_store = @import("db/passive_store.zig");
 const recap_screen_mod = @import("ui/recap_screen.zig");
 const RecapScreen = recap_screen_mod.RecapScreen;
+const title_screen_mod = @import("ui/title_screen.zig");
+const TitleScreen = title_screen_mod.TitleScreen;
 
 const Event = union(enum) {
     key_press: vaxis.Key,
@@ -43,6 +47,7 @@ const Event = union(enum) {
 pub const panic = vaxis.Panic.call;
 
 const ActiveScreen = enum {
+    title,
     recap,
     hub,
     party_select,
@@ -137,9 +142,22 @@ pub fn main() !void {
     }
     defer for (sprite_storage[0..sprite_count]) |*s| s.deinit();
 
+    // Load title sprite
+    var title_sprite_storage: sprite_mod.SpriteSheet = undefined;
+    var has_title_sprite = false;
+    if (sprite_mod.SpriteSheet.loadFromFile(alloc, "assets/sprites/title.png")) |ts| {
+        title_sprite_storage = ts;
+        has_title_sprite = true;
+    } else |_| {}
+    defer if (has_title_sprite) title_sprite_storage.deinit();
+
     // Passive reconciliation — process events before showing UI
     var recap_screen: RecapScreen = undefined;
-    var active_screen: ActiveScreen = .hub;
+    const title_sprite_ptr: ?*const sprite_mod.SpriteSheet = if (has_title_sprite) &title_sprite_storage else null;
+    const critter_sprite_ptr: ?*const sprite_mod.SpriteSheet = sprite_map.get("println");
+    // Use half-block rendering for title/roster sprites (crisp pixel art, no Kitty blur)
+    var title_screen = TitleScreen.init(title_sprite_ptr, critter_sprite_ptr, false);
+    var active_screen: ActiveScreen = .title;
     const reconcile_result = runReconciliation(alloc, &database, &gd);
     if (reconcile_result) |r| {
         recap_screen = r;
@@ -203,7 +221,15 @@ pub fn main() !void {
             const path = spritePath(entry.species_id) orelse continue;
             @constCast(entry.sheet).loadKittyImage(&vx, alloc, writer, path) catch {};
         }
+        if (has_title_sprite) {
+            title_sprite_storage.loadKittyImage(&vx, alloc, writer, "assets/sprites/title.png") catch {};
+        }
     }
+
+    // Transition state for screen-change visual effect
+    var transition_start_ms: i64 = 0;
+    var transition_pending: ?ActiveScreen = null;
+    const transition_duration_ms: i64 = 150;
 
     var quit = false;
     while (!quit) {
@@ -211,7 +237,7 @@ pub fn main() !void {
             switch (event) {
                 .key_press => |key| {
                     if (key.matches('q', .{}) or key.matches('c', .{ .ctrl = true })) {
-                        if (active_screen == .hub) {
+                        if (active_screen == .hub or active_screen == .title) {
                             quit = true;
                             break;
                         } else if (key.matches('c', .{ .ctrl = true })) {
@@ -220,6 +246,7 @@ pub fn main() !void {
                         }
                     }
                     switch (active_screen) {
+                        .title => title_screen.handleInput(key),
                         .recap => {
                             recap_screen.handleInput(key);
                         },
@@ -232,26 +259,35 @@ pub fn main() !void {
                         .shop => shop_screen.handleInput(key),
                         .run_over => {
                             // Any key returns to hub
-                            active_screen = .hub;
                             hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                            transition_pending = .hub;
+                            transition_start_ms = std.time.milliTimestamp();
                         },
                     }
                 },
                 .winsize => |ws| {
                     try vx.resize(alloc, writer, ws);
-                    markAllDirty(active_screen, &recap_screen, &hub_screen, &party_select_screen, &roster_screen, &inv_screen, &dg_screen, &battle_screen, &shop_screen, &run_over_dirty);
+                    markAllDirty(active_screen, &title_screen, &recap_screen, &hub_screen, &party_select_screen, &roster_screen, &inv_screen, &dg_screen, &battle_screen, &shop_screen, &run_over_dirty);
                 },
                 else => {},
             }
         }
         if (quit) break;
 
-        // Check screen transitions
-        switch (active_screen) {
+        // Check screen transitions (skip if a transition is already in progress)
+        if (transition_pending == null) switch (active_screen) {
+            .title => {
+                if (title_screen.done) {
+                    hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                    transition_pending = .hub;
+                    transition_start_ms = std.time.milliTimestamp();
+                }
+            },
             .recap => {
                 if (recap_screen.done) {
-                    active_screen = .hub;
                     hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                    transition_pending = .hub;
+                    transition_start_ms = std.time.milliTimestamp();
                 }
             },
             .hub => {
@@ -261,7 +297,8 @@ pub fn main() !void {
                         .new_run => {
                             reloadRoster(alloc, &database, &gd, &roster_buf, &roster_species_buf);
                             party_select_screen = PartySelectScreen.init(roster_buf, roster_species_buf[0..roster_buf.len]);
-                            active_screen = .party_select;
+                            transition_pending = .party_select;
+                            transition_start_ms = std.time.milliTimestamp();
                         },
                         .view_roster => {
                             reloadRoster(alloc, &database, &gd, &roster_buf, &roster_species_buf);
@@ -278,8 +315,9 @@ pub fn main() !void {
                                     .quantity = inventory_buf[i].quantity,
                                 };
                             }
-                            roster_screen = RosterScreen.init(roster_buf, roster_species_buf[0..roster_buf.len], inv_entries[0..inv_len], &gd);
-                            active_screen = .roster_view;
+                            roster_screen = RosterScreen.init(roster_buf, roster_species_buf[0..roster_buf.len], inv_entries[0..inv_len], &gd, &sprite_map, false);
+                            transition_pending = .roster_view;
+                            transition_start_ms = std.time.milliTimestamp();
                         },
                         .view_inventory => {
                             if (inventory_buf.len > 0) {
@@ -295,7 +333,8 @@ pub fn main() !void {
                                 };
                             }
                             inv_screen = InventoryScreen.init(inv_screen_entries[0..inv_len], &gd, roster_db.getCurrency(&database));
-                            active_screen = .inventory;
+                            transition_pending = .inventory;
+                            transition_start_ms = std.time.milliTimestamp();
                         },
                         .quit => {
                             quit = true;
@@ -338,16 +377,19 @@ pub fn main() !void {
                                 seed,
                             );
                             dg_screen = DungeonScreen.init(&dungeon_state, &gd);
-                            active_screen = .dungeon;
+                            transition_pending = .dungeon;
+                            transition_start_ms = std.time.milliTimestamp();
                         } else {
                             // No valid party, go back to hub
-                            active_screen = .hub;
                             hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                            transition_pending = .hub;
+                            transition_start_ms = std.time.milliTimestamp();
                         }
                     } else {
                         // Cancelled
-                        active_screen = .hub;
                         hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                        transition_pending = .hub;
+                        transition_start_ms = std.time.milliTimestamp();
                     }
                 }
             },
@@ -364,14 +406,16 @@ pub fn main() !void {
                     roster_screen.pending_equip = null;
                 }
                 if (roster_screen.done) {
-                    active_screen = .hub;
                     hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                    transition_pending = .hub;
+                    transition_start_ms = std.time.milliTimestamp();
                 }
             },
             .inventory => {
                 if (inv_screen.done) {
-                    active_screen = .hub;
                     hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                    transition_pending = .hub;
+                    transition_start_ms = std.time.milliTimestamp();
                 }
             },
             .dungeon => {
@@ -379,13 +423,15 @@ pub fn main() !void {
                     dg_screen.pending_battle = null;
                     last_was_boss = dg_screen.pending_is_boss;
                     if (startBattle(&dungeon_state, info, &gd, &inv_bridge, &inv_bridge_count, &inv_pre_counts, &battle_state, &battle_screen, &sprite_map, use_kitty)) {
-                        active_screen = .battle;
+                        transition_pending = .battle;
+                        transition_start_ms = std.time.milliTimestamp();
                     }
                 } else if (dg_screen.pending_shop) {
                     dg_screen.pending_shop = false;
                     dungeon_mod.generateBetweenFloorShop(&dungeon_state, &gd);
                     shop_screen = ShopScreen.init(&dungeon_state, &gd);
-                    active_screen = .shop;
+                    transition_pending = .shop;
+                    transition_start_ms = std.time.milliTimestamp();
                 }
             },
             .battle => {
@@ -425,12 +471,14 @@ pub fn main() !void {
                         persistPendingScars(&dungeon_state, &database, &run_party_ids);
                         // Save party state back to DB
                         savePartyState(&dungeon_state, &database, &run_party_ids);
-                        active_screen = .run_over;
+                        transition_pending = .run_over;
+                        transition_start_ms = std.time.milliTimestamp();
                         run_over_dirty = true;
                     } else if (dungeon_state.phase == .between_floors) {
                         dungeon_mod.generateBetweenFloorShop(&dungeon_state, &gd);
                         shop_screen = ShopScreen.init(&dungeon_state, &gd);
-                        active_screen = .shop;
+                        transition_pending = .shop;
+                        transition_start_ms = std.time.milliTimestamp();
                     } else {
                         active_screen = .dungeon;
                         dg_screen.dirty = true;
@@ -445,7 +493,8 @@ pub fn main() !void {
                         persistRunInventory(&dungeon_state, &database);
                         persistPendingScars(&dungeon_state, &database, &run_party_ids);
                         savePartyState(&dungeon_state, &database, &run_party_ids);
-                        active_screen = .run_over;
+                        transition_pending = .run_over;
+                        transition_start_ms = std.time.milliTimestamp();
                         run_over_dirty = true;
                     } else {
                         dungeon_mod.advanceFloor(&dungeon_state);
@@ -459,14 +508,36 @@ pub fn main() !void {
                 }
             },
             .run_over => {},
+        };
+
+        // Handle transition overlay (cut to black)
+        if (transition_pending) |pending| {
+            const elapsed = std.time.milliTimestamp() - transition_start_ms;
+            if (elapsed >= transition_duration_ms) {
+                active_screen = pending;
+                transition_pending = null;
+            } else {
+                const win = vx.window();
+                win.clear();
+                try vx.render(writer);
+                try writer.flush();
+                const remaining = transition_duration_ms - elapsed;
+                std.Thread.sleep(@intCast(remaining * std.time.ns_per_ms));
+                continue;
+            }
         }
 
-        if (active_screen == .battle) {
+        if (active_screen == .title) {
+            title_screen.updateAnimation();
+        } else if (active_screen == .roster_view) {
+            roster_screen.updateAnimation();
+        } else if (active_screen == .battle) {
             battle_screen.updateAnimation();
         }
 
         // Render
         const dirty = switch (active_screen) {
+            .title => title_screen.dirty,
             .recap => recap_screen.dirty,
             .hub => hub_screen.dirty,
             .party_select => party_select_screen.dirty,
@@ -480,6 +551,7 @@ pub fn main() !void {
 
         if (dirty) {
             switch (active_screen) {
+                .title => title_screen.dirty = false,
                 .recap => recap_screen.dirty = false,
                 .hub => hub_screen.dirty = false,
                 .party_select => party_select_screen.dirty = false,
@@ -492,6 +564,7 @@ pub fn main() !void {
             }
             const win = vx.window();
             switch (active_screen) {
+                .title => title_screen.render(win),
                 .recap => recap_screen.render(win),
                 .hub => hub_screen.render(win),
                 .party_select => party_select_screen.render(win),
@@ -739,6 +812,7 @@ fn persistRunInventory(
 
 fn markAllDirty(
     active_screen: ActiveScreen,
+    title_scr: *TitleScreen,
     recap_scr: *RecapScreen,
     hub_screen: *HubScreen,
     party_select_screen: *PartySelectScreen,
@@ -750,6 +824,7 @@ fn markAllDirty(
     run_over_dirty: *bool,
 ) void {
     switch (active_screen) {
+        .title => title_scr.dirty = true,
         .recap => recap_scr.dirty = true,
         .hub => hub_screen.dirty = true,
         .party_select => party_select_screen.dirty = true,
@@ -765,43 +840,39 @@ fn markAllDirty(
 fn renderRunOver(win: vaxis.Window, dungeon_state: *const dungeon_mod.DungeonState) void {
     win.clear();
 
-    const white_bold: ui.Style = .{ .fg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true };
-    const gold: ui.Style = .{ .fg = .{ .rgb = .{ 255, 200, 40 } }, .bold = true };
-    const gray: ui.Style = .{ .fg = .{ .rgb = .{ 180, 180, 180 } } };
-
     const title = switch (dungeon_state.outcome) {
         .extracted => "Run Complete - Extracted!",
         .wiped => "Run Over - Wiped!",
         .in_progress => "Run Over",
     };
 
-    const title_color: ui.Style = if (dungeon_state.outcome == .extracted)
-        .{ .fg = .{ .rgb = .{ 80, 255, 120 } }, .bold = true }
+    const title_color: theme.Style = if (dungeon_state.outcome == .extracted)
+        theme.level_up
     else
-        .{ .fg = .{ .rgb = .{ 255, 60, 60 } }, .bold = true };
+        .{ .fg = theme.error_red, .bold = true };
 
     _ = ui.writeText(win, 2, 1, title, title_color);
 
-    _ = ui.writeFmt(win, 2, 3, white_bold, "Floors cleared: {d}", .{dungeon_state.floor_number});
-    _ = ui.writeFmt(win, 2, 4, gold, "Currency earned: ${d}", .{dungeon_state.currency});
-    _ = ui.writeFmt(win, 2, 5, gray, "Critters caught: {d}", .{dungeon_state.catch_count});
+    _ = ui.writeFmt(win, 2, 3, theme.heading, "Floors cleared: {d}", .{dungeon_state.floor_number});
+    _ = ui.writeFmt(win, 2, 4, theme.currency_bold, "Currency earned: ${d}", .{dungeon_state.currency});
+    _ = ui.writeFmt(win, 2, 5, theme.header, "Critters caught: {d}", .{dungeon_state.catch_count});
 
     var row: u16 = 7;
 
     if (dungeon_state.catch_count > 0) {
-        _ = ui.writeText(win, 2, row, "Catches:", gray);
+        _ = ui.writeText(win, 2, row, "Catches:", theme.header);
         row += 1;
         for (dungeon_state.catches[0..dungeon_state.catch_count]) |maybe_catch| {
             const catch_rec = maybe_catch orelse continue;
             if (row >= win.height) break;
-            _ = ui.writeFmt(win, 4, row, gray, "{s} Lv{d} (floor {d})", .{ catch_rec.species_id, catch_rec.level, catch_rec.floor_caught });
+            _ = ui.writeFmt(win, 4, row, theme.header, "{s} Lv{d} (floor {d})", .{ catch_rec.species_id, catch_rec.level, catch_rec.floor_caught });
             row += 1;
         }
         row += 1;
     }
 
     // Show scars earned
-    const scar_style: ui.Style = .{ .fg = .{ .rgb = .{ 200, 100, 100 } } };
+    const scar_style: theme.Style = .{ .fg = theme.scar_label };
     if (dungeon_state.pending_scar_count > 0) {
         _ = ui.writeText(win, 2, row, "Scars:", scar_style);
         row += 1;
@@ -819,13 +890,10 @@ fn renderRunOver(win: vaxis.Window, dungeon_state: *const dungeon_mod.DungeonSta
 
     // Show cooldown on wipe
     if (dungeon_state.outcome == .wiped) {
-        _ = ui.writeText(win, 2, row, "Your critters need 2 runs to recover.", .{ .fg = .{ .rgb = .{ 255, 100, 100 } }, .bold = true });
+        _ = ui.writeText(win, 2, row, "Your critters need 2 runs to recover.", .{ .fg = theme.status_red, .bold = true });
     }
 
-    const hint_row = if (win.height > 4) win.height - 2 else win.height;
-    if (hint_row < win.height) {
-        _ = ui.writeText(win, 2, hint_row, "[Press any key to continue]", ui.dim_style);
-    }
+    widgets.renderHintAt(win, 2, "[Press any key to continue]");
 }
 
 // --- CLI subcommand handlers ---

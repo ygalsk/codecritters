@@ -4,15 +4,15 @@ const dungeon_mod = @import("dungeon");
 const game_data_mod = @import("game_data");
 const species_mod = @import("species");
 const critter_mod = @import("critter");
-const colors = @import("colors.zig");
 const ui = @import("ui_common.zig");
+const theme = @import("theme.zig");
+const layout = @import("layout.zig");
+const widgets = @import("widgets.zig");
 
 const floor_gen = dungeon_mod.floor_gen;
 const biome_mod = dungeon_mod.biome;
 
 const Window = ui.Window;
-const Style = ui.Style;
-const Key = ui.Key;
 const writeText = ui.writeText;
 const writeFmt = ui.writeFmt;
 
@@ -54,13 +54,13 @@ pub const DungeonScreen = struct {
     }
 
     pub fn handleInput(self: *DungeonScreen, key: vaxis.Key) void {
-        const dir: ?dungeon_mod.Direction = if (key.matches(Key.up, .{}))
+        const dir: ?dungeon_mod.Direction = if (key.matches(vaxis.Key.up, .{}))
             .up
-        else if (key.matches(Key.down, .{}))
+        else if (key.matches(vaxis.Key.down, .{}))
             .down
-        else if (key.matches(Key.left, .{}))
+        else if (key.matches(vaxis.Key.left, .{}))
             .left
-        else if (key.matches(Key.right, .{}))
+        else if (key.matches(vaxis.Key.right, .{}))
             .right
         else
             null;
@@ -96,17 +96,14 @@ pub const DungeonScreen = struct {
 
     pub fn render(self: *const DungeonScreen, win: Window) void {
         win.clear();
-        if (win.height < 14 or win.width < 30) {
-            _ = win.printSegment(.{ .text = "Terminal too small" }, .{});
-            return;
-        }
+        if (layout.tooSmall(win, 30, 14)) return;
 
         const hud_height: u16 = 2;
         const map_width: u16 = floor_gen.FLOOR_WIDTH;
         const map_height: u16 = floor_gen.FLOOR_HEIGHT;
 
         // Center map horizontally
-        const map_col: u16 = if (win.width > map_width) (win.width - map_width) / 2 else 0;
+        const map_col = layout.centerCol(win.width, map_width);
         const map_row: u16 = hud_height;
 
         self.renderHud(win, map_col);
@@ -117,25 +114,22 @@ pub const DungeonScreen = struct {
 
         const ctrl_row = msg_row + @as(u16, @min(self.log.msg_count, 2)) + 1;
         if (ctrl_row < win.height) {
-            _ = writeText(win, 2, ctrl_row, "[arrows] Move", ui.dim_style);
+            _ = writeText(win, 2, ctrl_row, "[arrows] Move", theme.hint);
         }
     }
 
     fn renderHud(self: *const DungeonScreen, win: Window, col: u16) void {
-        const white_bold: Style = .{ .fg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true };
-        const gold: Style = .{ .fg = .{ .rgb = .{ 255, 200, 40 } }, .bold = true };
-
-        var c = writeFmt(win, col, 0, white_bold, "Floor {d}", .{self.dungeon.floor_number});
+        var c = writeFmt(win, col, 0, theme.heading, "Floor {d}", .{self.dungeon.floor_number});
         c = writeText(win, c + 2, 0, "  ", .{});
-        _ = writeFmt(win, c, 0, gold, "${d}", .{self.dungeon.currency});
+        _ = writeFmt(win, c, 0, theme.currency_bold, "${d}", .{self.dungeon.currency});
 
         c = col;
         for (self.dungeon.party) |maybe_critter| {
             const critter = maybe_critter orelse continue;
             const sp = ui.findSpeciesForCritter(self.dungeon, &critter);
             const name = if (sp) |s| s.name else "???";
-            const hp_color = colors.hpColor(critter.current_hp, critter.max_hp);
-            c = writeText(win, c, 1, name, .{ .fg = .{ .rgb = .{ 200, 200, 200 } } });
+            const hp_color = theme.hpColor(critter.current_hp, critter.max_hp);
+            c = writeText(win, c, 1, name, theme.body);
             c = writeFmt(win, c, 1, .{ .fg = hp_color }, " {d}/{d}", .{ critter.current_hp, critter.max_hp });
             c += 2;
         }
@@ -158,7 +152,7 @@ pub const DungeonScreen = struct {
                 if (xi == self.dungeon.player_x and yi == self.dungeon.player_y) {
                     win.writeCell(col, row, .{
                         .char = .{ .grapheme = "@", .width = 1 },
-                        .style = .{ .fg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true },
+                        .style = theme.heading,
                     });
                     continue;
                 }
@@ -211,10 +205,10 @@ pub const DungeonScreen = struct {
         };
     }
 
-    fn tileStyleFor(tile: floor_gen.Tile, theme: biome_mod.Theme, dim: bool) Style {
+    fn tileStyleFor(tile: floor_gen.Tile, biome_theme: biome_mod.Theme, dim: bool) theme.Style {
         return switch (tile) {
-            .wall => .{ .fg = .{ .rgb = if (dim) theme.wall_dim_fg else theme.wall_fg } },
-            .floor => .{ .fg = .{ .rgb = if (dim) theme.floor_dim_fg else theme.floor_fg } },
+            .wall => .{ .fg = .{ .rgb = if (dim) biome_theme.wall_dim_fg else biome_theme.wall_fg } },
+            .floor => .{ .fg = .{ .rgb = if (dim) biome_theme.floor_dim_fg else biome_theme.floor_fg } },
             .encounter => .{ .fg = .{ .rgb = if (dim) .{ 100, 80, 16 } else .{ 255, 200, 40 } }, .bold = !dim },
             .stairs => .{ .fg = .{ .rgb = if (dim) .{ 32, 100, 48 } else .{ 80, 255, 120 } }, .bold = !dim },
             .entrance => .{ .fg = .{ .rgb = if (dim) .{ 0, 72, 100 } else .{ 0, 180, 255 } } },

@@ -2,12 +2,13 @@ const std = @import("std");
 const vaxis = @import("vaxis");
 const critter_mod = @import("critter");
 const species_mod = @import("species");
-const colors = @import("colors.zig");
 const ui = @import("ui_common.zig");
+const theme = @import("theme.zig");
+const layout = @import("layout.zig");
+const widgets = @import("widgets.zig");
+const input = @import("input.zig");
 
 const Window = ui.Window;
-const Style = ui.Style;
-const Key = ui.Key;
 const writeText = ui.writeText;
 const writeFmt = ui.writeFmt;
 
@@ -85,37 +86,33 @@ pub const PartySelectScreen = struct {
         self.dirty = true;
         const roster_len: u8 = @intCast(@min(self.roster.len, MAX_ROSTER));
 
-        if (key.matches(Key.up, .{})) {
-            if (self.cursor > 0) self.cursor -= 1;
-        } else if (key.matches(Key.down, .{})) {
-            if (self.cursor + 1 < roster_len) self.cursor += 1;
-        } else if (key.matches(Key.enter, .{}) or key.matches(' ', .{})) {
-            self.toggleSelect(self.cursor);
-        } else if (key.matches('c', .{})) {
-            if (self.select_count > 0) {
+        const action = input.applyCursor(&self.cursor, roster_len, input.menuNav(key));
+        switch (action) {
+            .confirm => self.toggleSelect(self.cursor),
+            .back => {
                 self.done = true;
-                self.confirmed = true;
-            }
-        } else if (key.matches(Key.escape, .{}) or key.matches(Key.backspace, .{})) {
-            self.done = true;
-            self.confirmed = false;
+                self.confirmed = false;
+            },
+            else => {
+                if (key.matches('c', .{})) {
+                    if (self.select_count > 0) {
+                        self.done = true;
+                        self.confirmed = true;
+                    }
+                }
+            },
         }
     }
 
     pub fn render(self: *const PartySelectScreen, win: Window) void {
         win.clear();
-        if (win.height < 10 or win.width < 40) {
-            _ = writeText(win, 0, 0, "Terminal too small", .{ .fg = .{ .rgb = .{ 255, 60, 60 } } });
-            return;
-        }
+        if (layout.tooSmall(win, 40, 10)) return;
 
-        const white_bold: Style = .{ .fg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true };
-
-        _ = writeFmt(win, 2, 0, white_bold, "Select Party ({d}/{d})", .{ self.select_count, MAX_PARTY });
+        _ = writeFmt(win, 2, 0, theme.heading, "Select Party ({d}/{d})", .{ self.select_count, MAX_PARTY });
 
         if (self.roster.len == 0) {
-            _ = writeText(win, 2, 2, "No critters in roster!", .{ .fg = .{ .rgb = .{ 255, 100, 100 } } });
-            _ = writeText(win, 2, 4, "[Esc] Back", ui.dim_style);
+            _ = writeText(win, 2, 2, "No critters in roster!", theme.err);
+            _ = writeText(win, 2, 4, "[Esc] Back", theme.hint);
             return;
         }
 
@@ -141,11 +138,11 @@ pub const PartySelectScreen = struct {
             const marker: []const u8 = if (is_sel) "[*]" else "[ ]";
             const prefix: []const u8 = if (is_cur) "> " else "  ";
 
-            var style: Style = .{ .fg = .{ .rgb = .{ 200, 200, 200 } } };
+            var style: theme.Style = theme.body;
             if (on_cd) {
-                style = .{ .fg = .{ .rgb = .{ 120, 60, 60 } } };
+                style = .{ .fg = theme.cooldown_dim };
             } else if (is_cur) {
-                style = .{ .fg = .{ .rgb = .{ 255, 255, 255 } }, .bold = true };
+                style = theme.heading;
             }
 
             var c = writeText(win, 2, row, prefix, style);
@@ -156,18 +153,18 @@ pub const PartySelectScreen = struct {
 
             // Type badge
             if (sp) |s| {
-                const type_color = colors.typeColor(s.critter_type);
+                const type_color = theme.typeColor(s.critter_type);
                 c = writeText(win, c, row, " ", style);
                 c = writeText(win, c, row, s.critter_type.displayName(), .{ .fg = type_color, .bold = true });
             }
 
             // HP
             const eff_hp = critter.effectiveStat(.hp);
-            const hp_color = colors.hpColor(critter.current_hp, eff_hp);
+            const hp_color = theme.hpColor(critter.current_hp, eff_hp);
             c = writeFmt(win, c, row, .{ .fg = hp_color }, " HP {d}/{d}", .{ critter.current_hp, eff_hp });
 
             if (on_cd) {
-                _ = writeFmt(win, c, row, .{ .fg = .{ .rgb = .{ 200, 60, 60 } } }, " [COOLDOWN {d} run(s)]", .{critter.cooldown_runs});
+                _ = writeFmt(win, c, row, .{ .fg = theme.cooldown_red }, " [COOLDOWN {d} run(s)]", .{critter.cooldown_runs});
             }
 
             row += 1;
@@ -176,7 +173,7 @@ pub const PartySelectScreen = struct {
         // Selected party summary
         row += 1;
         if (row < win.height) {
-            _ = writeText(win, 2, row, "Party:", white_bold);
+            _ = writeText(win, 2, row, "Party:", theme.heading);
             row += 1;
         }
         for (self.selected) |maybe| {
@@ -186,16 +183,13 @@ pub const PartySelectScreen = struct {
                     const critter = &self.roster[idx];
                     const sp = if (idx < self.roster_species.len) self.roster_species[idx] else null;
                     const name = if (sp) |s| s.name else "???";
-                    _ = writeFmt(win, 4, row, .{ .fg = .{ .rgb = .{ 150, 255, 150 } } }, "- {s} Lv{d}", .{ name, critter.level });
+                    _ = writeFmt(win, 4, row, .{ .fg = theme.party_green }, "- {s} Lv{d}", .{ name, critter.level });
                     row += 1;
                 }
             }
         }
 
         // Controls
-        const ctrl_row: u16 = if (win.height > 2) win.height - 2 else win.height;
-        if (ctrl_row < win.height) {
-            _ = writeText(win, 2, ctrl_row, "[Enter] Toggle  [C] Confirm  [Esc] Back", ui.dim_style);
-        }
+        widgets.renderHintAt(win, 2, "[Enter] Toggle  [C] Confirm  [Esc] Back");
     }
 };
