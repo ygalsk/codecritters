@@ -187,3 +187,9 @@
 - **dungeon_screen.zig**: Added `MenuMode` enum (exploring/quick_menu), `pending_inventory`/`pending_roster` transition flags. Hint text shows `[m] Menu`.
 - **main.zig**: Handles dungeon→inventory/roster transitions (run_inventory→InventoryEntry conversion, party compaction). Inventory return applies HP changes via index mapping and decrements run_inventory. Roster return is a simple transition back.
 - 234 tests passing (no new tests — feature is UI-only screen wiring)
+
+## Phase 16 — Bug Fixes: Battle Priority + Speed Death Logic [DONE]
+- **Fainted critter guard**: Added HP checks in `processTurn` (`src/battle/battle.zig:335,350`) so the second actor in turn order cannot act if KO'd by the first. Previously, when the wild critter was faster and killed the player's active critter (but other party members survived), `state.outcome` stayed null and the fainted critter still resolved its attack.
+- **Item/catch priority investigation**: No bug found — items and catch attempts already follow the same speed-based turn ordering as attacks. The `player_goes_first` flag applies equally to all action types.
+- 1 new test: `"processTurn: fainted critter does not act after being KO'd"` — wild faster, KOs player active, backup alive, verifies fainted critter deals no damage
+- 235 tests passing

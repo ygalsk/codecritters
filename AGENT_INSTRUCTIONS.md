@@ -39,40 +39,43 @@ All game systems built through Phase 12. Phase 13 added title screen and transit
 ### Phase 14 — Bug Fixes: Death Logic + Cooldown Blocking + XP + Hub Item Use [DONE]
 Fixed death logic (fainted critters no longer excluded from battle party), cooldown deadlock (cooldowns decrement before party select), XP persistence (silent catch {} replaced with error logging, index mapping fixed). Hub inventory now interactive — healing/revive items usable on roster critters.
 
-### Phase 15 — Dungeon Quick Menu + In-Dungeon Item Use
+### Phase 15 — Dungeon Quick Menu + In-Dungeon Item Use [DONE]
 Press `m` in dungeon for quick menu: swap active roster order, open inventory to use items, view party. Wire healing/consumable item effects through dungeon context (hub inventory already interactive from Phase 14).
 
-### Phase 16 — Roster Swap + Item Screen Improvements
+### Phase 16 — Bug Fixes: Battle Priority + Speed Death Logic
+Fix two battle bugs: (1) consumable items and catch attempts always act before critter moves regardless of speed — they should follow the same speed-based turn ordering as attacks; (2) when a faster critter attacks first and kills the opponent, the dead critter still gets a move — fainted critters must not act. Investigate whether bugs are in the battle engine (`src/battle/battle.zig`) or the UI layer (`src/ui/`).
+
+### Phase 17 — Roster Swap + Item Screen Improvements
 Roster and party select screens gain position-swap controls. Item/inventory screen shows full descriptions, effect values, and item sprites. Items display rarity indicators.
 
-### Phase 17 — Game Event Loop Engine (Research Phase)
+### Phase 18 — Game Event Loop Engine (Research Phase)
 Research and design a reusable game event loop engine. The UI rendering layer (theme/layout/widgets/anim/input) exists but there's no centralized game event loop. Needs discussion on scope and architecture before implementation.
 
-### Phase 18 — CLI Enhancements: JSON + Statusline Sprite
+### Phase 19 — CLI Enhancements: JSON + Statusline Sprite
 Enrich `status` CLI with full JSON output for chat personality (individual critter details, equipped moves, run state). Add `statusline --sprite` flag returning rendered sprite with info for Claude statusline.
 
-### Phase 19 — Three-Stage Evolution Lines (All 7 Types)
+### Phase 20 — Three-Stage Evolution Lines (All 7 Types)
 Complete every type's 3-stage common→common→uncommon line (Printf→Fprintf→Logstash, Segfault→Stack Overflow→Kernel Panic, etc.). +15 species, +14 moves, +15 sprites. Update all biome encounter tables.
 
-### Phase 20 — Four New Biomes + Detection
+### Phase 21 — Four New Biomes + Detection
 Rustacean Depths (.rs), Gopher Tunnels (.go), C Catacombs (.c/.h), Shell Scripts (.sh). Complete detect.zig with language scoring. Each biome needs encounter table, boss pool, shop/drop bias, theme colors.
 
-### Phase 21 — Two-Stage Lines + Standalone Rares
+### Phase 22 — Two-Stage Lines + Standalone Rares
 Each type gets its uncommon→rare 2-stage line + standalone rare (Breakpoint→Watchpoint, Heisenbug, etc.). +21 species, +10 moves, +21 sprites.
 
-### Phase 22 — Epics + Legendaries + Sound Cues
+### Phase 23 — Epics + Legendaries + Sound Cues
 7 epics (stats reflect drawbacks, no special engine hooks yet) + 3 legendaries (not in encounter tables). Sound system emitting BEL on key events. +10 species, +8 moves, +10 sprites. Full 61-critter roster complete.
 
-### Phase 23 — Dungeon Graphics + Attack Animations + Visual Overhaul
-Sprite-based dungeon rendering with themed tile graphics. Battle attack animations per move type. Visual pass on all screens: title, hub, roster, shop, recap. Target 80×24 minimum.
+### Phase 24 — Dungeon Graphics + Biome Tilesets + Attack Animations + Visual Overhaul
+Sprite-based dungeon rendering with biome-specific tilesets for each dungeon type. Battle attack animations per move type. Visual pass on all screens: title, hub, roster, shop, recap. Target 80×24 minimum.
 
-### Phase 24 — Sprite Audit + Final Visual Polish
+### Phase 25 — Sprite Audit + Final Visual Polish
 Verify all 61 sprites exist. Hub shows favorite critter. Roster shows sprite previews. Battle handles long names. All screens clean at 80×24.
 
-### Phase 25 — README + Build Streamlining
+### Phase 26 — README + Build Streamlining
 Enhance README with actual screenshots, GIFs, and visual appeal. Streamline build and install process (single-command setup, clearer install instructions).
 
-### Phase 26 — Balance Pass + Final Polish
+### Phase 27 — Balance Pass + Final Polish
 Stat totals by rarity tier, move power/accuracy curves, XP curve verification, catch rate review, biome encounter balance, shop pricing, edge case testing. Content-complete.
 
 ---

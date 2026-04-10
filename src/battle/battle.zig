@@ -332,7 +332,7 @@ pub fn processTurn(
                 return result;
             }
         }
-        if (!wild_skip) {
+        if (!wild_skip and state.wild.critter.current_hp > 0) {
             resolveAction(state, wild_action, false, game_data, &result);
             if (state.outcome != null) {
                 result.outcome = state.outcome;
@@ -347,7 +347,7 @@ pub fn processTurn(
                 return result;
             }
         }
-        if (!player_skip) {
+        if (!player_skip and state.activePlayer().critter.current_hp > 0) {
             resolveAction(state, player_action, true, game_data, &result);
             if (state.outcome != null) {
                 result.outcome = state.outcome;
@@ -695,6 +695,46 @@ test "processTurn: faster critter acts first" {
     try testing.expectEqual(@as(u16, 0), state.wild.critter.current_hp);
     // Player shouldn't have taken damage (wild fainted before acting)
     try testing.expectEqual(@as(u16, 100), state.activePlayer().critter.current_hp);
+}
+
+test "processTurn: fainted critter does not act after being KO'd" {
+    const sp1 = makeTestSpecies("sp1", .debug);
+    const sp2 = makeTestSpecies("sp2", .chaos);
+    var slow_c = makeTestCritter("sp1", "log_dump", 5); // low HP — will faint
+    slow_c.speed = 10;
+    const backup = makeTestCritter("sp2", "log_dump", 100);
+
+    const wild_sp = makeTestSpecies("fast_wild", .debug);
+    var fast_wild = makeTestCritter("fast_wild", "log_dump", 100);
+    fast_wild.speed = 100; // faster — acts first
+
+    const critters = [_]critter_mod.Critter{ slow_c, backup };
+    const sp_ptrs = [_]*const species_mod.Species{ &sp1, &sp2 };
+    var state = initBattle(&critters, &sp_ptrs, fast_wild, &wild_sp, 42);
+
+    const allocator = testing.allocator;
+    var gd = try game_data_mod.GameData.load(allocator);
+    defer gd.deinit();
+
+    const result = processTurn(&state, .{ .attack = 0 }, &gd);
+
+    // Player's active critter should be fainted
+    try testing.expectEqual(@as(u16, 0), state.activePlayer().critter.current_hp);
+    // Wild should NOT have taken damage — fainted critter must not act
+    try testing.expectEqual(@as(u16, 100), state.wild.critter.current_hp);
+    // Battle should NOT be over (backup critter is alive)
+    try testing.expect(!state.isOver());
+    // Should have faint event but no player damage_dealt event
+    var player_dealt = false;
+    for (result.events[0..result.event_count]) |event| {
+        switch (event) {
+            .damage_dealt => |d| {
+                if (d.attacker_is_player) player_dealt = true;
+            },
+            else => {},
+        }
+    }
+    try testing.expect(!player_dealt);
 }
 
 test "processTurn: swap costs player's turn" {
