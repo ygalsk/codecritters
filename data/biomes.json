@@ -31,13 +31,21 @@
       { "species_id": "kernel_panic_critter", "weight": 3, "min_floor": 8, "max_floor": 255 },
       { "species_id": "monolith", "weight": 3, "min_floor": 8, "max_floor": 255 },
       { "species_id": "dependency", "weight": 3, "min_floor": 8, "max_floor": 255 },
-      { "species_id": "deadlock", "weight": 2, "min_floor": 8, "max_floor": 255 }
+      { "species_id": "deadlock", "weight": 2, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "breakpoint", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "fuzzer", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "watchpoint", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "chaos_monkey", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "heisenbug", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "bobby_tables", "weight": 1, "min_floor": 10, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "tracer", "level_bonus": 5 },
       { "species_id": "profiler", "level_bonus": 5 },
       { "species_id": "logstash", "level_bonus": 5 },
-      { "species_id": "monolith", "level_bonus": 5 }
+      { "species_id": "monolith", "level_bonus": 5 },
+      { "species_id": "watchpoint", "level_bonus": 5 },
+      { "species_id": "bobby_tables", "level_bonus": 5 }
     ],
     "shop_bias": [
       { "item_id": "small_patch", "weight": 30 },
@@ -83,13 +91,22 @@
       { "species_id": "bikeshed", "weight": 3, "min_floor": 7, "max_floor": 255 },
       { "species_id": "hallucination", "weight": 3, "min_floor": 7, "max_floor": 255 },
       { "species_id": "deadlock", "weight": 2, "min_floor": 8, "max_floor": 255 },
-      { "species_id": "profiler", "weight": 2, "min_floor": 7, "max_floor": 255 }
+      { "species_id": "profiler", "weight": 2, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "readme", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "hashmap", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "todo", "weight": 2, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "no_tests", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "b_tree", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "rubber_duck", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "yolo", "weight": 1, "min_floor": 10, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "monad", "level_bonus": 5 },
       { "species_id": "burrito", "level_bonus": 5 },
       { "species_id": "bikeshed", "level_bonus": 5 },
-      { "species_id": "hallucination", "level_bonus": 5 }
+      { "species_id": "hallucination", "level_bonus": 5 },
+      { "species_id": "rubber_duck", "level_bonus": 5 },
+      { "species_id": "yolo", "level_bonus": 5 }
     ],
     "shop_bias": [
       { "item_id": "small_patch", "weight": 25 },
@@ -131,13 +148,21 @@
       { "species_id": "pandemonium", "weight": 3, "min_floor": 7, "max_floor": 255 },
       { "species_id": "kernel_panic_critter", "weight": 3, "min_floor": 7, "max_floor": 255 },
       { "species_id": "hallucination", "weight": 3, "min_floor": 7, "max_floor": 255 },
-      { "species_id": "dependency", "weight": 3, "min_floor": 8, "max_floor": 255 }
+      { "species_id": "dependency", "weight": 3, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "fuzzer", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "readme", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "chaos_monkey", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "no_tests", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "bobby_tables", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "yolo", "weight": 1, "min_floor": 10, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "segfault", "level_bonus": 5 },
       { "species_id": "pandemonium", "level_bonus": 5 },
       { "species_id": "kernel_panic_critter", "level_bonus": 5 },
-      { "species_id": "hallucination", "level_bonus": 5 }
+      { "species_id": "hallucination", "level_bonus": 5 },
+      { "species_id": "chaos_monkey", "level_bonus": 5 },
+      { "species_id": "no_tests", "level_bonus": 5 }
     ],
     "shop_bias": [
       { "item_id": "print_statement", "weight": 25 },
@@ -180,13 +205,21 @@
       { "species_id": "deadlock", "weight": 3, "min_floor": 8, "max_floor": 255 },
       { "species_id": "nitpick", "weight": 3, "min_floor": 5, "max_floor": 255 },
       { "species_id": "functor", "weight": 3, "min_floor": 5, "max_floor": 255 },
-      { "species_id": "burrito", "weight": 2, "min_floor": 8, "max_floor": 255 }
+      { "species_id": "burrito", "weight": 2, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "breakpoint", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "queue", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "watchpoint", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "priority_queue", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "heisenbug", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "cron", "weight": 1, "min_floor": 10, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "profiler", "level_bonus": 5 },
       { "species_id": "deadlock", "level_bonus": 5 },
       { "species_id": "logstash", "level_bonus": 5 },
-      { "species_id": "burrito", "level_bonus": 5 }
+      { "species_id": "burrito", "level_bonus": 5 },
+      { "species_id": "cron", "level_bonus": 5 },
+      { "species_id": "heisenbug", "level_bonus": 5 }
     ],
     "shop_bias": [
       { "item_id": "formal_proof_tool", "weight": 25 },
@@ -229,13 +262,21 @@
       { "species_id": "goto", "weight": 4, "min_floor": 1, "max_floor": 255 },
       { "species_id": "deadlock", "weight": 3, "min_floor": 8, "max_floor": 255 },
       { "species_id": "burrito", "weight": 3, "min_floor": 7, "max_floor": 255 },
-      { "species_id": "bikeshed", "weight": 2, "min_floor": 8, "max_floor": 255 }
+      { "species_id": "bikeshed", "weight": 2, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "queue", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "hashmap", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "priority_queue", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "b_tree", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "cron", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "rubber_duck", "weight": 1, "min_floor": 10, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "deadlock", "level_bonus": 5 },
       { "species_id": "burrito", "level_bonus": 5 },
       { "species_id": "bikeshed", "level_bonus": 5 },
-      { "species_id": "logstash", "level_bonus": 5 }
+      { "species_id": "logstash", "level_bonus": 5 },
+      { "species_id": "priority_queue", "level_bonus": 5 },
+      { "species_id": "b_tree", "level_bonus": 5 }
     ],
     "shop_bias": [
       { "item_id": "disc_mutex_lock", "weight": 25 },
@@ -279,13 +320,21 @@
       { "species_id": "kernel_panic_critter", "weight": 3, "min_floor": 8, "max_floor": 255 },
       { "species_id": "dependency", "weight": 3, "min_floor": 8, "max_floor": 255 },
       { "species_id": "monolith", "weight": 3, "min_floor": 8, "max_floor": 255 },
-      { "species_id": "mutex", "weight": 3, "min_floor": 3, "max_floor": 255 }
+      { "species_id": "mutex", "weight": 3, "min_floor": 3, "max_floor": 255 },
+      { "species_id": "makefile", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "fuzzer", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "jenkins", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "chaos_monkey", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "cobol", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "bobby_tables", "weight": 1, "min_floor": 10, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "kernel_panic_critter", "level_bonus": 5 },
       { "species_id": "monolith", "level_bonus": 5 },
       { "species_id": "pandemonium", "level_bonus": 5 },
-      { "species_id": "dependency", "level_bonus": 5 }
+      { "species_id": "dependency", "level_bonus": 5 },
+      { "species_id": "cobol", "level_bonus": 5 },
+      { "species_id": "jenkins", "level_bonus": 5 }
     ],
     "shop_bias": [
       { "item_id": "print_statement", "weight": 25 },
@@ -329,13 +378,20 @@
       { "species_id": "bikeshed", "weight": 3, "min_floor": 7, "max_floor": 255 },
       { "species_id": "pandemonium", "weight": 3, "min_floor": 7, "max_floor": 255 },
       { "species_id": "kernel_panic_critter", "weight": 3, "min_floor": 8, "max_floor": 255 },
-      { "species_id": "autopilot", "weight": 3, "min_floor": 5, "max_floor": 255 }
+      { "species_id": "autopilot", "weight": 3, "min_floor": 5, "max_floor": 255 },
+      { "species_id": "todo", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "fuzzer", "weight": 2, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "fixme", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "four_oh_four", "weight": 1, "min_floor": 10, "max_floor": 255 },
+      { "species_id": "chaos_monkey", "weight": 1, "min_floor": 10, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "bikeshed", "level_bonus": 5 },
       { "species_id": "pandemonium", "level_bonus": 5 },
       { "species_id": "kernel_panic_critter", "level_bonus": 5 },
-      { "species_id": "hallucination", "level_bonus": 5 }
+      { "species_id": "hallucination", "level_bonus": 5 },
+      { "species_id": "four_oh_four", "level_bonus": 5 },
+      { "species_id": "fixme", "level_bonus": 5 }
     ],
     "shop_bias": [
       { "item_id": "print_statement", "weight": 25 },

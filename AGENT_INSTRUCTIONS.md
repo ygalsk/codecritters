@@ -63,7 +63,7 @@ Complete every type's 3-stage common→common→uncommon line (Printf→Fprintf�
 ### Phase 22 — Four New Biomes + Detection [DONE]
 Rustacean Depths (.rs), Gopher Tunnels (.go), C Catacombs (.c/.h), Shell Scripts (.sh). Completed detect.zig with 6-language scoring (manifests +10, extensions +1 capped at 20, highest-score-wins with tie-breaking). Each biome has encounter table, boss pool, shop/drop bias, theme colors. 6 new detection tests.
 
-### Phase 23 — Two-Stage Lines + Standalone Rares
+### Phase 23 — Two-Stage Lines + Standalone Rares [DONE]
 Each type gets its uncommon→rare 2-stage line + standalone rare (Breakpoint→Watchpoint, Heisenbug, etc.). +21 species, +10 moves, +21 sprites.
 
 ### Phase 24 — Epics + Legendaries + Sound Cues

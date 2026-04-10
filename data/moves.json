@@ -30,5 +30,15 @@
   { "id": "nit", "name": "Nit", "move_type": "snark", "power": 50, "accuracy": 95, "status_effect": "tilted", "status_chance": 25 },
   { "id": "bikeshedding", "name": "Bikeshedding", "move_type": "snark", "power": 75, "accuracy": 85, "status_effect": "tilted", "status_chance": 30 },
   { "id": "autocomplete", "name": "Autocomplete", "move_type": "vibe", "power": 55, "accuracy": 90, "status_effect": "hallucinating", "status_chance": 15 },
-  { "id": "confabulate", "name": "Confabulate", "move_type": "vibe", "power": 80, "accuracy": 75, "status_effect": "hallucinating", "status_chance": 25 }
+  { "id": "confabulate", "name": "Confabulate", "move_type": "vibe", "power": 80, "accuracy": 75, "status_effect": "hallucinating", "status_chance": 25 },
+  { "id": "breakpoint_set", "name": "Breakpoint Set", "move_type": "debug", "power": 70, "accuracy": 90, "status_effect": "linted", "status_chance": 25 },
+  { "id": "memory_watch", "name": "Memory Watch", "move_type": "debug", "power": 85, "accuracy": 85, "status_effect": "linted", "status_chance": 30 },
+  { "id": "observer_effect", "name": "Observer Effect", "move_type": "debug", "power": 75, "accuracy": 70 },
+  { "id": "fuzz_input", "name": "Fuzz Input", "move_type": "chaos", "power": 60, "accuracy": 80, "status_effect": "segfaulted", "status_chance": 25 },
+  { "id": "process_kill", "name": "Process Kill", "move_type": "chaos", "power": 90, "accuracy": 80, "status_effect": "segfaulted", "status_chance": 30 },
+  { "id": "sql_injection", "name": "SQL Injection", "move_type": "chaos", "power": 95, "accuracy": 75, "status_effect": "segfaulted", "status_chance": 35 },
+  { "id": "priority_boost", "name": "Priority Boost", "move_type": "patience", "power": 70, "accuracy": 90, "status_effect": "blocked", "status_chance": 30 },
+  { "id": "cron_job", "name": "Cron Job", "move_type": "patience", "power": 85, "accuracy": 85, "status_effect": "blocked", "status_chance": 35 },
+  { "id": "rebalance", "name": "Rebalance", "move_type": "wisdom", "power": 75, "accuracy": 90, "status_effect": "enlightened", "status_chance": 25 },
+  { "id": "explain_yourself", "name": "Explain Yourself", "move_type": "wisdom", "power": 70, "accuracy": 95, "status_effect": "enlightened", "status_chance": 35 }
 ]

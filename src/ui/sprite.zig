@@ -12,7 +12,7 @@ pub const Pixel = struct {
 };
 
 /// Max number of sprite sheets that can be loaded.
-const MAX_SPRITES = 32;
+const MAX_SPRITES = 64;
 
 pub const SpriteMap = struct {
     entries: [MAX_SPRITES]Entry = undefined,

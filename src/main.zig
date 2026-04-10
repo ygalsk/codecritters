@@ -136,7 +136,7 @@ pub fn main() !void {
 
     // Load sprite sheets for known critters
     var sprite_map = SpriteMap{};
-    const sprite_ids = [_][]const u8{ "println", "tracer", "profiler", "glitch", "gremlin", "pandemonium", "goto", "spaghetto", "dependency", "monad", "copilot", "segfault", "mutex", "lgtm", "singleton", "printf", "fprintf", "logstash", "stack_overflow", "kernel_panic_critter", "god_object", "monolith", "semaphore", "deadlock", "functor", "burrito", "nitpick", "bikeshed", "autopilot", "hallucination" };
+    const sprite_ids = [_][]const u8{ "println", "tracer", "profiler", "glitch", "gremlin", "pandemonium", "goto", "spaghetto", "dependency", "monad", "copilot", "segfault", "mutex", "lgtm", "singleton", "printf", "fprintf", "logstash", "stack_overflow", "kernel_panic_critter", "god_object", "monolith", "semaphore", "deadlock", "functor", "burrito", "nitpick", "bikeshed", "autopilot", "hallucination", "breakpoint", "watchpoint", "heisenbug", "fuzzer", "chaos_monkey", "bobby_tables", "queue", "priority_queue", "cron", "hashmap", "b_tree", "rubber_duck", "todo", "fixme", "four_oh_four", "readme", "no_tests", "yolo", "makefile", "jenkins", "cobol" };
     var sprite_storage: [sprite_ids.len]sprite_mod.SpriteSheet = undefined;
     var sprite_count: usize = 0;
     for (sprite_ids) |id| {

@@ -226,3 +226,11 @@
 - **4 new biomes** (`data/biomes.json`): Rustacean Depths (debug/patience, orange/copper theme), Gopher Tunnels (patience/wisdom, cyan/teal theme), C Catacombs (legacy/chaos, dark gray/red theme), Shell Scripts (snark/chaos, terminal green theme). Each with full encounter table (~14 species, floor-gated), 4-boss pool, shop bias, and drop table.
 - **6 new detection tests**: Each new biome detection, tie-break priority, and score-beats-tiebreak.
 - **Files changed**: `src/dungeon/detect.zig`, `data/biomes.json`, `PROGRESS.md`
+
+## Phase 23 — Two-Stage Lines + Standalone Rares [DONE]
+- **+21 species** (`data/species.json`): 7 uncommon→rare two-stage evolution lines (Breakpoint→Watchpoint, Fuzzer→Chaos Monkey, Queue→Priority Queue, Hashmap→B-Tree, TODO→FIXME, README→No Tests, Makefile→Jenkins) + 7 standalone rares (Heisenbug, Bobby Tables, Cron, Rubber Duck, 404, YOLO, COBOL). All evolve at level 32. Stat totals: uncommon bases ~285-290, rare evolutions ~340-365, standalone rares ~355-360.
+- **+10 moves** (`data/moves.json`): Breakpoint Set, Memory Watch, Observer Effect (debug); Fuzz Input, Process Kill, SQL Injection (chaos); Priority Boost, Cron Job (patience); Rebalance, Explain Yourself (wisdom). SNARK/VIBE/LEGACY reuse existing moves.
+- **Biome encounter updates** (`data/biomes.json`): All 7 biomes updated with new species in encounter tables (uncommons at weight 3, floor 7+; rares at weight 1-2, floor 10+) and boss pools (+2 rare bosses per biome).
+- **+21 sprites** (`tools/gen_sprites.py`, `assets/sprites/`): All new species have 32x16 2-frame sprite sheets using type color schemes.
+- **Totals**: 51 species, 42 moves, 52 sprites (including title.png), 7 biomes.
+- **Files changed**: `data/species.json`, `data/moves.json`, `data/biomes.json`, `tools/gen_sprites.py`, `assets/sprites/*.png`, `PROGRESS.md`, `AGENT_INSTRUCTIONS.md`
