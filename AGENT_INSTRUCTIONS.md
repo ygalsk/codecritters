@@ -69,6 +69,9 @@ Each type gets its uncommon→rare 2-stage line + standalone rare (Breakpoint→
 ### Phase 24 — Epics + Legendaries + Sound Cues [DONE]
 7 epics (stats reflect drawbacks, no special engine hooks yet) + 3 legendaries (not in encounter tables). Sound system emitting BEL on key events. +10 species, +8 moves, +10 sprites. Full 61-critter roster complete.
 
+### Phase 24.5 — Bug Fix: Item Equip SQL Error
+Fix `removeInventoryItem` in `src/db/roster.zig` — split two-statement SQL (UPDATE + DELETE) into separate `exec()` calls to fix `error.MultipleStatements` from zqlite. Also address the subsequent crash-on-quit triggered by the unhandled error state.
+
 ### Phase 25 — Dungeon Graphics + Biome Tilesets + Attack Animations + Visual Overhaul
 Sprite-based dungeon rendering with biome-specific tilesets for each dungeon type. Battle attack animations per move type. Visual pass on all screens: title, hub, roster, shop, recap. Target 80×24 minimum.
 
@@ -78,11 +81,11 @@ Verify all 61 sprites exist. Hub shows favorite critter. Roster shows sprite pre
 ### Phase 27 — Meta Shop + Meta Progression HUD
 Add meta shop and meta progression display in the HUD.
 
-### Phase 28 — README + Build Streamlining
-Enhance README with actual screenshots, GIFs, and visual appeal. Streamline build and install process (single-command setup, clearer install instructions).
+### Phase 28 — README + Build + Data Streamlining
+Enhance README with actual screenshots, GIFs, and visual appeal. Streamline build and install process (single-command setup, clearer install instructions). Evaluate JSON data architecture — consider splitting monolithic species/moves/items JSON into per-entity files for easier editing and reduced load overhead.
 
 ### Phase 29 — Balance Pass + Final Polish
-Stat totals by rarity tier, move power/accuracy curves, XP curve verification, catch rate review, biome encounter balance, shop pricing, edge case testing. Content-complete.
+Stat totals by rarity tier, move power/accuracy curves, XP curve verification, catch rate review, biome encounter balance, shop pricing, edge case testing. Add level-up consumable item (XP grant item kind + data + inventory use logic). Content-complete.
 
 ---
 

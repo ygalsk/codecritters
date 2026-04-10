@@ -401,13 +401,19 @@ pub fn main() !void {
                                     .persist_equip => |equip| {
                                         if (equip.critter_idx < roster_buf.len) {
                                             const critter = &roster_buf[equip.critter_idx];
-                                            _ = roster_db.saveCritter(&database, critter) catch |err| {
-                                                std.log.err("equip: saveCritter failed: {}", .{err});
+                                            roster_db.updateCritterMove3(&database, @intCast(critter.id), equip.move_id) catch |err| {
+                                                std.log.err("equip: updateCritterMove3 failed: {}", .{err});
                                             };
                                             roster_db.removeInventoryItem(&database, equip.item_id, 1) catch |err| {
                                                 std.log.err("equip: removeInventoryItem failed: {}", .{err});
                                             };
                                         }
+                                        const saved_cursor = roster_screen.cursor;
+                                        reloadRoster(alloc, &database, &gd, &roster_buf, &roster_species_buf);
+                                        var inv_entries: [roster_screen_mod.MAX_DISCS]RosterScreen.InventoryEntry = undefined;
+                                        const inv_len = reloadInventory(alloc, &database, &inventory_buf, &inv_entries);
+                                        roster_screen = RosterScreen.init(roster_buf, roster_species_buf[0..roster_buf.len], inv_entries[0..inv_len], &gd, &sprite_map, false, roster_screen.screen_context);
+                                        roster_screen.cursor = @min(saved_cursor, @as(u8, @intCast(@max(roster_buf.len, 1) - 1)));
                                     },
                                     .goto_hub => {
                                         hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));

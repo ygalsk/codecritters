@@ -185,8 +185,6 @@ pub const RosterScreen = struct {
         if (item.kind != .move_disc) return null;
         const move_id = item.move_id orelse return null;
 
-        self.roster[self.cursor].move_slot_3 = move_id;
-
         var buf: [ui.MSG_BUF_LEN]u8 = undefined;
         const move = self.game_data.findMove(move_id);
         const move_name = if (move) |m| m.name else move_id;
@@ -194,7 +192,7 @@ pub const RosterScreen = struct {
         self.log.push(msg);
 
         self.mode = .browsing;
-        return ScreenResult{ .persist_equip = .{ .critter_idx = self.cursor, .item_id = disc_item_id } };
+        return ScreenResult{ .persist_equip = .{ .critter_idx = self.cursor, .item_id = disc_item_id, .move_id = move_id } };
     }
 
     pub fn render(self: *const RosterScreen, win: Window) void {

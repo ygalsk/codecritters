@@ -225,9 +225,17 @@ pub const InventoryEntry = struct {
 
 pub fn removeInventoryItem(database: *Db, item_id: []const u8, quantity: i64) !void {
     try database.conn.exec(
-        \\UPDATE inventory SET quantity = quantity - ?2 WHERE item_id = ?1;
-        \\DELETE FROM inventory WHERE item_id = ?1 AND quantity <= 0
+        \\UPDATE inventory SET quantity = quantity - ?2 WHERE item_id = ?1
     , .{ item_id, quantity });
+    try database.conn.exec(
+        \\DELETE FROM inventory WHERE item_id = ?1 AND quantity <= 0
+    , .{item_id});
+}
+
+pub fn updateCritterMove3(database: *Db, critter_id: i64, move_id: []const u8) !void {
+    try database.conn.exec(
+        \\UPDATE critters SET move_slot_3 = ?2 WHERE id = ?1
+    , .{ critter_id, move_id });
 }
 
 pub fn countCritters(database: *Db) u16 {

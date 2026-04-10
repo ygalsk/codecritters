@@ -44,6 +44,7 @@ pub const ScreenResult = union(enum) {
     pub const EquipRequest = struct {
         critter_idx: u8,
         item_id: []const u8,
+        move_id: []const u8,
     };
 
     /// Item use request with context for persistence routing.
