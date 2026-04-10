@@ -42,22 +42,43 @@ New title_screen.zig with ASCII art logo. Transition system in main.zig (brief v
 ### Phase 13.5 — Graphics Engine Layer [DONE]
 Refactored UI rendering into reusable layers: theme.zig (colors/styles), layout.zig (centering/positioning), widgets.zig (menu/HP bar/separator/hint), anim.zig (AnimTimer), input.zig (NavAction/menuNav/gridNav). All 9 screens migrated. No game logic changes.
 
-### Phase 14 — Three-Stage Evolution Lines (All 7 Types)
+### Phase 14 — Bug Fixes: Death Logic + Cooldown Blocking + XP
+Fix "when 1 critter dies both die and run is over" — investigate battle→dungeon state sync for edge cases with 2-critter parties. Fix party select blocking when entire roster is on cooldown (no way to start a new adventure). Fix no-XP-gain bug — trace battle reward path through XP award and leveling logic. Allow item use outside of battle (hub inventory screen, in-dungeon).
+
+### Phase 15 — Dungeon Quick Menu + Item Use Outside Battle
+Press `m` in dungeon for quick menu: swap active roster order, open inventory to use items, view party. Wire healing/consumable item effects through dungeon and hub contexts (inventory_screen becomes interactive).
+
+### Phase 16 — Roster Swap + Item Screen Improvements
+Roster and party select screens gain position-swap controls. Item/inventory screen shows full descriptions, effect values, and item sprites. Items display rarity indicators.
+
+### Phase 17 — Game Event Loop Engine (Research Phase)
+Research and design a reusable game event loop engine. The UI rendering layer (theme/layout/widgets/anim/input) exists but there's no centralized game event loop. Needs discussion on scope and architecture before implementation.
+
+### Phase 18 — CLI Enhancements: JSON + Statusline Sprite
+Enrich `status` CLI with full JSON output for chat personality (individual critter details, equipped moves, run state). Add `statusline --sprite` flag returning rendered sprite with info for Claude statusline.
+
+### Phase 19 — Three-Stage Evolution Lines (All 7 Types)
 Complete every type's 3-stage common→common→uncommon line (Printf→Fprintf→Logstash, Segfault→Stack Overflow→Kernel Panic, etc.). +15 species, +14 moves, +15 sprites. Update all biome encounter tables.
 
-### Phase 15 — Four New Biomes + Detection
+### Phase 20 — Four New Biomes + Detection
 Rustacean Depths (.rs), Gopher Tunnels (.go), C Catacombs (.c/.h), Shell Scripts (.sh). Complete detect.zig with language scoring. Each biome needs encounter table, boss pool, shop/drop bias, theme colors.
 
-### Phase 16 — Two-Stage Lines + Standalone Rares
+### Phase 21 — Two-Stage Lines + Standalone Rares
 Each type gets its uncommon→rare 2-stage line + standalone rare (Breakpoint→Watchpoint, Heisenbug, etc.). +21 species, +10 moves, +21 sprites.
 
-### Phase 17 — Epics + Legendaries + Sound Cues
+### Phase 22 — Epics + Legendaries + Sound Cues
 7 epics (stats reflect drawbacks, no special engine hooks yet) + 3 legendaries (not in encounter tables). Sound system emitting BEL on key events. +10 species, +8 moves, +10 sprites. Full 61-critter roster complete.
 
-### Phase 18 — Sprite Audit + Visual Polish
-Verify all 61 sprites exist. Hub shows favorite critter. Roster shows sprite previews. Battle handles long names. All screens clean at 80×24 minimum.
+### Phase 23 — Dungeon Graphics + Attack Animations + Visual Overhaul
+Sprite-based dungeon rendering with themed tile graphics. Battle attack animations per move type. Visual pass on all screens: title, hub, roster, shop, recap. Target 80×24 minimum.
 
-### Phase 19 — Balance Pass + Final Polish
+### Phase 24 — Sprite Audit + Final Visual Polish
+Verify all 61 sprites exist. Hub shows favorite critter. Roster shows sprite previews. Battle handles long names. All screens clean at 80×24.
+
+### Phase 25 — README + Build Streamlining
+Enhance README with actual screenshots, GIFs, and visual appeal. Streamline build and install process (single-command setup, clearer install instructions).
+
+### Phase 26 — Balance Pass + Final Polish
 Stat totals by rarity tier, move power/accuracy curves, XP curve verification, catch rate review, biome encounter balance, shop pricing, edge case testing. Content-complete.
 
 ---
