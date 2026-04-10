@@ -10,20 +10,34 @@
       "floor_dim_fg": [40, 40, 40]
     },
     "encounter_table": [
-      { "species_id": "println", "weight": 30, "min_floor": 1, "max_floor": 255 },
-      { "species_id": "glitch", "weight": 25, "min_floor": 1, "max_floor": 255 },
-      { "species_id": "goto", "weight": 25, "min_floor": 1, "max_floor": 255 },
-      { "species_id": "monad", "weight": 15, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "println", "weight": 25, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "glitch", "weight": 20, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "goto", "weight": 20, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "printf", "weight": 20, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "segfault", "weight": 15, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "singleton", "weight": 15, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "mutex", "weight": 10, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "monad", "weight": 10, "min_floor": 1, "max_floor": 255 },
       { "species_id": "tracer", "weight": 5, "min_floor": 3, "max_floor": 255 },
-      { "species_id": "gremlin", "weight": 8, "min_floor": 4, "max_floor": 255 },
-      { "species_id": "spaghetto", "weight": 8, "min_floor": 5, "max_floor": 255 },
+      { "species_id": "fprintf", "weight": 5, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "gremlin", "weight": 6, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "stack_overflow", "weight": 5, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "god_object", "weight": 5, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "semaphore", "weight": 4, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "spaghetto", "weight": 6, "min_floor": 5, "max_floor": 255 },
       { "species_id": "profiler", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "logstash", "weight": 3, "min_floor": 7, "max_floor": 255 },
       { "species_id": "pandemonium", "weight": 3, "min_floor": 8, "max_floor": 255 },
-      { "species_id": "dependency", "weight": 3, "min_floor": 8, "max_floor": 255 }
+      { "species_id": "kernel_panic_critter", "weight": 3, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "monolith", "weight": 3, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "dependency", "weight": 3, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "deadlock", "weight": 2, "min_floor": 8, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "tracer", "level_bonus": 5 },
-      { "species_id": "profiler", "level_bonus": 5 }
+      { "species_id": "profiler", "level_bonus": 5 },
+      { "species_id": "logstash", "level_bonus": 5 },
+      { "species_id": "monolith", "level_bonus": 5 }
     ],
     "shop_bias": [
       { "item_id": "small_patch", "weight": 30 },
@@ -55,17 +69,27 @@
       "floor_dim_fg": [32, 44, 28]
     },
     "encounter_table": [
-      { "species_id": "copilot", "weight": 30, "min_floor": 1, "max_floor": 255 },
-      { "species_id": "monad", "weight": 25, "min_floor": 1, "max_floor": 255 },
-      { "species_id": "println", "weight": 20, "min_floor": 1, "max_floor": 255 },
-      { "species_id": "lgtm", "weight": 15, "min_floor": 1, "max_floor": 255 },
-      { "species_id": "segfault", "weight": 10, "min_floor": 3, "max_floor": 255 },
-      { "species_id": "spaghetto", "weight": 5, "min_floor": 5, "max_floor": 255 },
-      { "species_id": "profiler", "weight": 3, "min_floor": 7, "max_floor": 255 },
-      { "species_id": "dependency", "weight": 2, "min_floor": 8, "max_floor": 255 }
+      { "species_id": "copilot", "weight": 25, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "monad", "weight": 20, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "lgtm", "weight": 18, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "println", "weight": 15, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "mutex", "weight": 10, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "functor", "weight": 6, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "nitpick", "weight": 6, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "autopilot", "weight": 6, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "semaphore", "weight": 4, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "spaghetto", "weight": 4, "min_floor": 5, "max_floor": 255 },
+      { "species_id": "burrito", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "bikeshed", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "hallucination", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "deadlock", "weight": 2, "min_floor": 8, "max_floor": 255 },
+      { "species_id": "profiler", "weight": 2, "min_floor": 7, "max_floor": 255 }
     ],
     "boss_pool": [
-      { "species_id": "monad", "level_bonus": 5 }
+      { "species_id": "monad", "level_bonus": 5 },
+      { "species_id": "burrito", "level_bonus": 5 },
+      { "species_id": "bikeshed", "level_bonus": 5 },
+      { "species_id": "hallucination", "level_bonus": 5 }
     ],
     "shop_bias": [
       { "item_id": "small_patch", "weight": 25 },
@@ -95,19 +119,25 @@
       "floor_dim_fg": [36, 28, 44]
     },
     "encounter_table": [
-      { "species_id": "glitch", "weight": 30, "min_floor": 1, "max_floor": 255 },
-      { "species_id": "copilot", "weight": 25, "min_floor": 1, "max_floor": 255 },
-      { "species_id": "segfault", "weight": 20, "min_floor": 1, "max_floor": 255 },
-      { "species_id": "goto", "weight": 15, "min_floor": 1, "max_floor": 255 },
-      { "species_id": "lgtm", "weight": 10, "min_floor": 3, "max_floor": 255 },
-      { "species_id": "gremlin", "weight": 8, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "glitch", "weight": 25, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "copilot", "weight": 20, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "segfault", "weight": 18, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "goto", "weight": 12, "min_floor": 1, "max_floor": 255 },
+      { "species_id": "lgtm", "weight": 8, "min_floor": 2, "max_floor": 255 },
+      { "species_id": "gremlin", "weight": 6, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "stack_overflow", "weight": 6, "min_floor": 4, "max_floor": 255 },
+      { "species_id": "autopilot", "weight": 5, "min_floor": 4, "max_floor": 255 },
       { "species_id": "spaghetto", "weight": 5, "min_floor": 5, "max_floor": 255 },
       { "species_id": "pandemonium", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "kernel_panic_critter", "weight": 3, "min_floor": 7, "max_floor": 255 },
+      { "species_id": "hallucination", "weight": 3, "min_floor": 7, "max_floor": 255 },
       { "species_id": "dependency", "weight": 3, "min_floor": 8, "max_floor": 255 }
     ],
     "boss_pool": [
       { "species_id": "segfault", "level_bonus": 5 },
-      { "species_id": "pandemonium", "level_bonus": 5 }
+      { "species_id": "pandemonium", "level_bonus": 5 },
+      { "species_id": "kernel_panic_critter", "level_bonus": 5 },
+      { "species_id": "hallucination", "level_bonus": 5 }
     ],
     "shop_bias": [
       { "item_id": "print_statement", "weight": 25 },

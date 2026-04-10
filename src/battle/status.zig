@@ -27,6 +27,8 @@ fn statusDuration(effect: moves.StatusEffect) u8 {
         .tilted => 3,
         .in_the_zone => 3,
         .spaghettified => 2,
+        .enlightened => 2,
+        .hallucinating => 3,
     };
 }
 
@@ -43,6 +45,12 @@ pub fn applyStatus(status: *StatusState, effect: moves.StatusEffect) void {
         },
         .tilted => {
             status.accuracy_mod = -20;
+        },
+        .enlightened => {
+            status.resolve_mod = -20;
+        },
+        .hallucinating => {
+            status.accuracy_mod = -15;
         },
         else => {},
     }
@@ -78,7 +86,7 @@ pub fn processStatusTick(status: *StatusState, max_hp: u16, rng: std.Random) Sta
                 result.self_damage = @max(1, max_hp / 10);
             }
         },
-        .tilted, .in_the_zone, .linted, .spaghettified => {
+        .tilted, .in_the_zone, .linted, .spaghettified, .enlightened, .hallucinating => {
             // These are passive — effects applied via modifiers or move restrictions
         },
         .none => unreachable,

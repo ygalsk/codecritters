@@ -160,20 +160,19 @@ test "awardXp triggers evolution at threshold" {
     try testing.expectEqual(critter_mod.Critter.calcStat(tracer_sp.base_stats.logic, critter.level), critter.logic);
 }
 
-test "awardXp no evolution when target species missing from data" {
+test "awardXp evolution triggers when target species exists" {
     const gd = try game_data_mod.GameData.load(testing.allocator);
     defer @constCast(&gd).deinit();
 
-    // Monad evolves_to "functor" at 15, but functor isn't in species.json yet
-    // So evolution should NOT trigger (graceful handling of missing target)
+    // Monad evolves_to "functor" at level 15
     const sp = gd.findSpecies("monad") orelse return error.MissingSpecies;
     var critter = critter_mod.Critter.createFromSpecies(sp, 14);
     critter.xp = xpForLevel(14);
     const result = awardXp(&critter, xpForLevel(15) - critter.xp, &gd);
     try testing.expect(result.levels_gained >= 1);
-    try testing.expect(!result.evolved);
-    // Species should remain monad
-    try testing.expect(std.mem.eql(u8, "monad", critter.species_id));
+    try testing.expect(result.evolved);
+    // Species should now be functor
+    try testing.expect(std.mem.eql(u8, "functor", critter.species_id));
 }
 
 test "awardXp does not exceed level 100" {

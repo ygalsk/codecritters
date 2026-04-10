@@ -14,5 +14,21 @@
   { "id": "null_deref", "name": "Null Deref", "move_type": "chaos", "power": 55, "accuracy": 90, "status_effect": "segfaulted", "status_chance": 20 },
   { "id": "heap_profile", "name": "Heap Profile", "move_type": "debug", "power": 85, "accuracy": 85, "status_effect": "linted", "status_chance": 25 },
   { "id": "kernel_panic", "name": "Kernel Panic", "move_type": "chaos", "power": 90, "accuracy": 75, "status_effect": "segfaulted", "status_chance": 25 },
-  { "id": "vendor_lock", "name": "Vendor Lock", "move_type": "legacy", "power": 80, "accuracy": 85, "status_effect": "deprecated", "status_chance": 30 }
+  { "id": "vendor_lock", "name": "Vendor Lock", "move_type": "legacy", "power": 80, "accuracy": 85, "status_effect": "deprecated", "status_chance": 30 },
+  { "id": "print_debug", "name": "Print Debug", "move_type": "debug", "power": 35, "accuracy": 100 },
+  { "id": "format_string", "name": "Format String", "move_type": "debug", "power": 60, "accuracy": 90, "status_effect": "linted", "status_chance": 15 },
+  { "id": "structured_log", "name": "Structured Log", "move_type": "debug", "power": 80, "accuracy": 85, "status_effect": "linted", "status_chance": 25 },
+  { "id": "access_violation", "name": "Access Violation", "move_type": "chaos", "power": 40, "accuracy": 95, "status_effect": "segfaulted", "status_chance": 15 },
+  { "id": "stack_smash", "name": "Stack Smash", "move_type": "chaos", "power": 65, "accuracy": 85, "status_effect": "segfaulted", "status_chance": 20 },
+  { "id": "global_state", "name": "Global State", "move_type": "legacy", "power": 40, "accuracy": 100 },
+  { "id": "feature_creep", "name": "Feature Creep", "move_type": "legacy", "power": 60, "accuracy": 90, "status_effect": "deprecated", "status_chance": 20 },
+  { "id": "big_ball_of_mud", "name": "Big Ball of Mud", "move_type": "legacy", "power": 85, "accuracy": 80, "status_effect": "deprecated", "status_chance": 30 },
+  { "id": "semaphore_wait", "name": "Semaphore Wait", "move_type": "patience", "power": 55, "accuracy": 95, "status_effect": "blocked", "status_chance": 30 },
+  { "id": "resource_starvation", "name": "Resource Starvation", "move_type": "patience", "power": 75, "accuracy": 85, "status_effect": "blocked", "status_chance": 35 },
+  { "id": "fmap", "name": "Fmap", "move_type": "wisdom", "power": 55, "accuracy": 95, "status_effect": "enlightened", "status_chance": 15 },
+  { "id": "category_theory", "name": "Category Theory", "move_type": "wisdom", "power": 80, "accuracy": 85, "status_effect": "enlightened", "status_chance": 25 },
+  { "id": "nit", "name": "Nit", "move_type": "snark", "power": 50, "accuracy": 95, "status_effect": "tilted", "status_chance": 25 },
+  { "id": "bikeshedding", "name": "Bikeshedding", "move_type": "snark", "power": 75, "accuracy": 85, "status_effect": "tilted", "status_chance": 30 },
+  { "id": "autocomplete", "name": "Autocomplete", "move_type": "vibe", "power": 55, "accuracy": 90, "status_effect": "hallucinating", "status_chance": 15 },
+  { "id": "confabulate", "name": "Confabulate", "move_type": "vibe", "power": 80, "accuracy": 75, "status_effect": "hallucinating", "status_chance": 25 }
 ]

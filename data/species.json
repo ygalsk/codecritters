@@ -62,8 +62,8 @@
     "base_stats": { "hp": 40, "logic": 50, "resolve": 45, "speed": 65 },
     "signature_move": "ship_it",
     "secondary_move": null,
-    "evolves_to": null,
-    "evolution_level": null
+    "evolves_to": "autopilot",
+    "evolution_level": 14
   },
   {
     "id": "segfault",
@@ -71,10 +71,10 @@
     "critter_type": "chaos",
     "rarity": "common",
     "base_stats": { "hp": 45, "logic": 60, "resolve": 30, "speed": 55 },
-    "signature_move": "bit_flip",
+    "signature_move": "access_violation",
     "secondary_move": null,
-    "evolves_to": null,
-    "evolution_level": null
+    "evolves_to": "stack_overflow",
+    "evolution_level": 14
   },
   {
     "id": "mutex",
@@ -84,8 +84,8 @@
     "base_stats": { "hp": 55, "logic": 40, "resolve": 60, "speed": 35 },
     "signature_move": "mutex_lock",
     "secondary_move": null,
-    "evolves_to": null,
-    "evolution_level": null
+    "evolves_to": "semaphore",
+    "evolution_level": 13
   },
   {
     "id": "lgtm",
@@ -95,8 +95,8 @@
     "base_stats": { "hp": 40, "logic": 55, "resolve": 50, "speed": 55 },
     "signature_move": "code_review",
     "secondary_move": null,
-    "evolves_to": null,
-    "evolution_level": null
+    "evolves_to": "nitpick",
+    "evolution_level": 13
   },
   {
     "id": "singleton",
@@ -104,10 +104,10 @@
     "critter_type": "legacy",
     "rarity": "common",
     "base_stats": { "hp": 50, "logic": 45, "resolve": 55, "speed": 40 },
-    "signature_move": "jump_table",
+    "signature_move": "global_state",
     "secondary_move": null,
-    "evolves_to": null,
-    "evolution_level": null
+    "evolves_to": "god_object",
+    "evolution_level": 13
   },
   {
     "id": "gremlin",
@@ -161,6 +161,171 @@
     "base_stats": { "hp": 75, "logic": 95, "resolve": 65, "speed": 85 },
     "signature_move": "stack_trace",
     "secondary_move": "heap_profile",
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "printf",
+    "name": "Printf",
+    "critter_type": "debug",
+    "rarity": "common",
+    "base_stats": { "hp": 40, "logic": 55, "resolve": 45, "speed": 50 },
+    "signature_move": "print_debug",
+    "secondary_move": null,
+    "evolves_to": "fprintf",
+    "evolution_level": 12
+  },
+  {
+    "id": "fprintf",
+    "name": "Fprintf",
+    "critter_type": "debug",
+    "rarity": "common",
+    "base_stats": { "hp": 55, "logic": 70, "resolve": 55, "speed": 70 },
+    "signature_move": "print_debug",
+    "secondary_move": "format_string",
+    "evolves_to": "logstash",
+    "evolution_level": 28
+  },
+  {
+    "id": "logstash",
+    "name": "Logstash",
+    "critter_type": "debug",
+    "rarity": "uncommon",
+    "base_stats": { "hp": 70, "logic": 90, "resolve": 75, "speed": 80 },
+    "signature_move": "format_string",
+    "secondary_move": "structured_log",
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "stack_overflow",
+    "name": "Stack Overflow",
+    "critter_type": "chaos",
+    "rarity": "common",
+    "base_stats": { "hp": 55, "logic": 75, "resolve": 40, "speed": 80 },
+    "signature_move": "access_violation",
+    "secondary_move": "stack_smash",
+    "evolves_to": "kernel_panic_critter",
+    "evolution_level": 30
+  },
+  {
+    "id": "kernel_panic_critter",
+    "name": "Kernel Panic",
+    "critter_type": "chaos",
+    "rarity": "uncommon",
+    "base_stats": { "hp": 65, "logic": 95, "resolve": 55, "speed": 100 },
+    "signature_move": "stack_smash",
+    "secondary_move": "kernel_panic",
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "god_object",
+    "name": "God Object",
+    "critter_type": "legacy",
+    "rarity": "common",
+    "base_stats": { "hp": 65, "logic": 55, "resolve": 70, "speed": 60 },
+    "signature_move": "global_state",
+    "secondary_move": "feature_creep",
+    "evolves_to": "monolith",
+    "evolution_level": 28
+  },
+  {
+    "id": "monolith",
+    "name": "Monolith",
+    "critter_type": "legacy",
+    "rarity": "uncommon",
+    "base_stats": { "hp": 110, "logic": 55, "resolve": 100, "speed": 50 },
+    "signature_move": "feature_creep",
+    "secondary_move": "big_ball_of_mud",
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "semaphore",
+    "name": "Semaphore",
+    "critter_type": "patience",
+    "rarity": "common",
+    "base_stats": { "hp": 70, "logic": 50, "resolve": 75, "speed": 55 },
+    "signature_move": "mutex_lock",
+    "secondary_move": "semaphore_wait",
+    "evolves_to": "deadlock",
+    "evolution_level": 28
+  },
+  {
+    "id": "deadlock",
+    "name": "Deadlock",
+    "critter_type": "patience",
+    "rarity": "uncommon",
+    "base_stats": { "hp": 90, "logic": 55, "resolve": 100, "speed": 70 },
+    "signature_move": "semaphore_wait",
+    "secondary_move": "resource_starvation",
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "functor",
+    "name": "Functor",
+    "critter_type": "wisdom",
+    "rarity": "common",
+    "base_stats": { "hp": 45, "logic": 85, "resolve": 55, "speed": 65 },
+    "signature_move": "bind",
+    "secondary_move": "fmap",
+    "evolves_to": "burrito",
+    "evolution_level": 28
+  },
+  {
+    "id": "burrito",
+    "name": "Burrito",
+    "critter_type": "wisdom",
+    "rarity": "uncommon",
+    "base_stats": { "hp": 55, "logic": 105, "resolve": 70, "speed": 85 },
+    "signature_move": "fmap",
+    "secondary_move": "category_theory",
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "nitpick",
+    "name": "Nitpick",
+    "critter_type": "snark",
+    "rarity": "common",
+    "base_stats": { "hp": 50, "logic": 70, "resolve": 60, "speed": 70 },
+    "signature_move": "code_review",
+    "secondary_move": "nit",
+    "evolves_to": "bikeshed",
+    "evolution_level": 28
+  },
+  {
+    "id": "bikeshed",
+    "name": "Bikeshed",
+    "critter_type": "snark",
+    "rarity": "uncommon",
+    "base_stats": { "hp": 60, "logic": 85, "resolve": 80, "speed": 90 },
+    "signature_move": "nit",
+    "secondary_move": "bikeshedding",
+    "evolves_to": null,
+    "evolution_level": null
+  },
+  {
+    "id": "autopilot",
+    "name": "Autopilot",
+    "critter_type": "vibe",
+    "rarity": "common",
+    "base_stats": { "hp": 50, "logic": 65, "resolve": 55, "speed": 80 },
+    "signature_move": "ship_it",
+    "secondary_move": "autocomplete",
+    "evolves_to": "hallucination",
+    "evolution_level": 28
+  },
+  {
+    "id": "hallucination",
+    "name": "Hallucination",
+    "critter_type": "vibe",
+    "rarity": "uncommon",
+    "base_stats": { "hp": 60, "logic": 85, "resolve": 60, "speed": 110 },
+    "signature_move": "autocomplete",
+    "secondary_move": "confabulate",
     "evolves_to": null,
     "evolution_level": null
   }

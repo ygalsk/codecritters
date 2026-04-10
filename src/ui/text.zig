@@ -77,6 +77,8 @@ pub fn statusName(effect: moves_mod.StatusEffect) []const u8 {
         .tilted => "TILTED",
         .in_the_zone => "IN THE ZONE",
         .spaghettified => "SPAGHETTIFIED",
+        .enlightened => "ENLIGHTENED",
+        .hallucinating => "HALLUCINATING",
     };
 }
 

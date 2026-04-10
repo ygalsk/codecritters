@@ -11,6 +11,8 @@ pub const StatusEffect = enum {
     tilted,
     in_the_zone,
     spaghettified,
+    enlightened,
+    hallucinating,
 };
 
 pub const Move = struct {
