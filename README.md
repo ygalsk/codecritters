@@ -56,6 +56,17 @@ Later that evening you're deep in a real debugging session. Claude Code fires of
 
 Early development. See [CODECRITTER_DESIGN.md](CODECRITTER_DESIGN.md) for the full game design document and [AGENT_INSTRUCTIONS.md](AGENT_INSTRUCTIONS.md) for the implementation roadmap.
 
+## Contributing
+
+Contributions are welcome! Whether it's bug fixes, new critter ideas, balance tweaks, or code improvements — we're happy to take a look.
+
+We're especially looking for help with **art and assets**:
+- **Sprites** — 32x16 pixel art sprite sheets (2 frames per critter), see `assets/sprites/` for examples
+- **Tilesets** — dungeon floor visuals and biome theming
+- **Sound effects** — battle hits, catches, menu navigation, ambient dungeon audio
+
+To contribute: fork the repo, create a branch, and open a PR. For larger changes or new critter designs, open an issue first so we can discuss the direction.
+
 ## License
 
 TBD
