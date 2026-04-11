@@ -5,6 +5,7 @@ const game_data_mod = @import("game_data");
 const leveling = @import("leveling");
 const ui = @import("ui_common.zig");
 const theme = @import("theme.zig");
+const layout = @import("layout.zig");
 const widgets = @import("widgets.zig");
 const ScreenResult = @import("screen_result.zig").ScreenResult;
 pub const RunOverScreen = struct {
@@ -31,6 +32,7 @@ pub const RunOverScreen = struct {
 
     pub fn render(self: *const RunOverScreen, win: vaxis.Window) void {
         win.clear();
+        if (layout.tooSmall(win, 40, 10)) return;
 
         // Colored border: green for extraction, red for wipe
         const border_color: [3]u8 = if (self.dungeon_state.outcome == .extracted) .{ 40, 180, 80 } else .{ 180, 40, 40 };

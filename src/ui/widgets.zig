@@ -175,3 +175,20 @@ pub fn renderCenteredText(win: Window, row: u16, text: []const u8, style: Style)
     const col = layout.centerText(win.width, text.len);
     _ = writeText(win, col, row, text, style);
 }
+
+// ─── Dancing Title ───
+
+const fx = @import("fx.zig");
+
+pub fn renderDancingTitle(win: Window, title: []const u8, row: u16, base_color: [3]u8, time_ms: i64) void {
+    const col = layout.centerText(win.width, title.len);
+    for (title, 0..) |ch, i| {
+        const ci: u16 = @intCast(i);
+        const danced = fx.dancingColor(base_color, time_ms, col + ci, row);
+        var char_buf: [1]u8 = .{ch};
+        _ = writeText(win, col + ci, row, &char_buf, .{
+            .fg = .{ .rgb = danced },
+            .bold = true,
+        });
+    }
+}

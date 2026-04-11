@@ -294,6 +294,19 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&run_fx_test.step);
     }
 
+    // Meta upgrade tests (no external deps)
+    {
+        const meta_test = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/ui/meta_upgrades.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        const run_meta_test = b.addRunArtifact(meta_test);
+        test_step.dependOn(&run_meta_test.step);
+    }
+
     // Sprite tests (need vaxis for types)
     {
         const sprite_test = b.addTest(.{

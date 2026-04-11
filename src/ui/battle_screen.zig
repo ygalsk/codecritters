@@ -23,6 +23,7 @@ const fx = @import("fx.zig");
 const Window = ui.Window;
 const Style = theme.Style;
 const writeText = ui.writeText;
+const writeTextTruncated = ui.writeTextTruncated;
 const writeFmt = ui.writeFmt;
 
 pub const InventorySlot = struct {
@@ -413,7 +414,8 @@ pub const BattleScreen = struct {
         // Line 1: Name  Lv##  [TYPE]
         var c = col;
         if (is_wild) c = writeText(win, c, row, "Wild ", theme.heading);
-        c = writeText(win, c, row, bc.species.name, theme.heading);
+        const name_budget: u16 = if (win.width > c + 18) win.width - c - 18 else 8;
+        c = writeTextTruncated(win, c, row, bc.species.name, name_budget, theme.heading);
         c = writeFmt(win, c, row, theme.heading, "  Lv{d}  ", .{bc.critter.level});
         c = writeText(win, c, row, "[", type_bold);
         c = writeText(win, c, row, bc.species.critter_type.displayName(), type_bold);
@@ -570,7 +572,7 @@ pub const BattleScreen = struct {
             const r = row + 1 + @as(u16, display_idx);
             const prefix: []const u8 = if (is_sel) "> " else "  ";
             var c = writeText(win, 2, r, prefix, style);
-            c = writeText(win, c, r, bc.species.name, style);
+            c = writeTextTruncated(win, c, r, bc.species.name, 20, style);
             _ = writeFmt(win, c, r, style, "  Lv{d}  HP:{d}/{d}", .{ bc.critter.level, bc.critter.current_hp, bc.critter.effectiveStat(.hp) });
             display_idx += 1;
         }
@@ -728,7 +730,7 @@ pub const BattleScreen = struct {
             const r = row + 1 + @as(u16, display_idx);
             const prefix: []const u8 = if (is_sel) "> " else "  ";
             var c = writeText(win, 2, r, prefix, style);
-            c = writeText(win, c, r, bc.species.name, style);
+            c = writeTextTruncated(win, c, r, bc.species.name, 18, style);
             if (is_active) {
                 c = writeText(win, c, r, " (active)", style);
             }

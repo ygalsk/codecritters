@@ -33,6 +33,14 @@ pub fn writeText(win: Window, col: u16, row: u16, str: []const u8, style: Style)
     return c;
 }
 
+pub fn writeTextTruncated(win: Window, col: u16, row: u16, str: []const u8, max_len: u16, style: Style) u16 {
+    if (str.len <= max_len) return writeText(win, col, row, str, style);
+    if (max_len <= 2) return writeText(win, col, row, str[0..max_len], style);
+    var c = writeText(win, col, row, str[0 .. max_len - 2], style);
+    c = writeText(win, c, row, "..", style);
+    return c;
+}
+
 pub fn writeFmt(win: Window, col: u16, row: u16, style: Style, comptime fmt: []const u8, args: anytype) u16 {
     var buf: [128]u8 = undefined;
     const str = std.fmt.bufPrint(&buf, fmt, args) catch return col;

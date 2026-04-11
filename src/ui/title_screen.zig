@@ -56,6 +56,7 @@ pub const TitleScreen = struct {
 
     pub fn render(self: *const TitleScreen, win: Window) void {
         win.clear();
+        if (layout.tooSmall(win, 30, 12)) return;
         const w = win.width;
         const h = win.height;
         const time_ms = std.time.milliTimestamp();

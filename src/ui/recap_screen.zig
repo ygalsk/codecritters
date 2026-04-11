@@ -29,6 +29,7 @@ pub const RecapScreen = struct {
 
     pub fn render(self: *const RecapScreen, win: vaxis.Window) void {
         win.clear();
+        if (layout.tooSmall(win, 30, 10)) return;
         const h = win.height;
 
         // Green border (passive rewards = positive)
@@ -59,13 +60,16 @@ pub const RecapScreen = struct {
 
         var i: u8 = 0;
         while (i < self.item_count) : (i += 1) {
+            if (row >= h -| 2) break;
             const item_name = self.items[i].name[0..self.items[i].name_len];
             _ = ui.writeFmt(win, 4, row, theme.item_found, "{s} found a {s}!", .{ name, item_name });
             row += 1;
         }
 
         row += 1;
-        _ = ui.writeFmt(win, 4, row, theme.body_bright, "({d} coding events processed)", .{self.events_processed});
+        if (row < h -| 2) {
+            _ = ui.writeFmt(win, 4, row, theme.body_bright, "({d} coding events processed)", .{self.events_processed});
+        }
 
         widgets.renderHint(win, "[Press any key to continue]");
     }

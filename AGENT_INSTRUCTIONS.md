@@ -78,8 +78,8 @@ Kitty graphics protocol rendering engine: biome backgrounds (z-indexed), tileset
 ### Phase 26 — Sprite Audit + Final Visual Polish
 Verify all 61 sprites exist. Hub shows favorite critter. Roster shows sprite previews. Battle handles long names. All screens clean at 80×24.
 
-### Phase 27 — Meta Shop + Meta Progression HUD
-Add meta shop and meta progression display in the HUD.
+### Phase 27 — Meta Shop + Meta Progression HUD [DONE]
+Meta shop accessible from hub with 3 convenience upgrades (Extra Pack Slots, Starting Funds, Species Codex). Lifetime stats HUD on hub screen (runs, deepest floor, catches, species discovered, bosses). Species Codex screen (scrollable list with discovered/undiscovered). Stat tracking hooks on run start, floor advance, battles, catches, and extraction. DB layer for meta upgrades and stats via existing meta key-value table. +3 new UI modules (meta_shop_screen, codex_screen, meta_upgrades), 5 new DB test cases.
 
 ### Phase 28 — README + Build + Data Streamlining
 Enhance README with actual screenshots, GIFs, and visual appeal. Streamline build and install process (single-command setup, clearer install instructions). Evaluate JSON data architecture — consider splitting monolithic species/moves/items JSON into per-entity files for easier editing and reduced load overhead.

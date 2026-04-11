@@ -111,7 +111,7 @@ pub fn startRun(
     seed: u64,
     initial_items: []const RunItem,
 ) DungeonState {
-    return startRunSized(party_critters, party_species, biome_ptr, seed, initial_items, floor_gen.DEFAULT_WIDTH, floor_gen.DEFAULT_HEIGHT);
+    return startRunSized(party_critters, party_species, biome_ptr, seed, initial_items, floor_gen.DEFAULT_WIDTH, floor_gen.DEFAULT_HEIGHT, 0);
 }
 
 pub fn startRunSized(
@@ -122,6 +122,7 @@ pub fn startRunSized(
     initial_items: []const RunItem,
     floor_width: u8,
     floor_height: u8,
+    starting_currency: u32,
 ) DungeonState {
     var party: [3]?critter_mod.Critter = .{ null, null, null };
     var species_ptrs: [3]?*const species_mod.Species = .{ null, null, null };
@@ -151,7 +152,7 @@ pub fn startRunSized(
         .player_y = floor.entrance_y,
         .party = party,
         .party_species = species_ptrs,
-        .currency = 0,
+        .currency = starting_currency,
         .run_inventory = inv,
         .run_inventory_count = inv_count,
         .catches = .{null} ** MAX_RUN_CATCHES,

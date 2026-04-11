@@ -11,6 +11,8 @@ pub const ScreenResult = union(enum) {
     goto_battle: BattleRequest,
     goto_shop,
     goto_run_over,
+    goto_meta_shop,
+    goto_codex,
 
     // Domain side-effects (screen asks main to persist something)
     persist_swap: SwapRequest,

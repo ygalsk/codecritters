@@ -39,6 +39,11 @@ const title_screen_mod = @import("ui/title_screen.zig");
 const TitleScreen = title_screen_mod.TitleScreen;
 const run_over_screen_mod = @import("ui/run_over_screen.zig");
 const RunOverScreen = run_over_screen_mod.RunOverScreen;
+const meta_shop_screen_mod = @import("ui/meta_shop_screen.zig");
+const MetaShopScreen = meta_shop_screen_mod.MetaShopScreen;
+const codex_screen_mod = @import("ui/codex_screen.zig");
+const CodexScreen = codex_screen_mod.CodexScreen;
+const meta_upgrades = @import("ui/meta_upgrades.zig");
 const sound = @import("ui/sound.zig");
 const tileset_mod = @import("ui/tileset.zig");
 const biome_bg_mod = @import("ui/biome_background.zig");
@@ -65,6 +70,8 @@ const ActiveScreen = enum {
     battle,
     shop,
     run_over,
+    meta_shop,
+    codex,
 };
 
 var sprite_path_buf: [64]u8 = undefined;
@@ -175,7 +182,7 @@ pub fn main() !void {
     }
 
     // Screen state
-    var hub_screen: HubScreen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+    var hub_screen: HubScreen = makeHubScreen(&database, &sprite_map, false);
     var party_select_screen: PartySelectScreen = undefined;
     var roster_screen: RosterScreen = undefined;
     var inv_screen: InventoryScreen = undefined;
@@ -187,6 +194,8 @@ pub fn main() !void {
     var shop_screen: ShopScreen = undefined;
     var use_kitty = false;
     var run_over_screen: RunOverScreen = undefined;
+    var meta_shop_screen_inst: MetaShopScreen = undefined;
+    var codex_screen_inst: CodexScreen = undefined;
 
     // Tileset + biome background for dungeon rendering (Phase 25a)
     var tileset_storage: tileset_mod.Tileset = tileset_mod.Tileset{};
@@ -294,7 +303,7 @@ pub fn main() !void {
                             if (title_screen.handleInput(key)) |result| {
                                 switch (result) {
                                     .goto_hub => {
-                                        hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                                        hub_screen = makeHubScreen(&database, &sprite_map, use_kitty);
                                         transition_pending = .hub;
                                         transition_start_ms = std.time.milliTimestamp();
                                     },
@@ -306,7 +315,7 @@ pub fn main() !void {
                             if (recap_screen.handleInput(key)) |result| {
                                 switch (result) {
                                     .goto_hub => {
-                                        hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                                        hub_screen = makeHubScreen(&database, &sprite_map, use_kitty);
                                         transition_pending = .hub;
                                         transition_start_ms = std.time.milliTimestamp();
                                     },
@@ -323,11 +332,15 @@ pub fn main() !void {
                                             decrementCooldowns(roster_buf, &database);
                                         }
                                         const pack_inv_len = reloadInventory(alloc, &database, &inventory_buf, &inv_screen_entries);
-                                        party_select_screen = PartySelectScreen.init(
+                                        const pack_limit = meta_upgrades.getEffectivePackSlots(
+                                            roster_db.getMetaUpgradeLevel(&database, "extra_pack_slots"),
+                                        );
+                                        party_select_screen = PartySelectScreen.initWithPackLimit(
                                             roster_buf,
                                             roster_species_buf[0..roster_buf.len],
                                             inv_screen_entries[0..pack_inv_len],
                                             &gd,
+                                            pack_limit,
                                         );
                                         transition_pending = .party_select;
                                         transition_start_ms = std.time.milliTimestamp();
@@ -346,6 +359,20 @@ pub fn main() !void {
                                         inv_screen = InventoryScreen.init(inv_screen_entries[0..inv_len], &gd, roster_db.getCurrency(&database), roster_buf, roster_species_buf[0..roster_buf.len], .from_hub);
 
                                         transition_pending = .inventory;
+                                        transition_start_ms = std.time.milliTimestamp();
+                                    },
+                                    .goto_meta_shop => {
+                                        var levels: [meta_upgrades.UPGRADE_COUNT]u8 = undefined;
+                                        for (meta_upgrades.all_upgrades, 0..) |upgrade, i| {
+                                            levels[i] = roster_db.getMetaUpgradeLevel(&database, upgrade.id);
+                                        }
+                                        meta_shop_screen_inst = MetaShopScreen.init(&database, roster_db.getCurrency(&database), levels);
+                                        transition_pending = .meta_shop;
+                                        transition_start_ms = std.time.milliTimestamp();
+                                    },
+                                    .goto_codex => {
+                                        codex_screen_inst = CodexScreen.init(&gd, &database);
+                                        transition_pending = .codex;
                                         transition_start_ms = std.time.milliTimestamp();
                                     },
                                     .quit => {
@@ -402,6 +429,9 @@ pub fn main() !void {
                                             const term_win = vx.window();
                                             const dg_w: u8 = @intCast(@min(dungeon_mod.floor_gen.MAX_WIDTH, @max(30, term_win.width -| 2)));
                                             const dg_h: u8 = @intCast(@min(dungeon_mod.floor_gen.MAX_HEIGHT, @max(12, term_win.height -| 7)));
+                                            const start_currency = meta_upgrades.getStartingCurrency(
+                                                roster_db.getMetaUpgradeLevel(&database, "starting_currency"),
+                                            );
                                             dungeon_state = dungeon_mod.startRunSized(
                                                 party_critters[0..party_count],
                                                 party_species[0..party_count],
@@ -410,7 +440,11 @@ pub fn main() !void {
                                                 initial_items[0..initial_item_count],
                                                 dg_w,
                                                 dg_h,
+                                                start_currency,
                                             );
+                                            // Track run start
+                                            roster_db.incrementMetaStat(&database, meta_upgrades.STAT_TOTAL_RUNS, 1) catch {};
+
                                             // Load biome background (Kitty only)
                                             biome_bg = biome_bg_mod.BiomeBackground.load(&vx, alloc, writer, biome_ptr.id);
 
@@ -418,13 +452,13 @@ pub fn main() !void {
                                             transition_pending = .dungeon;
                                             transition_start_ms = std.time.milliTimestamp();
                                         } else {
-                                            hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                                            hub_screen = makeHubScreen(&database, &sprite_map, use_kitty);
                                             transition_pending = .hub;
                                             transition_start_ms = std.time.milliTimestamp();
                                         }
                                     },
                                     .goto_hub => {
-                                        hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                                        hub_screen = makeHubScreen(&database, &sprite_map, use_kitty);
                                         transition_pending = .hub;
                                         transition_start_ms = std.time.milliTimestamp();
                                     },
@@ -458,7 +492,7 @@ pub fn main() !void {
                                         roster_screen.cursor = @min(saved_cursor, @as(u8, @intCast(@max(roster_buf.len, 1) - 1)));
                                     },
                                     .goto_hub => {
-                                        hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                                        hub_screen = makeHubScreen(&database, &sprite_map, use_kitty);
                                         transition_pending = .hub;
                                         transition_start_ms = std.time.milliTimestamp();
                                     },
@@ -503,7 +537,7 @@ pub fn main() !void {
                                         }
                                     },
                                     .goto_hub => {
-                                        hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                                        hub_screen = makeHubScreen(&database, &sprite_map, use_kitty);
                                         transition_pending = .hub;
                                         transition_start_ms = std.time.milliTimestamp();
                                     },
@@ -596,6 +630,15 @@ pub fn main() !void {
                                             var xp_buf: [64]u8 = undefined;
                                             const xp_msg = std.fmt.bufPrint(&xp_buf, "+{d} XP", .{xp_amount}) catch "+XP";
                                             dg_screen.log.push(xp_msg);
+
+                                            // Track boss defeats
+                                            if (last_was_boss) {
+                                                roster_db.incrementMetaStat(&database, meta_upgrades.STAT_BOSSES_DEFEATED, 1) catch {};
+                                            }
+                                        }
+                                        roster_db.markSpeciesDiscovered(&database, battle_state.wild.species.id);
+                                        if (b_outcome == .caught) {
+                                            roster_db.incrementMetaStat(&database, meta_upgrades.STAT_CRITTERS_CAUGHT, 1) catch {};
                                         }
 
                                         if (dungeon_state.phase == .run_over) {
@@ -643,6 +686,8 @@ pub fn main() !void {
                                     },
                                     .goto_dungeon => {
                                         dungeon_mod.advanceFloor(&dungeon_state);
+                                        // Track deepest floor reached
+                                        roster_db.updateMetaStatMax(&database, meta_upgrades.STAT_DEEPEST_FLOOR, dungeon_state.floor_number) catch {};
                                         dg_screen.resetVisited();
                                         var buf: [64]u8 = undefined;
                                         const msg = std.fmt.bufPrint(&buf, "Entered Floor {d}", .{dungeon_state.floor_number}) catch "Next floor!";
@@ -658,7 +703,31 @@ pub fn main() !void {
                             if (run_over_screen.handleInput(key)) |result| {
                                 switch (result) {
                                     .goto_hub => {
-                                        hub_screen = HubScreen.init(rosterCount(&database), roster_db.getCurrency(&database));
+                                        hub_screen = makeHubScreen(&database, &sprite_map, use_kitty);
+                                        transition_pending = .hub;
+                                        transition_start_ms = std.time.milliTimestamp();
+                                    },
+                                    else => {},
+                                }
+                            }
+                        },
+                        .meta_shop => {
+                            if (meta_shop_screen_inst.handleInput(key)) |result| {
+                                switch (result) {
+                                    .goto_hub => {
+                                        hub_screen = makeHubScreen(&database, &sprite_map, use_kitty);
+                                        transition_pending = .hub;
+                                        transition_start_ms = std.time.milliTimestamp();
+                                    },
+                                    else => {},
+                                }
+                            }
+                        },
+                        .codex => {
+                            if (codex_screen_inst.handleInput(key)) |result| {
+                                switch (result) {
+                                    .goto_hub => {
+                                        hub_screen = makeHubScreen(&database, &sprite_map, use_kitty);
                                         transition_pending = .hub;
                                         transition_start_ms = std.time.milliTimestamp();
                                     },
@@ -670,7 +739,7 @@ pub fn main() !void {
                 },
                 .winsize => |ws| {
                     try vx.resize(alloc, writer, ws);
-                    markAllDirty(active_screen, &title_screen, &recap_screen, &hub_screen, &party_select_screen, &roster_screen, &inv_screen, &dg_screen, &battle_screen, &shop_screen, &run_over_screen);
+                    markAllDirty(active_screen, &title_screen, &recap_screen, &hub_screen, &party_select_screen, &roster_screen, &inv_screen, &dg_screen, &battle_screen, &shop_screen, &run_over_screen, &meta_shop_screen_inst, &codex_screen_inst);
                 },
                 else => {},
             }
@@ -704,6 +773,8 @@ pub fn main() !void {
                         .battle => battle_screen.render(win),
                         .shop => shop_screen.render(win),
                         .run_over => run_over_screen.render(win),
+                        .meta_shop => meta_shop_screen_inst.render(win),
+                        .codex => codex_screen_inst.render(win),
                     }
                 } else {
                     win.clear();
@@ -732,8 +803,10 @@ pub fn main() !void {
             battle_screen.updateAnimation();
         }
 
-        // Dungeon always redraws for dancing color animation
+        // Screens with dancing color animations always redraw
         if (active_screen == .dungeon) dg_screen.dirty = true;
+        if (active_screen == .meta_shop) meta_shop_screen_inst.dirty = true;
+        if (active_screen == .codex) codex_screen_inst.dirty = true;
 
         // Render
         const dirty = switch (active_screen) {
@@ -747,6 +820,8 @@ pub fn main() !void {
             .battle => battle_screen.dirty,
             .shop => shop_screen.dirty,
             .run_over => run_over_screen.dirty,
+            .meta_shop => meta_shop_screen_inst.dirty,
+            .codex => codex_screen_inst.dirty,
         };
 
         if (dirty) {
@@ -761,6 +836,8 @@ pub fn main() !void {
                 .battle => battle_screen.dirty = false,
                 .shop => shop_screen.dirty = false,
                 .run_over => run_over_screen.dirty = false,
+                .meta_shop => meta_shop_screen_inst.dirty = false,
+                .codex => codex_screen_inst.dirty = false,
             }
             const win = vx.window();
             switch (active_screen) {
@@ -774,6 +851,8 @@ pub fn main() !void {
                 .battle => battle_screen.render(win),
                 .shop => shop_screen.render(win),
                 .run_over => run_over_screen.render(win),
+                .meta_shop => meta_shop_screen_inst.render(win),
+                .codex => codex_screen_inst.render(win),
             }
             try vx.render(writer);
             try writer.flush();
@@ -820,6 +899,39 @@ fn compactDungeonParty(
 
 fn rosterCount(database: *db.Db) u16 {
     return roster_db.countCritters(database);
+}
+
+fn lookupFavoriteSprite(database: *db.Db, sprite_map: *const SpriteMap) ?*const sprite_mod.SpriteSheet {
+    const critter_id = passive_store.getFavoriteCritterId(database) orelse return null;
+    const row = database.conn.row(
+        "SELECT species_id FROM critters WHERE id = ?1",
+        .{critter_id},
+    ) catch return null;
+    if (row) |r| {
+        defer r.deinit();
+        const species_id = r.text(0);
+        return sprite_map.get(species_id);
+    }
+    return null;
+}
+
+fn makeHubScreen(database: *db.Db, sprite_map: *const SpriteMap, use_kitty: bool) HubScreen {
+    const has_codex = meta_upgrades.hasCodex(roster_db.getMetaUpgradeLevel(database, "species_codex"));
+    const stats = HubScreen.HubStats{
+        .total_runs = roster_db.getMetaStat(database, meta_upgrades.STAT_TOTAL_RUNS),
+        .deepest_floor = roster_db.getMetaStat(database, meta_upgrades.STAT_DEEPEST_FLOOR),
+        .critters_caught = roster_db.getMetaStat(database, meta_upgrades.STAT_CRITTERS_CAUGHT),
+        .species_discovered = roster_db.countMetaKeysWithPrefix(database, meta_upgrades.STAT_SEEN_PREFIX),
+        .bosses_defeated = roster_db.getMetaStat(database, meta_upgrades.STAT_BOSSES_DEFEATED),
+    };
+    return HubScreen.initFull(
+        rosterCount(database),
+        roster_db.getCurrency(database),
+        lookupFavoriteSprite(database, sprite_map),
+        use_kitty,
+        has_codex,
+        stats,
+    );
 }
 
 fn reloadInventory(
@@ -1115,6 +1227,8 @@ fn persistRunInventory(
         roster_db.addCurrency(database, dungeon_state.currency) catch |err| {
             std.log.err("persistRunInventory: addCurrency failed: {}", .{err});
         };
+        // Track lifetime currency earned
+        roster_db.incrementMetaStat(database, meta_upgrades.STAT_CURRENCY_EARNED, dungeon_state.currency) catch {};
     }
 }
 
@@ -1130,6 +1244,8 @@ fn markAllDirty(
     battle_screen: *BattleScreen,
     shop_screen: *ShopScreen,
     run_over_scr: *RunOverScreen,
+    meta_shop_scr: *MetaShopScreen,
+    codex_scr: *CodexScreen,
 ) void {
     switch (active_screen) {
         .title => title_scr.dirty = true,
@@ -1142,6 +1258,8 @@ fn markAllDirty(
         .battle => battle_screen.dirty = true,
         .shop => shop_screen.dirty = true,
         .run_over => run_over_scr.dirty = true,
+        .meta_shop => meta_shop_scr.dirty = true,
+        .codex => codex_scr.dirty = true,
     }
 }
 

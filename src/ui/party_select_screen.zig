@@ -17,7 +17,8 @@ const writeFmt = ui.writeFmt;
 
 pub const MAX_ROSTER = 64;
 pub const MAX_PARTY = 3;
-pub const MAX_PACK_SLOTS: u8 = 6;
+pub const MAX_PACK_SLOTS: u8 = 10; // array capacity (max with all upgrades)
+pub const DEFAULT_PACK_LIMIT: u8 = 6; // base limit without upgrades
 
 pub const PackedItem = struct {
     item_id: []const u8,
@@ -42,6 +43,7 @@ pub const PartySelectScreen = struct {
     game_data: *const game_data_mod.GameData,
     packed_items: [MAX_PACK_SLOTS]?PackedItem,
     pack_count: u8,
+    pack_slot_limit: u8,
     item_cursor: u8,
     item_scroll: u8,
 
@@ -50,6 +52,16 @@ pub const PartySelectScreen = struct {
         roster_species: []const ?*const species_mod.Species,
         inventory: []const ui.InventoryEntry,
         game_data: *const game_data_mod.GameData,
+    ) PartySelectScreen {
+        return initWithPackLimit(roster, roster_species, inventory, game_data, DEFAULT_PACK_LIMIT);
+    }
+
+    pub fn initWithPackLimit(
+        roster: []const critter_mod.Critter,
+        roster_species: []const ?*const species_mod.Species,
+        inventory: []const ui.InventoryEntry,
+        game_data: *const game_data_mod.GameData,
+        pack_slot_limit: u8,
     ) PartySelectScreen {
         return .{
             .roster = roster,
@@ -65,6 +77,7 @@ pub const PartySelectScreen = struct {
             .game_data = game_data,
             .packed_items = .{null} ** MAX_PACK_SLOTS,
             .pack_count = 0,
+            .pack_slot_limit = pack_slot_limit,
             .item_cursor = 0,
             .item_scroll = 0,
         };
@@ -216,7 +229,7 @@ pub const PartySelectScreen = struct {
         }
 
         // Not packed yet — add if room
-        if (self.pack_count >= MAX_PACK_SLOTS) return;
+        if (self.pack_count >= self.pack_slot_limit) return;
         for (&self.packed_items) |*slot| {
             if (slot.* == null) {
                 slot.* = .{ .item_id = entry.item_id, .quantity = entry.quantity };
@@ -348,7 +361,7 @@ pub const PartySelectScreen = struct {
         if (self.pack_count > 0) {
             row += 1;
             if (row < win.height) {
-                _ = writeFmt(win, 2, row, theme.heading, "Packed: {d}/{d} items", .{ self.pack_count, MAX_PACK_SLOTS });
+                _ = writeFmt(win, 2, row, theme.heading, "Packed: {d}/{d} items", .{ self.pack_count, self.pack_slot_limit });
             }
         }
 
@@ -361,7 +374,7 @@ pub const PartySelectScreen = struct {
     }
 
     fn renderItems(self: *PartySelectScreen, win: Window) void {
-        _ = writeFmt(win, 2, 0, theme.heading, "Pack Items ({d}/{d})", .{ self.pack_count, MAX_PACK_SLOTS });
+        _ = writeFmt(win, 2, 0, theme.heading, "Pack Items ({d}/{d})", .{ self.pack_count, self.pack_slot_limit });
 
         // Compact party summary on line 1
         var c: u16 = 2;
