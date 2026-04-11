@@ -47,6 +47,7 @@ pub const BattleEvent = union(enum) {
 pub const DamageDealtEvent = struct {
     attacker_is_player: bool,
     move_name: []const u8,
+    move_type: types.CritterType = .debug,
     damage_dealt: u16,
     effectiveness: types.Effectiveness,
 };
@@ -450,6 +451,7 @@ fn resolveAttack(
     result.addEvent(.{ .damage_dealt = .{
         .attacker_is_player = is_player,
         .move_name = move.name,
+        .move_type = move.move_type,
         .damage_dealt = dmg,
         .effectiveness = eff,
     } });

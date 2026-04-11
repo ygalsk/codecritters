@@ -130,6 +130,45 @@ pub fn renderHintAt(win: Window, col: u16, text: []const u8) void {
     }
 }
 
+// ─── Color Border Widget ───
+
+pub fn renderColorBorder(win: Window, color: [3]u8) void {
+    const w = win.width;
+    const h = win.height;
+    const style = Style{ .fg = .{ .rgb = color } };
+
+    // Top and bottom
+    var c: u16 = 0;
+    while (c < w) : (c += 1) {
+        win.writeCell(c, 0, .{ .char = .{ .grapheme = "\xe2\x94\x80", .width = 1 }, .style = style });
+        if (h > 1) win.writeCell(c, h - 1, .{ .char = .{ .grapheme = "\xe2\x94\x80", .width = 1 }, .style = style });
+    }
+    // Left and right
+    var r: u16 = 1;
+    while (r < h -| 1) : (r += 1) {
+        win.writeCell(0, r, .{ .char = .{ .grapheme = "\xe2\x94\x82", .width = 1 }, .style = style });
+        if (w > 1) win.writeCell(w - 1, r, .{ .char = .{ .grapheme = "\xe2\x94\x82", .width = 1 }, .style = style });
+    }
+    // Corners
+    win.writeCell(0, 0, .{ .char = .{ .grapheme = "\xe2\x95\xad", .width = 1 }, .style = style });
+    if (w > 1) win.writeCell(w - 1, 0, .{ .char = .{ .grapheme = "\xe2\x95\xae", .width = 1 }, .style = style });
+    if (h > 1) win.writeCell(0, h - 1, .{ .char = .{ .grapheme = "\xe2\x95\xb0", .width = 1 }, .style = style });
+    if (w > 1 and h > 1) win.writeCell(w - 1, h - 1, .{ .char = .{ .grapheme = "\xe2\x95\xaf", .width = 1 }, .style = style });
+}
+
+// ─── Thin Separator Widget ───
+
+pub fn renderThinSeparator(win: Window, row: u16, color: [3]u8) void {
+    const sep_style = Style{ .fg = .{ .rgb = color } };
+    var c: u16 = 2;
+    while (c < win.width -| 2) : (c += 1) {
+        win.writeCell(c, row, .{
+            .char = .{ .grapheme = "\xe2\x94\x80", .width = 1 },
+            .style = sep_style,
+        });
+    }
+}
+
 // ─── Centered Text ───
 
 pub fn renderCenteredText(win: Window, row: u16, text: []const u8, style: Style) void {

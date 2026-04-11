@@ -40,6 +40,10 @@ const TitleScreen = title_screen_mod.TitleScreen;
 const run_over_screen_mod = @import("ui/run_over_screen.zig");
 const RunOverScreen = run_over_screen_mod.RunOverScreen;
 const sound = @import("ui/sound.zig");
+const tileset_mod = @import("ui/tileset.zig");
+const biome_bg_mod = @import("ui/biome_background.zig");
+const effect_sprites_mod = @import("ui/effect_sprites.zig");
+const transition_mod = @import("ui/transition.zig");
 
 const Event = union(enum) {
     key_press: vaxis.Key,
@@ -184,6 +188,15 @@ pub fn main() !void {
     var use_kitty = false;
     var run_over_screen: RunOverScreen = undefined;
 
+    // Tileset + biome background for dungeon rendering (Phase 25a)
+    var tileset_storage: tileset_mod.Tileset = tileset_mod.Tileset{};
+    var tileset_ptr: ?*const tileset_mod.Tileset = null;
+    var biome_bg: biome_bg_mod.BiomeBackground = .{};
+
+    // Effect sprites for battle animations (Phase 25b)
+    var effect_sprite_map: effect_sprites_mod.EffectSpriteMap = .{};
+    effect_sprite_map.load(alloc);
+
     // Roster/inventory storage for screens (loaded from DB before party_select/roster_view)
     var roster_buf: []critter_mod.Critter = &.{};
     defer if (roster_buf.len > 0) roster_db.freeRoster(alloc, roster_buf);
@@ -235,12 +248,32 @@ pub fn main() !void {
         if (has_title_sprite) {
             title_sprite_storage.loadKittyImage(&vx, alloc, writer, "assets/sprites/title.png") catch {};
         }
+        effect_sprite_map.loadKittyImages(&vx, alloc, writer);
     }
+
+    // Load tileset for the detected biome
+    {
+        var tile_path_buf: [128]u8 = undefined;
+        const tile_path = std.fmt.bufPrint(&tile_path_buf, "assets/tiles/{s}.png", .{biome_ptr.id}) catch null;
+        if (tile_path) |path| {
+            if (tileset_mod.Tileset.loadFromFile(alloc, path)) |ts| {
+                tileset_storage = ts;
+                tileset_ptr = &tileset_storage;
+                if (use_kitty) {
+                    tileset_storage.loadKittyImage(&vx, alloc, writer, path) catch {};
+                }
+            } else |_| {}
+        }
+    }
+    defer tileset_storage.deinit(alloc);
+    defer if (use_kitty) tileset_storage.freeKittyImage(&vx, writer);
+    defer effect_sprite_map.deinit(alloc, &vx, writer);
 
     // Transition state for screen-change visual effect
     var transition_start_ms: i64 = 0;
     var transition_pending: ?ActiveScreen = null;
-    const transition_duration_ms: i64 = 150;
+    const transition_duration_ms: i64 = transition_mod.DURATION_MS;
+    var transition_kind: transition_mod.TransitionKind = .fade_to_black;
 
     var quit = false;
     while (!quit) {
@@ -365,14 +398,23 @@ pub fn main() !void {
                                             }
 
                                             const seed: u64 = @intCast(std.time.milliTimestamp());
-                                            dungeon_state = dungeon_mod.startRun(
+                                            // Size dungeon to fill terminal (leave room for HUD + messages)
+                                            const term_win = vx.window();
+                                            const dg_w: u8 = @intCast(@min(dungeon_mod.floor_gen.MAX_WIDTH, @max(30, term_win.width -| 2)));
+                                            const dg_h: u8 = @intCast(@min(dungeon_mod.floor_gen.MAX_HEIGHT, @max(12, term_win.height -| 7)));
+                                            dungeon_state = dungeon_mod.startRunSized(
                                                 party_critters[0..party_count],
                                                 party_species[0..party_count],
                                                 biome_ptr,
                                                 seed,
                                                 initial_items[0..initial_item_count],
+                                                dg_w,
+                                                dg_h,
                                             );
-                                            dg_screen = DungeonScreen.init(&dungeon_state, &gd);
+                                            // Load biome background (Kitty only)
+                                            biome_bg = biome_bg_mod.BiomeBackground.load(&vx, alloc, writer, biome_ptr.id);
+
+                                            dg_screen = DungeonScreen.init(&dungeon_state, &gd, tileset_ptr, &biome_bg, use_kitty);
                                             transition_pending = .dungeon;
                                             transition_start_ms = std.time.milliTimestamp();
                                         } else {
@@ -480,7 +522,7 @@ pub fn main() !void {
                                     .goto_battle => |req| {
                                         last_was_boss = req.is_boss;
                                         const info = dungeon_mod.EncounterInfo{ .species_id = req.species_id, .level = req.level };
-                                        if (startBattle(&dungeon_state, info, &gd, &inv_bridge, &inv_bridge_count, &inv_pre_counts, &battle_state, &battle_screen, &sprite_map, use_kitty)) {
+                                        if (startBattle(&dungeon_state, info, &gd, &inv_bridge, &inv_bridge_count, &inv_pre_counts, &battle_state, &battle_screen, &sprite_map, &effect_sprite_map, use_kitty)) {
                                             transition_pending = .battle;
                                             transition_start_ms = std.time.milliTimestamp();
                                             sound.beep();
@@ -569,6 +611,7 @@ pub fn main() !void {
                                             }
                                             persistPendingScars(&dungeon_state, &database, &run_party_ids);
                                             savePartyState(&dungeon_state, &database, &run_party_ids);
+                                            biome_bg.free(&vx, writer); // free Kitty bg image
                                             transition_pending = .run_over;
                                             transition_start_ms = std.time.milliTimestamp();
                                             run_over_screen = RunOverScreen.init(&dungeon_state, &gd);
@@ -634,30 +677,63 @@ pub fn main() !void {
         }
         if (quit) break;
 
-        // Handle transition overlay (cut to black)
+        // Handle transition overlay
         if (transition_pending) |pending| {
             const elapsed = std.time.milliTimestamp() - transition_start_ms;
             if (elapsed >= transition_duration_ms) {
                 active_screen = pending;
                 transition_pending = null;
             } else {
+                // Pick transition style based on destination
+                transition_kind = transition_mod.pickTransition(active_screen, pending);
+                const progress = @as(f32, @floatFromInt(elapsed)) / @as(f32, @floatFromInt(transition_duration_ms));
                 const win = vx.window();
-                win.clear();
+
+                // Render the destination screen underneath if past halfway (for fade/dissolve)
+                if (progress >= 0.5) {
+                    active_screen = pending;
+                    // Render new screen first, then overlay transition on top
+                    switch (active_screen) {
+                        .title => title_screen.render(win),
+                        .recap => recap_screen.render(win),
+                        .hub => hub_screen.render(win),
+                        .party_select => party_select_screen.render(win),
+                        .roster_view => roster_screen.render(win),
+                        .inventory => inv_screen.render(win),
+                        .dungeon => dg_screen.render(win),
+                        .battle => battle_screen.render(win),
+                        .shop => shop_screen.render(win),
+                        .run_over => run_over_screen.render(win),
+                    }
+                } else {
+                    win.clear();
+                }
+
+                switch (transition_kind) {
+                    .fade_to_black => transition_mod.renderFadeToBlack(win, progress),
+                    .wipe_left => transition_mod.renderWipeLeft(win, progress),
+                    .dissolve => transition_mod.renderDissolve(win, progress),
+                }
+
                 try vx.render(writer);
                 try writer.flush();
-                const remaining = transition_duration_ms - elapsed;
-                std.Thread.sleep(@intCast(remaining * std.time.ns_per_ms));
+                std.Thread.sleep(16 * std.time.ns_per_ms); // ~60fps during transition
                 continue;
             }
         }
 
         if (active_screen == .title) {
             title_screen.updateAnimation();
+        } else if (active_screen == .hub) {
+            hub_screen.updateAnimation();
         } else if (active_screen == .roster_view) {
             roster_screen.updateAnimation();
         } else if (active_screen == .battle) {
             battle_screen.updateAnimation();
         }
+
+        // Dungeon always redraws for dancing color animation
+        if (active_screen == .dungeon) dg_screen.dirty = true;
 
         // Render
         const dirty = switch (active_screen) {
@@ -794,6 +870,7 @@ fn startBattle(
     battle_state: *battle.BattleState,
     b_screen: *BattleScreen,
     sprite_map: *const SpriteMap,
+    effect_sprites: *const effect_sprites_mod.EffectSpriteMap,
     use_kitty: bool,
 ) bool {
     const wild_sp = gd.findSpecies(info.species_id) orelse return false;
@@ -831,7 +908,7 @@ fn startBattle(
         wild_sp,
         seed,
     );
-    b_screen.* = BattleScreen.init(battle_state, gd, inv_bridge[0..inv_bridge_count.*], sprite_map, use_kitty);
+    b_screen.* = BattleScreen.init(battle_state, gd, inv_bridge[0..inv_bridge_count.*], sprite_map, effect_sprites, use_kitty);
     return true;
 }
 

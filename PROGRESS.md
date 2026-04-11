@@ -194,6 +194,14 @@
 - 2 new tests: fainted critter doesn't act after KO; item use has priority even when player is slower
 - 236 tests passing
 
+## Phase 17 — Roster Swap, Party Reorder, Inventory Detail [DONE]
+- **Roster swap** (`src/ui/roster_screen.zig`): Press S to enter swap mode, select two critters to exchange positions. Persisted via `sort_order` column in critters table.
+- **Party reorder** (`src/ui/party_select_screen.zig`): Press S during party selection to swap selected slot positions, reordering the run party.
+- **Inventory detail panel** (`src/ui/inventory_screen.zig`): Two-panel layout — item list on left, detail pane on right showing rarity-colored indicators, item descriptions, effect details, move disc stats (type/power/accuracy), buy/sell prices.
+- **Rarity enum** moved from `species.zig` to `types.zig` for shared use by both species and items.
+- **DB migration** (`src/db/db.zig`): Schema v2 adds `sort_order` column to critters table.
+- **Files changed**: `data/items.json`, `src/data/items.zig`, `src/data/species.zig`, `src/data/types.zig`, `src/db/db.zig`, `src/db/roster.zig`, `src/main.zig`, `src/ui/colors.zig`, `src/ui/inventory_screen.zig`, `src/ui/party_select_screen.zig`, `src/ui/roster_screen.zig`, `src/ui/theme.zig`
+
 ## Phase 18 — Game Event Loop Engine [DONE]
 - **ScreenResult tagged union** (`src/ui/screen_result.zig`): Unified transition type replacing per-screen flags (done, selection, pending_*, extracted, etc.). Every screen's `handleInput` now returns `?ScreenResult` instead of `void`. Variants: `goto_hub`, `goto_party_select`, `goto_roster(ScreenContext)`, `goto_inventory(ScreenContext)`, `goto_dungeon`, `goto_battle(BattleRequest)`, `goto_shop`, `goto_run_over`, `start_extraction`, `persist_swap`, `persist_equip`, `persist_item_use(ItemUseRequest)`, `quit`.
 - **ScreenContext enum** (`from_hub`/`from_dungeon`): Replaces the old `from_dungeon: bool` flag in main.zig. Context carried in the result itself, not ambient mutable state.
@@ -221,6 +229,14 @@
 - **Files changed**: `src/main.zig`, `src/ui/sprite.zig`, `AGENT_INSTRUCTIONS.md`, `PROGRESS.md`
 - 236 tests passing (no new tests — CLI output is integration-level)
 
+## Phase 21 — Three-Stage Evolution Lines (All 7 Types) [DONE]
+- **+15 species** (`data/species.json`): Second 3-stage chain per type (common→common→uncommon): Printf→Fprintf→Logstash (debug), Segfault→Stack Overflow→Kernel Panic (chaos), Singleton→God Object→Monolith (patience), Mutex→Semaphore→Deadlock (legacy), Monad→Functor→Burrito (wisdom), LGTM→Nitpick→Bikeshed (snark), Copilot→Autopilot→Hallucination (vibe). Total species: 15→30.
+- **+16 moves** (`data/moves.json`): Type-themed moves for new chains. Total moves: 16→32.
+- **+20 sprites** (`tools/gen_sprites.py`, `assets/sprites/`): All new species + refreshed existing sprites. Total sprites: 10→30.
+- **2 new status effects** (`src/battle/status.zig`): Enlightened (wisdom, -resolve) and Hallucinating (vibe, -accuracy).
+- **Biome encounter updates** (`data/biomes.json`): All three dungeon biomes updated with new species across floor gates.
+- **Files changed**: `data/species.json`, `data/moves.json`, `data/biomes.json`, `src/battle/status.zig`, `src/data/leveling.zig`, `src/data/moves.zig`, `src/dungeon/biome.zig`, `src/ui/sprite.zig`, `src/ui/text.zig`, `tools/gen_sprites.py`, `assets/sprites/*.png`
+
 ## Phase 22 — Four New Biomes + Detection [DONE]
 - **Expanded `detect.zig`** (`src/dungeon/detect.zig`): Added scoring for Rust (.rs, Cargo.toml/Cargo.lock), Go (.go, go.mod/go.sum), C (.c/.h, Makefile/CMakeLists.txt/meson.build), and Shell (.sh/.bash/.zsh). Winner selection uses array of (score, biome_id) tuples — highest score wins, tie-break order: python > node > rust > go > c > shell. Removed early-exit optimization (single-dir iteration fast enough).
 - **4 new biomes** (`data/biomes.json`): Rustacean Depths (debug/patience, orange/copper theme), Gopher Tunnels (patience/wisdom, cyan/teal theme), C Catacombs (legacy/chaos, dark gray/red theme), Shell Scripts (snark/chaos, terminal green theme). Each with full encounter table (~14 species, floor-gated), 4-boss pool, shop bias, and drop table.
@@ -245,3 +261,27 @@
 - **Sprite capacity** (`src/ui/sprite.zig`): MAX_SPRITES bumped from 64 to 72.
 - **Totals**: 61 species (full roster complete), 50 moves, 62 sprites (including title.png), 7 biomes.
 - **Files changed**: `data/species.json`, `data/moves.json`, `data/biomes.json`, `tools/gen_sprites.py`, `assets/sprites/*.png`, `src/ui/sound.zig`, `src/ui/battle_screen.zig`, `src/ui/sprite.zig`, `src/main.zig`, `PROGRESS.md`, `AGENT_INSTRUCTIONS.md`
+
+## Phase 24.5 — Bug Fix: Item Equip SQL Error [DONE]
+- **zqlite MultipleStatements fix** (`src/db/roster.zig`): Split two-statement SQL in `removeInventoryItem` (UPDATE + DELETE) into separate `exec()` calls — zqlite rejects multi-statement strings.
+- **Simplified equip persistence**: Replaced full `saveCritter` with targeted `updateCritterMove3` for disc equipping, removing unnecessary allocator plumbing from `RosterScreen`.
+- **UI sync**: Roster/inventory reloaded after equip to keep screens in sync with DB.
+
+## Phase 25 — Kitty-First Graphics Overhaul [DONE]
+- **FX engine** (`src/ui/fx.zig`): Brogue-style dancing colors (3× sine with per-cell phase offsets), smooth light attenuation (inverse-square falloff), pulsing/breathing color effects, color tinting/blending. All pure functions, no state.
+- **Tileset system** (`src/ui/tileset.zig`): Sprite-sheet sub-rectangle renderer with `TileIndex` enum (wall/floor/encounter/stairs/entrance). Loads tileset PNGs, renders individual tiles at brightness levels. Kitty graphics protocol support via image placement IDs.
+- **Biome backgrounds** (`src/ui/biome_background.zig`): Per-biome background images loaded via Kitty graphics protocol, rendered as z-indexed underlays beneath dungeon maps.
+- **Battle animation sequencer** (`src/ui/battle_anim.zig`): Multi-step animation pipeline: slide → effect → flash → shake. `BattleAnimSequencer` drives timed sequences from battle events, with skip support (Space/Enter). Per-step timing: slide 8 ticks, effect 12 ticks, flash 6 ticks, shake 8 ticks.
+- **Effect sprites** (`src/ui/effect_sprites.zig`): Per-type animated effect sprites (7 types) for battle attack animations. Loaded from `assets/effects/` PNGs, rendered at target position during effect phase.
+- **Screen transitions** (`src/ui/transition.zig`): Fade-to-black, wipe-left, and dissolve transitions between screens. `pickTransition` selects style based on source→destination pair. Replaces old instant cut-to-black.
+- **Dynamic floor sizing** (`src/dungeon/floor_gen.zig`): `generateFloorSized` accepts width/height parameters, scaling room count, room sizes, and encounter density with floor area. `Floor` struct carries `width`/`height` fields. Max buffer 200×60, default 80×35. Dungeon fills terminal (minus HUD).
+- **Enhanced dungeon rendering** (`src/ui/dungeon_screen.zig`): Position-based tile character variation (3 wall glyphs: █▓▒, 3 floor glyphs: ·∘⋅), dancing colors on all visible tiles, smooth lighting attenuation from player position, visibility radius increased to 8. Kitty path: tileset tiles with brightness. Unicode fallback: textured walls + varied floors.
+- **Hub screen polish** (`src/ui/hub_screen.zig`): Per-character dancing color title, breathing subtitle, favorite critter sprite with animation, box-drawing border.
+- **Title screen polish** (`src/ui/title_screen.zig`): Breathing subtitle, floating critter sprite (y-oscillation), pulsing hint text.
+- **Shop screen polish** (`src/ui/shop_screen.zig`): Box-drawing border, thin separator, rarity-colored item names.
+- **Recap/RunOver borders** (`src/ui/recap_screen.zig`, `src/ui/run_over_screen.zig`): Colored box borders (green for recap, green/red for extraction/wipe).
+- **Battle screen enhancements** (`src/ui/battle_screen.zig`): Sprite position animation (slide offsets), flash overlay, shake effect, effect sprite rendering during attacks. `move_type` added to `DamageDealtEvent` for type-specific effects.
+- **Easing functions** (`src/ui/anim.zig`): `easeOutQuad`, `easeInOutCubic`, `lerp`, `lerpI16` for animation curves.
+- **Shared widgets** (`src/ui/widgets.zig`): `renderColorBorder` and `renderThinSeparator` extracted from 4+2 duplicate implementations across screens.
+- **+21 placeholder assets**: 7 biome backgrounds (`assets/backgrounds/`), 7 biome tilesets (`assets/tiles/`), 7 type effect sprites (`assets/effects/`).
+- **Files changed**: `src/ui/fx.zig`, `src/ui/tileset.zig`, `src/ui/biome_background.zig`, `src/ui/battle_anim.zig`, `src/ui/effect_sprites.zig`, `src/ui/transition.zig`, `src/ui/kitty_manager.zig`, `src/ui/widgets.zig`, `src/ui/anim.zig`, `src/ui/battle_screen.zig`, `src/ui/dungeon_screen.zig`, `src/ui/hub_screen.zig`, `src/ui/title_screen.zig`, `src/ui/shop_screen.zig`, `src/ui/recap_screen.zig`, `src/ui/run_over_screen.zig`, `src/dungeon/dungeon.zig`, `src/dungeon/floor_gen.zig`, `src/battle/battle.zig`, `src/main.zig`, `build.zig`, `tools/gen_placeholders.py`, `assets/backgrounds/`, `assets/effects/`, `assets/tiles/`, `AGENT_INSTRUCTIONS.md`

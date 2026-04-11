@@ -26,3 +26,26 @@ pub const AnimTimer = struct {
         return if (n > 0) self.frame % n else 0;
     }
 };
+
+// ── Easing Functions ──
+// Input t in [0, 1], output in [0, 1].
+
+pub fn easeOutQuad(t: f32) f32 {
+    return 1.0 - (1.0 - t) * (1.0 - t);
+}
+
+pub fn easeInOutCubic(t: f32) f32 {
+    if (t < 0.5) return 4.0 * t * t * t;
+    const p = -2.0 * t + 2.0;
+    return 1.0 - p * p * p / 2.0;
+}
+
+pub fn lerp(a: f32, b: f32, t: f32) f32 {
+    return a + (b - a) * t;
+}
+
+pub fn lerpI16(a: i16, b: i16, t: f32) i16 {
+    const fa: f32 = @floatFromInt(a);
+    const fb: f32 = @floatFromInt(b);
+    return @intFromFloat(fa + (fb - fa) * t);
+}

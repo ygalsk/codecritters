@@ -1,3 +1,4 @@
+const std = @import("std");
 const vaxis = @import("vaxis");
 const ui = @import("ui_common.zig");
 const theme = @import("theme.zig");
@@ -6,6 +7,10 @@ const widgets = @import("widgets.zig");
 const anim = @import("anim.zig");
 const sprite_mod = @import("sprite.zig");
 const ScreenResult = @import("screen_result.zig").ScreenResult;
+const fx = @import("fx.zig");
+
+const Window = vaxis.Window;
+const writeText = ui.writeText;
 
 pub const TitleScreen = struct {
     dirty: bool,
@@ -49,10 +54,11 @@ pub const TitleScreen = struct {
         if (self.anim_timer.tick()) self.dirty = true;
     }
 
-    pub fn render(self: *const TitleScreen, win: vaxis.Window) void {
+    pub fn render(self: *const TitleScreen, win: Window) void {
         win.clear();
         const w = win.width;
         const h = win.height;
+        const time_ms = std.time.milliTimestamp();
 
         const frame = self.anim_timer.frameMod(2);
 
@@ -62,7 +68,7 @@ pub const TitleScreen = struct {
             logo_rows = @intCast(ts.height / 2);
             content_height += logo_rows;
         }
-        content_height += 4; // subtitle + gap + critter label space
+        content_height += 4;
         var critter_rows: u16 = 0;
         if (self.critter_sprite) |cs| {
             critter_rows = @intCast(cs.height / 2);
@@ -79,19 +85,33 @@ pub const TitleScreen = struct {
             row += logo_rows + 2;
         }
 
+        // Subtitle with breathing brightness
         if (row < h) {
-            widgets.renderCenteredText(win, row, "A Roguelike for Your Terminal", theme.header);
+            const subtitle = "A Roguelike for Your Terminal";
+            const breath = 0.5 + 0.4 * @sin(@as(f32, @floatFromInt(time_ms)) * 0.0015);
+            const sub_color = fx.applyBrightness(.{ 180, 180, 200 }, breath);
+            widgets.renderCenteredText(win, row, subtitle, .{ .fg = .{ .rgb = sub_color } });
             row += 2;
         }
 
+        // Critter sprite with float animation (y_offset oscillates +/- 1)
         if (self.critter_sprite) |cs| {
             const sprite_cols: u16 = @intCast(cs.frame_width);
             const col = layout.centerCol(w, sprite_cols);
             if (row < h) {
-                cs.render(win, frame, row, col, self.use_kitty);
+                const float_offset: f32 = @sin(@as(f32, @floatFromInt(time_ms)) * 0.003);
+                const y_off: i16 = if (float_offset > 0.3) -1 else if (float_offset < -0.3) 1 else 0;
+                const sprite_row: u16 = @intCast(@max(0, @as(i32, row) + y_off));
+                cs.render(win, frame, sprite_row, col, self.use_kitty);
             }
         }
 
-        widgets.renderHint(win, "[Press any key to start]");
+        // Hint with subtle pulse
+        const hint_brightness = 0.4 + 0.2 * @sin(@as(f32, @floatFromInt(time_ms)) * 0.003);
+        const hint_color = fx.applyBrightness(.{ 150, 150, 150 }, hint_brightness);
+        if (h > 2) {
+            const hint = "[Press any key to start]";
+            widgets.renderCenteredText(win, h - 2, hint, .{ .fg = .{ .rgb = hint_color } });
+        }
     }
 };

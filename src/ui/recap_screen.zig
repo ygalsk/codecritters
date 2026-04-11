@@ -4,7 +4,6 @@ const theme = @import("theme.zig");
 const layout = @import("layout.zig");
 const widgets = @import("widgets.zig");
 const ScreenResult = @import("screen_result.zig").ScreenResult;
-
 pub const RecapScreen = struct {
     dirty: bool,
     xp_awarded: u32,
@@ -32,9 +31,12 @@ pub const RecapScreen = struct {
         win.clear();
         const h = win.height;
 
+        // Green border (passive rewards = positive)
+        widgets.renderColorBorder(win, .{ 40, 120, 60 });
+
         const name = self.critter_name[0..self.critter_name_len];
 
-        const title = "While you were coding...";
+        const title = "\xe2\x9c\xa8 While you were coding... \xe2\x9c\xa8";
         const start_row: u16 = if (h > 12) h / 3 else 1;
         widgets.renderCenteredText(win, start_row, title, theme.title);
 
@@ -67,4 +69,5 @@ pub const RecapScreen = struct {
 
         widgets.renderHint(win, "[Press any key to continue]");
     }
+
 };

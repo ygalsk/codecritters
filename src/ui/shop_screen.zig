@@ -9,6 +9,7 @@ const layout = @import("layout.zig");
 const widgets = @import("widgets.zig");
 const input = @import("input.zig");
 const ScreenResult = @import("screen_result.zig").ScreenResult;
+const items_mod = @import("items");
 
 const shop_mod = dungeon_mod.shop;
 
@@ -88,10 +89,15 @@ pub const ShopScreen = struct {
         win.clear();
         if (layout.tooSmall(win, 30, 10)) return;
 
-        _ = writeFmt(win, 2, 0, theme.heading, "Between Floors -- Floor {d} Complete!", .{self.dungeon.floor_number});
-        _ = writeFmt(win, 2, 1, theme.currency_bold, "Currency: ${d}", .{self.dungeon.currency});
+        // Box border
+        widgets.renderColorBorder(win, .{ 60, 50, 30 });
 
-        _ = writeText(win, 2, 3, "Shop:", theme.header);
+        _ = writeFmt(win, 3, 1, theme.heading, "\xe2\x9c\xa6 Between Floors -- Floor {d} Complete!", .{self.dungeon.floor_number});
+        _ = writeFmt(win, 3, 2, theme.currency_bold, "Currency: ${d}", .{self.dungeon.currency});
+
+        // Shop separator
+        widgets.renderThinSeparator(win, 3, .{ 60, 50, 30 });
+        _ = writeText(win, 3, 4, "Shop:", theme.header);
 
         const shop_state = self.dungeon.current_shop;
         var shop_rows: u16 = 0;
@@ -101,19 +107,27 @@ pub const ShopScreen = struct {
                 const slot = ss.slots[i] orelse continue;
                 const idx: u8 = @intCast(i);
                 const is_sel = self.cursor == idx;
-                const style: theme.Style = if (is_sel) theme.selected else theme.unselected;
 
-                const row = 4 + shop_rows;
+                const row = 5 + shop_rows;
                 if (row >= win.height) break;
 
                 const item = self.game_data.findItem(slot.item_id);
                 const name = if (item) |it| it.name else slot.item_id;
+                const rarity_color = if (item) |it| theme.rarityColor(it.rarity) else theme.dim_gray;
 
-                const prefix: []const u8 = if (is_sel) "> " else "  ";
-                var c = writeText(win, 2, row, prefix, style);
-                c = writeText(win, c, row, name, style);
-                c = writeFmt(win, c, row, style, "  ${d}", .{slot.price});
-                _ = writeFmt(win, c, row, style, "  x{d}", .{slot.quantity});
+                if (is_sel) {
+                    const prefix: []const u8 = "> ";
+                    var c = writeText(win, 3, row, prefix, theme.selected);
+                    c = writeText(win, c, row, name, theme.selected);
+                    c = writeFmt(win, c, row, theme.selected, "  ${d}", .{slot.price});
+                    _ = writeFmt(win, c, row, theme.selected, "  x{d}", .{slot.quantity});
+                } else {
+                    const prefix: []const u8 = "  ";
+                    var c = writeText(win, 3, row, prefix, theme.unselected);
+                    c = writeText(win, c, row, name, .{ .fg = rarity_color });
+                    c = writeFmt(win, c, row, theme.currency, "  ${d}", .{slot.price});
+                    _ = writeFmt(win, c, row, theme.unselected, "  x{d}", .{slot.quantity});
+                }
                 shop_rows += 1;
             }
         }
@@ -148,7 +162,8 @@ pub const ShopScreen = struct {
 
         const ctrl_row = msg_row + @as(u16, @min(self.log.msg_count, 2)) + 1;
         if (ctrl_row < win.height) {
-            _ = writeText(win, 2, ctrl_row, "[Enter] Buy  [c] Continue  [e] Extract", theme.hint);
+            _ = writeText(win, 3, ctrl_row, "[Enter] Buy  [c] Continue  [e] Extract", theme.hint);
         }
     }
+
 };

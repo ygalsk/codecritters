@@ -16,6 +16,9 @@ const input = @import("input.zig");
 const ScreenResult = @import("screen_result.zig").ScreenResult;
 const anim_mod = @import("anim.zig");
 const sound = @import("sound.zig");
+const battle_anim = @import("battle_anim.zig");
+const effect_sprites_mod = @import("effect_sprites.zig");
+const fx = @import("fx.zig");
 
 const Window = ui.Window;
 const Style = theme.Style;
@@ -54,15 +57,18 @@ pub const BattleScreen = struct {
     pending_heal_item: ?struct { slot_idx: usize, item: *const items_mod.Item } = null,
     outcome: ?battle.BattleOutcome,
     sprites: *const SpriteMap,
+    effect_sprites: *const effect_sprites_mod.EffectSpriteMap,
     use_kitty: bool,
     anim_timer: anim_mod.AnimTimer,
     dirty: bool,
+    sequencer: battle_anim.BattleAnimSequencer,
 
     pub fn init(
         state: *battle.BattleState,
         game_data: *const game_data_mod.GameData,
         inventory: []InventorySlot,
         sprites: *const SpriteMap,
+        effect_sprites: *const effect_sprites_mod.EffectSpriteMap,
         use_kitty: bool,
     ) BattleScreen {
         var screen = BattleScreen{
@@ -77,9 +83,11 @@ pub const BattleScreen = struct {
             .pending_heal_item = null,
             .outcome = null,
             .sprites = sprites,
+            .effect_sprites = effect_sprites,
             .use_kitty = use_kitty,
             .anim_timer = anim_mod.AnimTimer.init(500),
             .dirty = true,
+            .sequencer = .{},
         };
         screen.log.push("A wild critter appeared!");
         return screen;
@@ -253,38 +261,63 @@ pub const BattleScreen = struct {
     }
 
     fn handleAnimating(self: *BattleScreen, key: vaxis.Key) void {
-        _ = key;
+        // Skip animation on Space or Enter
+        if (key.matches(' ', .{}) or key.matches(vaxis.Key.enter, .{})) {
+            self.skipAnimation();
+            return;
+        }
+
+        // Sequencer-driven animation — no keypress needed to advance
+    }
+
+    fn skipAnimation(self: *BattleScreen) void {
+        const result = self.current_result orelse {
+            self.finishAnimating();
+            return;
+        };
+
+        // Skip remaining animation steps, showing all pending events
+        var shown: [16]u8 = undefined;
+        const count = self.sequencer.skip(&shown);
+        for (shown[0..count]) |idx| {
+            if (idx < result.event_count) {
+                self.logEvent(result.events[idx]);
+            }
+        }
+
+        self.finishAnimating();
+    }
+
+    fn logEvent(self: *BattleScreen, event: battle.BattleEvent) void {
+        var buf: [MSG_BUF_LEN]u8 = undefined;
+        const msg = text.formatEvent(event, &buf);
+        self.log.push(msg);
+        // Sound cues
+        switch (event) {
+            .critter_fainted => sound.beep(),
+            .catch_result => |e| if (e.success) sound.beep(),
+            .damage_dealt => |e| if (e.effectiveness == .strong) sound.beep(),
+            else => {},
+        }
+    }
+
+    fn finishAnimating(self: *BattleScreen) void {
         const result = self.current_result orelse return;
-        if (self.event_index < result.event_count) {
-            const event = result.events[self.event_index];
-            var buf: [MSG_BUF_LEN]u8 = undefined;
-            const msg = text.formatEvent(event, &buf);
-            self.log.push(msg);
-            self.event_index += 1;
-            // Sound cues for key battle events
-            switch (event) {
-                .critter_fainted => sound.beep(),
-                .catch_result => |e| if (e.success) sound.beep(),
-                .damage_dealt => |e| if (e.effectiveness == .strong) sound.beep(),
-                else => {},
+        self.current_result = null;
+        if (result.outcome) |outcome| {
+            self.outcome = outcome;
+            if (outcome == .player_lose or outcome == .player_win or outcome == .caught) {
+                self.menu_state = .battle_over;
+                self.log.push(text.formatOutcome(outcome));
             }
         } else {
-            self.current_result = null;
-            if (result.outcome) |outcome| {
-                self.outcome = outcome;
-                if (outcome == .player_lose or outcome == .player_win or outcome == .caught) {
-                    self.menu_state = .battle_over;
-                    self.log.push(text.formatOutcome(outcome));
-                }
+            if (self.state.activePlayer().critter.current_hp == 0 and self.hasAlivePartyMember()) {
+                self.menu_state = .select_swap;
+                self.cursor = 0;
+                self.log.push("Choose a critter to send in!");
             } else {
-                if (self.state.activePlayer().critter.current_hp == 0 and self.hasAlivePartyMember()) {
-                    self.menu_state = .select_swap;
-                    self.cursor = 0;
-                    self.log.push("Choose a critter to send in!");
-                } else {
-                    self.menu_state = .main_menu;
-                    self.cursor = 0;
-                }
+                self.menu_state = .main_menu;
+                self.cursor = 0;
             }
         }
     }
@@ -294,17 +327,15 @@ pub const BattleScreen = struct {
         self.current_result = result;
         self.event_index = 0;
         self.menu_state = .animating;
-        if (result.event_count > 0) {
-            var buf: [MSG_BUF_LEN]u8 = undefined;
-            const msg = text.formatEvent(result.events[0], &buf);
-            self.log.push(msg);
-            self.event_index = 1;
-        }
+        // Build animation sequence from battle events
+        self.sequencer = battle_anim.BattleAnimSequencer.buildFromEvents(result);
     }
 
     pub fn render(self: *const BattleScreen, win: Window) void {
         win.clear();
         if (layout.tooSmall(win, 40, 10)) return;
+
+        const anim_state = self.sequencer.state;
 
         // Layout zones — sprites are 16 cols × 8 rows (half-block)
         const info_height: u16 = 3;
@@ -314,24 +345,64 @@ pub const BattleScreen = struct {
         const msg_start: u16 = separator_row + 1;
         const menu_start: u16 = if (win.height > 20) win.height - 5 else msg_start + 2;
 
-        // Wild critter (top-right)
-        self.renderCritterInfo(win, &self.state.wild, true, 1, win.width / 2);
-        self.renderSprite(win, &self.state.wild, info_height + 1, win.width -| (sprite_width + 2));
+        // Apply shake offset to the whole battle area
+        const shake = anim_state.shake_offset;
+        const battle_x_offset: u16 = if (shake > 0) @intCast(shake) else 0;
 
-        // Player critter (bottom-left)
+        // Wild critter (top-right) — apply animation offset
+        const wild_base_col = win.width -| (sprite_width + 2);
+        const wild_col: u16 = @intCast(@max(0, @as(i32, wild_base_col) + anim_state.wild_x_offset + shake));
+        self.renderCritterInfo(win, &self.state.wild, true, 1, @max(win.width / 2, battle_x_offset));
+        self.renderSprite(win, &self.state.wild, info_height + 1, wild_col);
+
+        // Player critter (bottom-left) — apply animation offset
         const player = self.state.activePlayer();
         const player_info_row = separator_row -| (info_height + sprite_height + 1);
-        self.renderSprite(win, player, player_info_row, 2);
-        self.renderCritterInfo(win, player, false, player_info_row + sprite_height, 2);
+        const player_base_col: u16 = 2;
+        const player_col: u16 = @intCast(@max(0, @as(i32, player_base_col) + anim_state.player_x_offset + shake));
+        self.renderSprite(win, player, player_info_row, player_col);
+        self.renderCritterInfo(win, player, false, player_info_row + sprite_height, @max(2, battle_x_offset));
+
+        // Render effect sprite if active
+        if (anim_state.effect_frame) |frame| {
+            const effect_col: u16 = if (anim_state.effect_on_player) player_col else wild_col;
+            const effect_row: u16 = if (anim_state.effect_on_player) player_info_row else info_height + 1;
+            if (self.effect_sprites.get(anim_state.effect_type)) |effect| {
+                effect.renderFrame(win, frame, effect_row, effect_col, self.use_kitty);
+            }
+        }
 
         // Separator
         widgets.renderSeparator(win, separator_row);
+
+        // Flash overlay
+        if (anim_state.flash_intensity > 0.01) {
+            self.renderFlash(win, separator_row, anim_state.flash_intensity);
+        }
 
         // Messages
         self.renderMessages(win, msg_start, menu_start);
 
         // Menu
         self.renderBattleMenu(win, menu_start);
+    }
+
+    fn renderFlash(self: *const BattleScreen, win: Window, separator_row: u16, intensity: f32) void {
+        _ = self;
+        // Flash the battle area (above separator) with white overlay
+        const flash_alpha = @min(intensity, 1.0);
+        const white: [3]u8 = .{ 255, 255, 255 };
+        var r: u16 = 0;
+        while (r < separator_row) : (r += 1) {
+            var c: u16 = 0;
+            while (c < win.width) : (c += 1) {
+                const tinted = fx.tintColor(.{ 0, 0, 0 }, white, flash_alpha);
+                win.writeCell(c, r, .{
+                    .char = .{ .grapheme = " ", .width = 1 },
+                    .style = .{ .bg = .{ .rgb = tinted } },
+                });
+            }
+        }
     }
 
     fn renderCritterInfo(self: *const BattleScreen, win: Window, bc: *const battle.BattleCritter, is_wild: bool, row: u16, col: u16) void {
@@ -394,6 +465,24 @@ pub const BattleScreen = struct {
 
     pub fn updateAnimation(self: *BattleScreen) void {
         if (self.anim_timer.tick()) self.dirty = true;
+
+        // Drive sequencer during animation
+        if (self.menu_state == .animating and !self.sequencer.isFinished()) {
+            if (self.sequencer.tick()) |event_idx| {
+                // An event was shown — log it
+                if (self.current_result) |result| {
+                    if (event_idx < result.event_count) {
+                        self.logEvent(result.events[event_idx]);
+                    }
+                }
+            }
+            self.dirty = true;
+
+            // If sequencer finished, wrap up
+            if (self.sequencer.isFinished()) {
+                self.finishAnimating();
+            }
+        }
     }
 
     fn renderMessages(self: *const BattleScreen, win: Window, start_row: u16, end_row: u16) void {
@@ -410,7 +499,7 @@ pub const BattleScreen = struct {
             .select_heal_target => self.renderHealTargetMenu(win, start_row),
             .select_catch_tool => self.renderItemList(win, start_row, .catch_tool),
             .animating => {
-                _ = writeText(win, 2, start_row + 1, "[Press any key to continue]", .{ .fg = theme.press_key, .italic = true });
+                _ = writeText(win, 2, start_row + 1, "[Space/Enter to skip]", .{ .fg = theme.press_key, .italic = true });
             },
             .battle_over => {
                 if (self.outcome) |outcome| {

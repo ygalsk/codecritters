@@ -72,8 +72,8 @@ Each type gets its uncommon→rare 2-stage line + standalone rare (Breakpoint→
 ### Phase 24.5 — Bug Fix: Item Equip SQL Error
 Fix `removeInventoryItem` in `src/db/roster.zig` — split two-statement SQL (UPDATE + DELETE) into separate `exec()` calls to fix `error.MultipleStatements` from zqlite. Also address the subsequent crash-on-quit triggered by the unhandled error state.
 
-### Phase 25 — Dungeon Graphics + Biome Tilesets + Attack Animations + Visual Overhaul
-Sprite-based dungeon rendering with biome-specific tilesets for each dungeon type. Battle attack animations per move type. Visual pass on all screens: title, hub, roster, shop, recap. Target 80×24 minimum.
+### Phase 25 — Kitty-First Graphics Overhaul [DONE]
+Kitty graphics protocol rendering engine: biome backgrounds (z-indexed), tileset system (sprite-sheet sub-rectangles), dynamic floor sizing (fills terminal). Battle animation sequencer (slide → effect → flash → shake) with per-type effect sprites. Screen transitions (fade/wipe/dissolve). Visual pass: dancing colors (Brogue-style sine-wave RGB), smooth lighting attenuation, enhanced Unicode fallback (textured walls, varied floors). Hub/title/shop/recap/run_over polished with box-drawing borders, breathing colors, animated sprites. +8 new UI modules, 21 placeholder assets.
 
 ### Phase 26 — Sprite Audit + Final Visual Polish
 Verify all 61 sprites exist. Hub shows favorite critter. Roster shows sprite previews. Battle handles long names. All screens clean at 80×24.

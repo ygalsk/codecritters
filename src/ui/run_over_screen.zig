@@ -7,7 +7,6 @@ const ui = @import("ui_common.zig");
 const theme = @import("theme.zig");
 const widgets = @import("widgets.zig");
 const ScreenResult = @import("screen_result.zig").ScreenResult;
-
 pub const RunOverScreen = struct {
     dungeon_state: *const dungeon_mod.DungeonState,
     game_data: *const game_data_mod.GameData,
@@ -32,6 +31,10 @@ pub const RunOverScreen = struct {
 
     pub fn render(self: *const RunOverScreen, win: vaxis.Window) void {
         win.clear();
+
+        // Colored border: green for extraction, red for wipe
+        const border_color: [3]u8 = if (self.dungeon_state.outcome == .extracted) .{ 40, 180, 80 } else .{ 180, 40, 40 };
+        widgets.renderColorBorder(win, border_color);
 
         const title = switch (self.dungeon_state.outcome) {
             .extracted => "Run Complete - Extracted!",
@@ -104,6 +107,7 @@ pub const RunOverScreen = struct {
             _ = ui.writeText(win, 2, row, "Your critters need 2 runs to recover.", .{ .fg = theme.status_red, .bold = true });
         }
 
-        widgets.renderHintAt(win, 2, "[Press any key to continue]");
+        widgets.renderHintAt(win, 3, "[Press any key to continue]");
     }
+
 };

@@ -1,7 +1,12 @@
 const std = @import("std");
 
-pub const FLOOR_WIDTH: u8 = 24;
-pub const FLOOR_HEIGHT: u8 = 18;
+/// Maximum buffer dimensions — actual floor size is stored in Floor.width/height.
+pub const MAX_WIDTH: u8 = 200;
+pub const MAX_HEIGHT: u8 = 60;
+
+/// Default floor dimensions (used when terminal size is unknown).
+pub const DEFAULT_WIDTH: u8 = 80;
+pub const DEFAULT_HEIGHT: u8 = 35;
 
 pub const Tile = enum {
     wall,
@@ -12,11 +17,13 @@ pub const Tile = enum {
 };
 
 pub const Floor = struct {
-    tiles: [FLOOR_HEIGHT][FLOOR_WIDTH]Tile,
+    tiles: [MAX_HEIGHT][MAX_WIDTH]Tile,
     entrance_x: u8,
     entrance_y: u8,
     stairs_x: u8,
     stairs_y: u8,
+    width: u8,
+    height: u8,
 };
 
 const Room = struct {
@@ -43,27 +50,47 @@ const Room = struct {
 };
 
 pub fn generateFloor(floor_number: u8, rng: std.Random) Floor {
+    return generateFloorSized(floor_number, rng, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+}
+
+pub fn generateFloorSized(floor_number: u8, rng: std.Random, width: u8, height: u8) Floor {
+    const w = @min(width, MAX_WIDTH);
+    const h = @min(height, MAX_HEIGHT);
+
     var floor = Floor{
-        .tiles = [_][FLOOR_WIDTH]Tile{[_]Tile{.wall} ** FLOOR_WIDTH} ** FLOOR_HEIGHT,
+        .tiles = [_][MAX_WIDTH]Tile{[_]Tile{.wall} ** MAX_WIDTH} ** MAX_HEIGHT,
         .entrance_x = 0,
         .entrance_y = 0,
         .stairs_x = 0,
         .stairs_y = 0,
+        .width = w,
+        .height = h,
     };
 
-    const room_count_range: u8 = 3;
-    const num_rooms: u8 = 3 + rng.intRangeAtMost(u8, 0, room_count_range - 1);
-    var rooms: [5]Room = undefined;
+    // Scale room count with floor area
+    const area = @as(u16, w) * @as(u16, h);
+    const base_rooms: u8 = if (area > 3000) 7 else if (area > 1500) 5 else 3;
+    const room_variance: u8 = if (area > 3000) 5 else if (area > 1500) 4 else 2;
+    const num_rooms: u8 = base_rooms + rng.intRangeAtMost(u8, 0, room_variance);
+    const max_rooms = 12;
+    var rooms: [max_rooms]Room = undefined;
     var placed: u8 = 0;
 
-    var attempts: u16 = 0;
-    while (placed < num_rooms and attempts < 200) : (attempts += 1) {
-        const w = rng.intRangeAtMost(u8, 4, 8);
-        const h = rng.intRangeAtMost(u8, 3, 6);
-        const x = rng.intRangeAtMost(u8, 1, FLOOR_WIDTH - w - 1);
-        const y = rng.intRangeAtMost(u8, 1, FLOOR_HEIGHT - h - 1);
+    // Scale room sizes with floor dimensions
+    const min_room_w: u8 = @max(3, w / 15);
+    const max_room_w: u8 = @max(min_room_w + 2, w / 6);
+    const min_room_h: u8 = @max(3, h / 10);
+    const max_room_h: u8 = @max(min_room_h + 2, h / 5);
 
-        const candidate = Room{ .x = x, .y = y, .w = w, .h = h };
+    var attempts: u16 = 0;
+    while (placed < num_rooms and placed < max_rooms and attempts < 400) : (attempts += 1) {
+        const rw = rng.intRangeAtMost(u8, min_room_w, max_room_w);
+        const rh = rng.intRangeAtMost(u8, min_room_h, max_room_h);
+        if (rw + 2 >= w or rh + 2 >= h) continue;
+        const rx = rng.intRangeAtMost(u8, 1, w - rw - 1);
+        const ry = rng.intRangeAtMost(u8, 1, h - rh - 1);
+
+        const candidate = Room{ .x = rx, .y = ry, .w = rw, .h = rh };
 
         var overlapping = false;
         for (rooms[0..placed]) |existing| {
@@ -79,10 +106,12 @@ pub fn generateFloor(floor_number: u8, rng: std.Random) Floor {
         }
     }
 
-    // If we couldn't place at least 2 rooms, force a fallback layout
+    // Fallback: force at least 2 rooms
     if (placed < 2) {
-        rooms[0] = Room{ .x = 2, .y = 2, .w = 6, .h = 5 };
-        rooms[1] = Room{ .x = 14, .y = 10, .w = 6, .h = 5 };
+        rooms[0] = Room{ .x = 2, .y = 2, .w = @min(8, w / 4), .h = @min(6, h / 4) };
+        const r2x = @max(w / 2, 10);
+        const r2y = @max(h / 2, 8);
+        rooms[1] = Room{ .x = r2x, .y = r2y, .w = @min(8, w / 4), .h = @min(6, h / 4) };
         placed = 2;
     }
 
@@ -112,12 +141,13 @@ pub fn generateFloor(floor_number: u8, rng: std.Random) Floor {
     floor.stairs_y = last.centerY();
     floor.tiles[floor.stairs_y][floor.stairs_x] = .stairs;
 
-    const max_encounters: u8 = @min(8, 3 + floor_number / 2);
+    // Scale encounters with floor area
+    const max_encounters: u8 = @intCast(@min(25, @as(u16, 5) + @as(u16, floor_number) / 2 + area / 500));
     var encounters_placed: u8 = 0;
     var enc_attempts: u16 = 0;
-    while (encounters_placed < max_encounters and enc_attempts < 500) : (enc_attempts += 1) {
-        const ex = rng.intRangeAtMost(u8, 0, FLOOR_WIDTH - 1);
-        const ey = rng.intRangeAtMost(u8, 0, FLOOR_HEIGHT - 1);
+    while (encounters_placed < max_encounters and enc_attempts < 1000) : (enc_attempts += 1) {
+        const ex = rng.intRangeAtMost(u8, 0, w - 1);
+        const ey = rng.intRangeAtMost(u8, 0, h - 1);
 
         if (floor.tiles[ey][ex] != .floor) continue;
         if (isAdjacentTo(&floor, ex, ey, .entrance) or isAdjacentTo(&floor, ex, ey, .stairs)) continue;
@@ -130,7 +160,6 @@ pub fn generateFloor(floor_number: u8, rng: std.Random) Floor {
 }
 
 fn carveCorridor(floor: *Floor, x1: u8, y1: u8, x2: u8, y2: u8, rng: std.Random) void {
-    // L-shaped: horizontal first or vertical first, randomly chosen
     if (rng.boolean()) {
         carveHorizontal(floor, x1, x2, y1);
         carveVertical(floor, x2, y1, y2);
@@ -168,7 +197,7 @@ fn isAdjacentTo(floor: *const Floor, x: u8, y: u8, tile_type: Tile) bool {
     for (dx, dy) |ddx, ddy| {
         const nx: i16 = @as(i16, x) + ddx;
         const ny: i16 = @as(i16, y) + ddy;
-        if (nx >= 0 and nx < FLOOR_WIDTH and ny >= 0 and ny < FLOOR_HEIGHT) {
+        if (nx >= 0 and nx < floor.width and ny >= 0 and ny < floor.height) {
             if (floor.tiles[@intCast(ny)][@intCast(nx)] == tile_type) return true;
         }
     }
@@ -176,8 +205,8 @@ fn isAdjacentTo(floor: *const Floor, x: u8, y: u8, tile_type: Tile) bool {
 }
 
 pub fn isReachable(floor: *const Floor, from_x: u8, from_y: u8, to_x: u8, to_y: u8) bool {
-    var visited: [FLOOR_HEIGHT][FLOOR_WIDTH]bool = [_][FLOOR_WIDTH]bool{[_]bool{false} ** FLOOR_WIDTH} ** FLOOR_HEIGHT;
-    var queue: [@as(u16, FLOOR_WIDTH) * FLOOR_HEIGHT][2]u8 = undefined;
+    var visited: [MAX_HEIGHT][MAX_WIDTH]bool = [_][MAX_WIDTH]bool{[_]bool{false} ** MAX_WIDTH} ** MAX_HEIGHT;
+    var queue: [@as(u16, MAX_WIDTH) * MAX_HEIGHT][2]u8 = undefined;
     var head: u16 = 0;
     var tail: u16 = 0;
 
@@ -198,7 +227,7 @@ pub fn isReachable(floor: *const Floor, from_x: u8, from_y: u8, to_x: u8, to_y: 
         for (offsets, offsets_y) |odx, ody| {
             const nx_i: i16 = @as(i16, cx) + odx;
             const ny_i: i16 = @as(i16, cy) + ody;
-            if (nx_i < 0 or nx_i >= FLOOR_WIDTH or ny_i < 0 or ny_i >= FLOOR_HEIGHT) continue;
+            if (nx_i < 0 or nx_i >= floor.width or ny_i < 0 or ny_i >= floor.height) continue;
             const nx: u8 = @intCast(nx_i);
             const ny: u8 = @intCast(ny_i);
             if (visited[ny][nx]) continue;
@@ -245,8 +274,6 @@ test "encounter tile count scales with floor number" {
     const floor10 = generateFloor(10, prng2.random());
     const count10 = countTiles(&floor10, .encounter);
 
-    // Floor 10 should have more encounters than floor 1
-    // (3 + 10/2 = 8 max vs 3 + 1/2 = 3 max)
     try std.testing.expect(count10 >= count1);
 }
 
@@ -261,9 +288,8 @@ test "deterministic generation with same seed" {
     try std.testing.expectEqual(floor_a.entrance_y, floor_b.entrance_y);
     try std.testing.expectEqual(floor_a.stairs_x, floor_b.stairs_x);
     try std.testing.expectEqual(floor_a.stairs_y, floor_b.stairs_y);
-    // Check full grid equality
-    for (0..FLOOR_HEIGHT) |y| {
-        for (0..FLOOR_WIDTH) |x| {
+    for (0..floor_a.height) |y| {
+        for (0..floor_a.width) |x| {
             try std.testing.expectEqual(floor_a.tiles[y][x], floor_b.tiles[y][x]);
         }
     }
@@ -273,9 +299,8 @@ test "no encounters adjacent to entrance or stairs" {
     var prng = std.Random.DefaultPrng.init(77);
     const floor = generateFloor(10, prng.random());
 
-    // Check no encounter tile is adjacent to entrance or stairs
-    for (0..FLOOR_HEIGHT) |y| {
-        for (0..FLOOR_WIDTH) |x| {
+    for (0..floor.height) |y| {
+        for (0..floor.width) |x| {
             if (floor.tiles[y][x] == .encounter) {
                 try std.testing.expect(!isAdjacentTo(&floor, @intCast(x), @intCast(y), .entrance));
                 try std.testing.expect(!isAdjacentTo(&floor, @intCast(x), @intCast(y), .stairs));
@@ -284,10 +309,26 @@ test "no encounters adjacent to entrance or stairs" {
     }
 }
 
+test "sized generation respects dimensions" {
+    var prng = std.Random.DefaultPrng.init(42);
+    const floor = generateFloorSized(1, prng.random(), 100, 40);
+    try std.testing.expectEqual(@as(u8, 100), floor.width);
+    try std.testing.expectEqual(@as(u8, 40), floor.height);
+    try std.testing.expect(isReachable(&floor, floor.entrance_x, floor.entrance_y, floor.stairs_x, floor.stairs_y));
+}
+
+test "small sized generation works" {
+    var prng = std.Random.DefaultPrng.init(42);
+    const floor = generateFloorSized(1, prng.random(), 30, 15);
+    try std.testing.expectEqual(@as(u8, 30), floor.width);
+    try std.testing.expectEqual(@as(u8, 15), floor.height);
+    try std.testing.expect(isReachable(&floor, floor.entrance_x, floor.entrance_y, floor.stairs_x, floor.stairs_y));
+}
+
 fn countTiles(floor: *const Floor, tile_type: Tile) u16 {
     var count: u16 = 0;
-    for (0..FLOOR_HEIGHT) |y| {
-        for (0..FLOOR_WIDTH) |x| {
+    for (0..floor.height) |y| {
+        for (0..floor.width) |x| {
             if (floor.tiles[y][x] == tile_type) count += 1;
         }
     }

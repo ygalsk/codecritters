@@ -281,6 +281,19 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&run_passive_test.step);
     }
 
+    // FX tests (no external deps)
+    {
+        const fx_test = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/ui/fx.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        const run_fx_test = b.addRunArtifact(fx_test);
+        test_step.dependOn(&run_fx_test.step);
+    }
+
     // Sprite tests (need vaxis for types)
     {
         const sprite_test = b.addTest(.{

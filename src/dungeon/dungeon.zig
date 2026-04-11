@@ -93,6 +93,7 @@ pub const DungeonState = struct {
 
     pending_scars: [MAX_PENDING_SCARS]PendingScar,
     pending_scar_count: u8,
+
 };
 
 pub const PendingScar = struct {
@@ -109,6 +110,18 @@ pub fn startRun(
     biome_ptr: *const biome.Biome,
     seed: u64,
     initial_items: []const RunItem,
+) DungeonState {
+    return startRunSized(party_critters, party_species, biome_ptr, seed, initial_items, floor_gen.DEFAULT_WIDTH, floor_gen.DEFAULT_HEIGHT);
+}
+
+pub fn startRunSized(
+    party_critters: []const critter_mod.Critter,
+    party_species: []const *const species_mod.Species,
+    biome_ptr: *const biome.Biome,
+    seed: u64,
+    initial_items: []const RunItem,
+    floor_width: u8,
+    floor_height: u8,
 ) DungeonState {
     var party: [3]?critter_mod.Critter = .{ null, null, null };
     var species_ptrs: [3]?*const species_mod.Species = .{ null, null, null };
@@ -128,7 +141,7 @@ pub fn startRun(
     }
 
     var rng = std.Random.DefaultPrng.init(seed);
-    const floor = floor_gen.generateFloor(1, rng.random());
+    const floor = floor_gen.generateFloorSized(1, rng.random(), floor_width, floor_height);
 
     return .{
         .biome_ptr = biome_ptr,
@@ -169,7 +182,7 @@ pub fn movePlayer(state: *DungeonState, dir: Direction) MoveResult {
     const nx = @as(i16, state.player_x) + dx;
     const ny = @as(i16, state.player_y) + dy;
 
-    if (nx < 0 or nx >= floor_gen.FLOOR_WIDTH or ny < 0 or ny >= floor_gen.FLOOR_HEIGHT) {
+    if (nx < 0 or nx >= state.current_floor.width or ny < 0 or ny >= state.current_floor.height) {
         return .blocked;
     }
 
@@ -327,7 +340,7 @@ pub fn resolveEncounter(
 /// Advance to the next floor. Call after between-floors phase completes.
 pub fn advanceFloor(state: *DungeonState) void {
     state.floor_number += 1;
-    const floor = floor_gen.generateFloor(state.floor_number, state.rng.random());
+    const floor = floor_gen.generateFloorSized(state.floor_number, state.rng.random(), state.current_floor.width, state.current_floor.height);
     state.current_floor = floor;
     state.player_x = floor.entrance_x;
     state.player_y = floor.entrance_y;
@@ -784,7 +797,7 @@ fn findAdjacentFloorMove(state: *const DungeonState) ?Direction {
     for (dirs, dx_vals, dy_vals) |dir, ddx, ddy| {
         const nx = @as(i16, state.player_x) + ddx;
         const ny = @as(i16, state.player_y) + ddy;
-        if (nx >= 0 and nx < floor_gen.FLOOR_WIDTH and ny >= 0 and ny < floor_gen.FLOOR_HEIGHT) {
+        if (nx >= 0 and nx < state.current_floor.width and ny >= 0 and ny < state.current_floor.height) {
             const tile = state.current_floor.tiles[@intCast(ny)][@intCast(nx)];
             if (tile == .floor) return dir;
         }
@@ -799,8 +812,8 @@ const PathResult = struct {
 
 fn findPathToTile(state: *const DungeonState, target_tile: floor_gen.Tile) ?PathResult {
     // BFS from player position to nearest target tile
-    const W = floor_gen.FLOOR_WIDTH;
-    const H = floor_gen.FLOOR_HEIGHT;
+    const W = floor_gen.MAX_WIDTH;
+    const H = floor_gen.MAX_HEIGHT;
 
     var visited: [H][W]bool = [_][W]bool{[_]bool{false} ** W} ** H;
     var parent_dir: [H][W]?Direction = [_][W]?Direction{[_]?Direction{null} ** W} ** H;
@@ -838,7 +851,7 @@ fn findPathToTile(state: *const DungeonState, target_tile: floor_gen.Tile) ?Path
         for (dirs, dx_vals, dy_vals) |dir, ddx, ddy| {
             const nx_i = @as(i16, cx) + ddx;
             const ny_i = @as(i16, cy) + ddy;
-            if (nx_i < 0 or nx_i >= W or ny_i < 0 or ny_i >= H) continue;
+            if (nx_i < 0 or nx_i >= state.current_floor.width or ny_i < 0 or ny_i >= state.current_floor.height) continue;
             const nx: u8 = @intCast(nx_i);
             const ny: u8 = @intCast(ny_i);
             if (visited[ny][nx]) continue;

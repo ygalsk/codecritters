@@ -12,6 +12,9 @@ const widgets = @import("widgets.zig");
 const input = @import("input.zig");
 const screen_result = @import("screen_result.zig");
 const ScreenResult = screen_result.ScreenResult;
+const fx = @import("fx.zig");
+const tileset_mod = @import("tileset.zig");
+const biome_bg_mod = @import("biome_background.zig");
 
 const floor_gen = dungeon_mod.floor_gen;
 const biome_mod = dungeon_mod.biome;
@@ -20,7 +23,7 @@ const Window = ui.Window;
 const writeText = ui.writeText;
 const writeFmt = ui.writeFmt;
 
-const VISIBILITY_RADIUS: i16 = 5;
+const VISIBILITY_RADIUS: i16 = 8;
 
 const MenuMode = enum {
     exploring,
@@ -32,7 +35,7 @@ pub const DungeonScreen = struct {
     game_data: *const game_data_mod.GameData,
 
     // Fog of war
-    visited: [floor_gen.FLOOR_HEIGHT][floor_gen.FLOOR_WIDTH]bool,
+    visited: [floor_gen.MAX_HEIGHT][floor_gen.MAX_WIDTH]bool,
 
     log: ui.MessageLog,
 
@@ -42,18 +45,29 @@ pub const DungeonScreen = struct {
 
     dirty: bool,
 
+    // Graphics overhaul (Phase 25a)
+    tileset: ?*const tileset_mod.Tileset,
+    biome_bg: ?*biome_bg_mod.BiomeBackground,
+    use_kitty: bool,
+
     pub fn init(
         dungeon: *dungeon_mod.DungeonState,
         game_data: *const game_data_mod.GameData,
+        tileset: ?*const tileset_mod.Tileset,
+        biome_bg: ?*biome_bg_mod.BiomeBackground,
+        use_kitty: bool,
     ) DungeonScreen {
         var screen = DungeonScreen{
             .dungeon = dungeon,
             .game_data = game_data,
-            .visited = .{.{false} ** floor_gen.FLOOR_WIDTH} ** floor_gen.FLOOR_HEIGHT,
+            .visited = .{.{false} ** floor_gen.MAX_WIDTH} ** floor_gen.MAX_HEIGHT,
             .log = ui.MessageLog.init(),
             .menu_mode = .exploring,
             .menu_cursor = 0,
             .dirty = true,
+            .tileset = tileset,
+            .biome_bg = biome_bg,
+            .use_kitty = use_kitty,
         };
         screen.updateVisited();
         screen.log.push("Entered the dungeon - Floor 1");
@@ -157,14 +171,20 @@ pub const DungeonScreen = struct {
         if (layout.tooSmall(win, 30, 14)) return;
 
         const hud_height: u16 = 2;
-        const map_width: u16 = floor_gen.FLOOR_WIDTH;
-        const map_height: u16 = floor_gen.FLOOR_HEIGHT;
+        const map_width: u16 = self.dungeon.current_floor.width;
+        const map_height: u16 = self.dungeon.current_floor.height;
 
         // Center map horizontally
         const map_col = layout.centerCol(win.width, map_width);
         const map_row: u16 = hud_height;
 
         self.renderHud(win, map_col);
+
+        // Biome background (Kitty only — drawn under everything)
+        if (self.biome_bg) |bg| {
+            bg.render(win, map_row, map_col, map_width, map_height);
+        }
+
         self.renderMap(win, map_row, map_col);
 
         const msg_row = map_row + map_height + 1;
@@ -219,55 +239,99 @@ pub const DungeonScreen = struct {
     fn renderMap(self: *const DungeonScreen, win: Window, map_row: u16, map_col: u16) void {
         const px: i16 = @intCast(self.dungeon.player_x);
         const py: i16 = @intCast(self.dungeon.player_y);
+        const time_ms = std.time.milliTimestamp();
+        const biome_theme = self.dungeon.biome_ptr.theme;
 
-        for (0..floor_gen.FLOOR_HEIGHT) |yi| {
+        const fw: u16 = self.dungeon.current_floor.width;
+        const fh: u16 = self.dungeon.current_floor.height;
+
+        for (0..fh) |yi| {
             const y: i16 = @intCast(yi);
             const row = map_row + @as(u16, @intCast(yi));
             if (row >= win.height) break;
 
-            for (0..floor_gen.FLOOR_WIDTH) |xi| {
+            for (0..fw) |xi| {
                 const x: i16 = @intCast(xi);
                 const col = map_col + @as(u16, @intCast(xi));
                 if (col >= win.width) break;
 
+                const tile = self.dungeon.current_floor.tiles[yi][xi];
+                const dist = absI16(x - px) + absI16(y - py);
+
+                // Player character
                 if (xi == self.dungeon.player_x and yi == self.dungeon.player_y) {
+                    const player_color = fx.pulsingColor(.{ 255, 255, 255 }, time_ms, @intCast(xi), @intCast(yi));
                     win.writeCell(col, row, .{
                         .char = .{ .grapheme = "@", .width = 1 },
-                        .style = theme.heading,
+                        .style = .{ .fg = .{ .rgb = player_color }, .bold = true },
                     });
                     continue;
                 }
 
-                const dist = absI16(x - px) + absI16(y - py);
-                const tile = self.dungeon.current_floor.tiles[yi][xi];
-
                 if (dist <= VISIBILITY_RADIUS) {
+                    // Visible: smooth lighting + dancing colors
+                    const brightness = fx.lightAttenuation(@floatFromInt(dist), @floatFromInt(VISIBILITY_RADIUS));
+
+                    if (self.use_kitty) {
+                        if (self.tileset) |ts| {
+                            const tile_idx = tileToIndex(tile);
+                            ts.renderTile(win, tile_idx, row, col, true, brightness);
+                            continue;
+                        }
+                    }
+
+                    // Enhanced Unicode fallback with dancing colors + smooth lighting
+                    const base_color = tileBaseColor(tile, biome_theme);
+                    const danced = fx.dancingColor(base_color, time_ms, @intCast(xi), @intCast(yi));
+                    const lit = fx.applyBrightness(danced, brightness);
+                    const glyph = enhancedTileChar(tile, @intCast(xi), @intCast(yi));
+
                     win.writeCell(col, row, .{
-                        .char = .{ .grapheme = tileChar(tile), .width = 1 },
-                        .style = tileStyleFor(tile, self.dungeon.biome_ptr.theme, false),
+                        .char = .{ .grapheme = glyph, .width = 1 },
+                        .style = .{
+                            .fg = .{ .rgb = lit },
+                            .bold = tile == .encounter or tile == .stairs,
+                        },
                     });
                 } else if (self.visited[yi][xi]) {
+                    // Visited but out of range: dim
+                    const brightness: f32 = 0.15;
+
+                    if (self.use_kitty) {
+                        if (self.tileset) |ts| {
+                            const tile_idx = tileToIndex(tile);
+                            ts.renderTile(win, tile_idx, row, col, true, brightness);
+                            continue;
+                        }
+                    }
+
+                    const base_color = tileBaseColor(tile, biome_theme);
+                    const dimmed = fx.applyBrightness(base_color, brightness);
+
                     win.writeCell(col, row, .{
-                        .char = .{ .grapheme = tileChar(tile), .width = 1 },
-                        .style = tileStyleFor(tile, self.dungeon.biome_ptr.theme, true),
+                        .char = .{ .grapheme = enhancedTileChar(tile, @intCast(xi), @intCast(yi)), .width = 1 },
+                        .style = .{ .fg = .{ .rgb = dimmed } },
                     });
                 }
+                // Unseen tiles: remain black (default clear)
             }
         }
     }
 
     pub fn resetVisited(self: *DungeonScreen) void {
-        self.visited = .{.{false} ** floor_gen.FLOOR_WIDTH} ** floor_gen.FLOOR_HEIGHT;
+        self.visited = .{.{false} ** floor_gen.MAX_WIDTH} ** floor_gen.MAX_HEIGHT;
         self.updateVisited();
     }
 
     fn updateVisited(self: *DungeonScreen) void {
         const px: i16 = @intCast(self.dungeon.player_x);
         const py: i16 = @intCast(self.dungeon.player_y);
+        const fw: u16 = self.dungeon.current_floor.width;
+        const fh: u16 = self.dungeon.current_floor.height;
 
-        for (0..floor_gen.FLOOR_HEIGHT) |yi| {
+        for (0..fh) |yi| {
             const y: i16 = @intCast(yi);
-            for (0..floor_gen.FLOOR_WIDTH) |xi| {
+            for (0..fw) |xi| {
                 const x: i16 = @intCast(xi);
                 if (absI16(x - px) + absI16(y - py) <= VISIBILITY_RADIUS) {
                     self.visited[yi][xi] = true;
@@ -276,23 +340,46 @@ pub const DungeonScreen = struct {
         }
     }
 
-    fn tileChar(tile: floor_gen.Tile) []const u8 {
+    // ─── Tile Mapping ───
+
+    /// Map floor_gen.Tile to tileset index.
+    fn tileToIndex(tile: floor_gen.Tile) tileset_mod.TileIndex {
         return switch (tile) {
-            .wall => "\xe2\x96\x88",
-            .floor => "\xc2\xb7",
-            .encounter => "!",
-            .stairs => ">",
-            .entrance => "<",
+            .wall => .wall,
+            .floor => .floor,
+            .encounter => .encounter,
+            .stairs => .stairs,
+            .entrance => .entrance,
         };
     }
 
-    fn tileStyleFor(tile: floor_gen.Tile, biome_theme: biome_mod.Theme, dim: bool) theme.Style {
+    /// Enhanced tile characters with position-based variation.
+    fn enhancedTileChar(tile: floor_gen.Tile, x: u16, y: u16) []const u8 {
         return switch (tile) {
-            .wall => .{ .fg = .{ .rgb = if (dim) biome_theme.wall_dim_fg else biome_theme.wall_fg } },
-            .floor => .{ .fg = .{ .rgb = if (dim) biome_theme.floor_dim_fg else biome_theme.floor_fg } },
-            .encounter => .{ .fg = .{ .rgb = if (dim) .{ 100, 80, 16 } else .{ 255, 200, 40 } }, .bold = !dim },
-            .stairs => .{ .fg = .{ .rgb = if (dim) .{ 32, 100, 48 } else .{ 80, 255, 120 } }, .bold = !dim },
-            .entrance => .{ .fg = .{ .rgb = if (dim) .{ 0, 72, 100 } else .{ 0, 180, 255 } } },
+            .wall => switch ((x *% 7 +% y *% 13) % 3) {
+                0 => "\xe2\x96\x88", // █
+                1 => "\xe2\x96\x93", // ▓
+                else => "\xe2\x96\x92", // ▒
+            },
+            .floor => switch ((x *% 11 +% y *% 17) % 3) {
+                0 => "\xc2\xb7", // ·
+                1 => "\xe2\x88\x98", // ∘
+                else => "\xe2\x8b\x85", // ⋅
+            },
+            .encounter => "\xe2\x9c\xa6", // ✦
+            .stairs => "\xe2\x96\xbc", // ▼
+            .entrance => "\xe2\x96\xb2", // ▲
+        };
+    }
+
+    /// Get base RGB color for a tile type from the biome theme.
+    fn tileBaseColor(tile: floor_gen.Tile, biome_theme: biome_mod.Theme) [3]u8 {
+        return switch (tile) {
+            .wall => biome_theme.wall_fg,
+            .floor => biome_theme.floor_fg,
+            .encounter => .{ 255, 200, 40 },
+            .stairs => .{ 80, 255, 120 },
+            .entrance => .{ 0, 180, 255 },
         };
     }
 
