@@ -34,6 +34,10 @@ const AnimStep = struct {
     move_type: types.CritterType = .debug,
     /// Whether this hit was super-effective (for flash).
     super_effective: bool = false,
+    /// Damage amount for HP bar tweening during shake step.
+    damage_amount: u16 = 0,
+    /// Whether damage targets the player (for HP bar tweening).
+    damage_target_is_player: bool = false,
 };
 
 /// Interpolated animation state — read by the renderer each frame.
@@ -52,6 +56,21 @@ pub const AnimState = struct {
     flash_intensity: f32 = 0.0,
     /// Horizontal shake offset (oscillates during shake step).
     shake_offset: i16 = 0,
+    /// Displayed HP for smooth bar animation (null = use critter.current_hp).
+    player_display_hp: ?u16 = null,
+    wild_display_hp: ?u16 = null,
+
+    fn getDisplayHp(self: *const AnimState, is_player: bool) ?u16 {
+        return if (is_player) self.player_display_hp else self.wild_display_hp;
+    }
+
+    fn setDisplayHp(self: *AnimState, is_player: bool, hp: u16) void {
+        if (is_player) {
+            self.player_display_hp = hp;
+        } else {
+            self.wild_display_hp = hp;
+        }
+    }
 };
 
 pub const BattleAnimSequencer = struct {
@@ -63,6 +82,9 @@ pub const BattleAnimSequencer = struct {
 
     /// Current interpolated state for the renderer.
     state: AnimState = .{},
+
+    /// HP at the start of the current shake step (for tween calculation).
+    shake_hp_start: ?u16 = null,
 
     /// Events that were "shown" this tick (caller should log them).
     pending_event: ?u8 = null,
@@ -106,11 +128,13 @@ pub const BattleAnimSequencer = struct {
                         .duration_ms = 300,
                         .event_index = i,
                     });
-                    // Shake defender
+                    // Shake defender + HP bar drain
                     seq.addStep(.{
                         .kind = .shake,
                         .duration_ms = 200,
                         .attacker_is_player = d.attacker_is_player,
+                        .damage_amount = d.damage_dealt,
+                        .damage_target_is_player = !d.attacker_is_player,
                     });
                 },
                 .critter_fainted => {
@@ -169,11 +193,16 @@ pub const BattleAnimSequencer = struct {
             self.current_step += 1;
             self.step_start_ms = now;
 
-            // Reset state for next step
+            // Reset state for next step, preserving display HP
+            const p_hp = self.state.player_display_hp;
+            const w_hp = self.state.wild_display_hp;
             self.state = .{};
+            self.state.player_display_hp = p_hp;
+            self.state.wild_display_hp = w_hp;
 
             if (self.current_step >= self.step_count) {
                 self.finished = true;
+                self.state = .{}; // Full reset on finish
             }
 
             return result;
@@ -217,19 +246,40 @@ pub const BattleAnimSequencer = struct {
                 } else {
                     self.state.player_x_offset = shake;
                 }
+                // HP bar drain tween
+                if (step.damage_amount > 0) {
+                    // Capture starting HP on first tick of this step
+                    if (self.shake_hp_start == null) {
+                        self.shake_hp_start = self.state.getDisplayHp(step.damage_target_is_player) orelse 0;
+                    }
+                    if (self.shake_hp_start) |start| {
+                        const ease_t = anim.easeOutQuad(t);
+                        const target = start -| step.damage_amount;
+                        const current = start -| @as(u16, @intFromFloat(@as(f32, @floatFromInt(start -| target)) * ease_t));
+                        self.state.setDisplayHp(step.damage_target_is_player, current);
+                    }
+                }
             },
             .show_event, .pause => {},
         }
     }
 
     fn completeStep(self: *BattleAnimSequencer, step: AnimStep) ?u8 {
-        _ = self;
         switch (step.kind) {
             .show_event => {
                 return step.event_index;
             },
             .flash => {
                 if (step.super_effective) sound.beep();
+            },
+            .shake => {
+                // Snap HP to final value
+                if (step.damage_amount > 0) {
+                    if (self.shake_hp_start) |start| {
+                        self.state.setDisplayHp(step.damage_target_is_player, start -| step.damage_amount);
+                    }
+                }
+                self.shake_hp_start = null;
             },
             else => {},
         }

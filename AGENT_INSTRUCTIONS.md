@@ -33,59 +33,43 @@ For each phase:
 
 ## Roadmap
 
-### Phases 0–13.5 — Core Systems + Starter Chains + Title + Graphics Engine [DONE]
-All game systems built through Phase 12. Phase 13 added title screen and transitions. Phase 13.5 refactored UI into reusable layers. 15 species, 16 moves. See PROGRESS.md for details.
+### Phases 0–29 [DONE]
 
-### Phase 14 — Bug Fixes: Death Logic + Cooldown Blocking + XP + Hub Item Use [DONE]
-Fixed death logic (fainted critters no longer excluded from battle party), cooldown deadlock (cooldowns decrement before party select), XP persistence (silent catch {} replaced with error logging, index mapping fixed). Hub inventory now interactive — healing/revive items usable on roster critters.
+| Phase | Summary |
+|-------|---------|
+| 0–13.5 | Core systems, starter chains, title screen, graphics engine, UI layers |
+| 14 | Bug fixes: death logic, cooldown blocking, XP, hub item use |
+| 15 | Dungeon quick menu, in-dungeon item use |
+| 16 | Bug fixes: battle priority, speed death logic |
+| 17 | Roster swap, item screen improvements |
+| 18 | Game event loop engine (ScreenResult unification) |
+| 19 | Revive cooldown fix, item packing for dungeon runs |
+| 20 | CLI enhancements: JSON status, roster export, statusline sprite |
+| 21 | Three-stage evolution lines for all 7 types (+15 species, +14 moves) |
+| 22 | Four new biomes + language detection (Rust, Go, C, Shell) |
+| 23 | Two-stage lines + standalone rares (+21 species, +10 moves) |
+| 24 | Epics + legendaries + BEL sound cues (full 61-critter roster) |
+| 24.5 | Bug fix: item equip SQL error (multi-statement split) |
+| 25 | Kitty-first graphics overhaul (backgrounds, animations, transitions) |
+| 26 | Sprite audit + final visual polish (80×24 clean) |
+| 27 | Meta shop, species codex, lifetime stats HUD |
+| 28 | README, install script, release CI, MIT license |
+| 29 | Balance pass + XP grant items + animated HP bars — content-complete |
 
-### Phase 15 — Dungeon Quick Menu + In-Dungeon Item Use [DONE]
-Press `m` in dungeon for quick menu: swap active roster order, open inventory to use items, view party. Wire healing/consumable item effects through dungeon context (hub inventory already interactive from Phase 14).
+See PROGRESS.md for full details on each phase.
 
-### Phase 16 — Bug Fixes: Battle Priority + Speed Death Logic [DONE]
-Fixed two battle bugs: (1) items, catches, and swaps now have priority over attacks — they always resolve first regardless of speed; (2) fainted critters no longer act — HP guard added before the second actor's action in both turn-order branches.
+### Phase 30 — Roster List View + Query Optimization
+Replace one-at-a-time roster browsing with scrollable list view (Name, Lv, Type, HP columns). Select a row to drill into existing detail view. Fix loadRoster N+1 query problem — collapse 1+2N queries into 2 bulk SELECTs (all critters + all scars), join in code. List/detail toggle via `view_mode` state on roster screen.
 
-### Phase 17 — Roster Swap + Item Screen Improvements
-Roster and party select screens gain position-swap controls. Item/inventory screen shows full descriptions, effect values, and item sprites. Items display rarity indicators.
+### Phase 31 — Compiler Flags (Run Modifiers)
+Toggleable "compiler flags" that modify dungeon runs — harder for better loot. Inspired by Halo skulls, themed as real compiler/toolchain flags. Simple on/off toggles, multipliers stack multiplicatively on currency/XP/drop rarity.
 
-### Phase 18 — Game Event Loop Engine [DONE]
-Unified screen signaling via ScreenResult tagged union. All 10 screens' handleInput returns ?ScreenResult. 333-line transition switch eliminated. from_dungeon flag replaced by ScreenContext carried in results. InventoryEntry types unified. RunOverScreen promoted to proper screen struct. RunContext struct defined for future use.
+Initial flags (~8): `-O0` (enemy +25% HP), `-Wall` (+1 encounter/floor), `-Werror` (status +1 turn), `-fno-exceptions` (no healing drops), `--pedantic` (boss +1 move), `-march=native` (enemy +20% speed), `--release-fast` (30s floor timer), `-fsanitize` (1HP/floor drain).
 
-### Phase 19 — Revive Cooldown Fix + Item Packing [DONE]
-Consolidated revive logic into `Critter.applyRevive()` — fixes cooldown not resetting on revive, eliminates duplication between inventory_screen and battle engine. Added item packing to party select screen: press `I`/`Tab` to switch to items tab, toggle items from persistent inventory to bring into dungeon runs (up to 6 slots). Packed items removed from DB at run start, seeded into dungeon `run_inventory`.
+Data-driven via `compiler_flags.json`. Flag toggle UI on party select screen, displayed as `zig build -Wall -Werror` command line. Unlock progression: start with 3 flags, complete runs with N active to unlock N+1. Persist active flags per run in DB.
 
-### Phase 20 — CLI Enhancements: JSON + Statusline Sprite [DONE]
-Enriched `status` CLI with full JSON (detailed favorite critter stats/moves/scars, roster summary, currency, active run state). New `roster` subcommand dumps full roster as JSON array. `statusline` now renders ANSI half-block sprite alongside critter info.
-
-### Phase 21 — Three-Stage Evolution Lines (All 7 Types)
-Complete every type's 3-stage common→common→uncommon line (Printf→Fprintf→Logstash, Segfault→Stack Overflow→Kernel Panic, etc.). +15 species, +14 moves, +15 sprites. Update all biome encounter tables.
-
-### Phase 22 — Four New Biomes + Detection [DONE]
-Rustacean Depths (.rs), Gopher Tunnels (.go), C Catacombs (.c/.h), Shell Scripts (.sh). Completed detect.zig with 6-language scoring (manifests +10, extensions +1 capped at 20, highest-score-wins with tie-breaking). Each biome has encounter table, boss pool, shop/drop bias, theme colors. 6 new detection tests.
-
-### Phase 23 — Two-Stage Lines + Standalone Rares [DONE]
-Each type gets its uncommon→rare 2-stage line + standalone rare (Breakpoint→Watchpoint, Heisenbug, etc.). +21 species, +10 moves, +21 sprites.
-
-### Phase 24 — Epics + Legendaries + Sound Cues [DONE]
-7 epics (stats reflect drawbacks, no special engine hooks yet) + 3 legendaries (not in encounter tables). Sound system emitting BEL on key events. +10 species, +8 moves, +10 sprites. Full 61-critter roster complete.
-
-### Phase 24.5 — Bug Fix: Item Equip SQL Error
-Fix `removeInventoryItem` in `src/db/roster.zig` — split two-statement SQL (UPDATE + DELETE) into separate `exec()` calls to fix `error.MultipleStatements` from zqlite. Also address the subsequent crash-on-quit triggered by the unhandled error state.
-
-### Phase 25 — Kitty-First Graphics Overhaul [DONE]
-Kitty graphics protocol rendering engine: biome backgrounds (z-indexed), tileset system (sprite-sheet sub-rectangles), dynamic floor sizing (fills terminal). Battle animation sequencer (slide → effect → flash → shake) with per-type effect sprites. Screen transitions (fade/wipe/dissolve). Visual pass: dancing colors (Brogue-style sine-wave RGB), smooth lighting attenuation, enhanced Unicode fallback (textured walls, varied floors). Hub/title/shop/recap/run_over polished with box-drawing borders, breathing colors, animated sprites. +8 new UI modules, 21 placeholder assets.
-
-### Phase 26 — Sprite Audit + Final Visual Polish
-Verify all 61 sprites exist. Hub shows favorite critter. Roster shows sprite previews. Battle handles long names. All screens clean at 80×24.
-
-### Phase 27 — Meta Shop + Meta Progression HUD [DONE]
-Meta shop accessible from hub with 3 convenience upgrades (Extra Pack Slots, Starting Funds, Species Codex). Lifetime stats HUD on hub screen (runs, deepest floor, catches, species discovered, bosses). Species Codex screen (scrollable list with discovered/undiscovered). Stat tracking hooks on run start, floor advance, battles, catches, and extraction. DB layer for meta upgrades and stats via existing meta key-value table. +3 new UI modules (meta_shop_screen, codex_screen, meta_upgrades), 5 new DB test cases.
-
-### Phase 28 — README + Build + Data Streamlining [DONE]
-Game-first README rewrite (pitch, biomes table, type chart, critter highlights, controls, CLI reference, contributing guide). Install script (`curl | sh`) with arch detection and wrapper for relative-path data loading. GitHub Actions release workflow (Linux x86_64 + aarch64, triggered on version tags). MIT LICENSE file. build.zig.zon updated. Data architecture evaluated — monolithic JSON kept (52KB total, splitting adds complexity for zero benefit).
-
-### Phase 29 — Balance Pass + Final Polish
-Stat totals by rarity tier, move power/accuracy curves, XP curve verification, catch rate review, biome encounter balance, shop pricing, edge case testing. Add level-up consumable item (XP grant item kind + data + inventory use logic). Content-complete.
+### Phase 32 — Floppy Disc Move Sprites
+Replace text-based move disc rendering with floppy disc pixel sprites via kitty graphics protocol. Base disc sprite tinted per move type. Render in roster equip overlay and battle move selection. Unicode text fallback for non-kitty terminals unchanged.
 
 ---
 

@@ -324,12 +324,19 @@ pub const BattleScreen = struct {
     }
 
     fn submitAction(self: *BattleScreen, action: battle.BattleAction) void {
+        // Snapshot HP before mutation for smooth bar animation
+        const player_hp_before = self.state.activePlayer().critter.current_hp;
+        const wild_hp_before = self.state.wild.critter.current_hp;
+
         const result = battle.processTurn(self.state, action, self.game_data);
         self.current_result = result;
         self.event_index = 0;
         self.menu_state = .animating;
         // Build animation sequence from battle events
         self.sequencer = battle_anim.BattleAnimSequencer.buildFromEvents(result);
+        // Initialize display HP to pre-turn values for tweening
+        self.sequencer.state.player_display_hp = player_hp_before;
+        self.sequencer.state.wild_display_hp = wild_hp_before;
     }
 
     pub fn render(self: *const BattleScreen, win: Window) void {
@@ -407,7 +414,6 @@ pub const BattleScreen = struct {
     }
 
     fn renderCritterInfo(self: *const BattleScreen, win: Window, bc: *const battle.BattleCritter, is_wild: bool, row: u16, col: u16) void {
-        _ = self;
         const type_color = theme.typeColor(bc.species.critter_type);
         const type_bold: Style = .{ .fg = type_color, .bold = true };
 
@@ -421,8 +427,12 @@ pub const BattleScreen = struct {
         c = writeText(win, c, row, bc.species.critter_type.displayName(), type_bold);
         _ = writeText(win, c, row, "]", type_bold);
 
-        // Line 2: HP bar
-        _ = widgets.renderHpBar(win, bc.critter.current_hp, bc.critter.effectiveStat(.hp), row + 1, col, .full);
+        // Line 2: HP bar — use display HP from animation state if available
+        const display_hp = if (is_wild)
+            self.sequencer.state.wild_display_hp orelse bc.critter.current_hp
+        else
+            self.sequencer.state.player_display_hp orelse bc.critter.current_hp;
+        _ = widgets.renderHpBar(win, display_hp, bc.critter.effectiveStat(.hp), row + 1, col, .full);
 
         // Line 3: Status (if any)
         if (bc.status.effect != .none) {

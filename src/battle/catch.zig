@@ -17,7 +17,7 @@ fn typeBonus(tier: items.CatchTier, critter_type: types.CritterType) i16 {
             .wisdom => -10,
             else => 0,
         },
-        .formal_proof => if (critter_type == .chaos) @as(i16, -30) else 0,
+        .formal_proof => if (critter_type == .chaos) @as(i16, 10) else 0,
         .print_statement, .try_catch => 0,
     };
 }
@@ -122,14 +122,14 @@ test "attemptCatch: linter bonus vs chaos, penalty vs wisdom" {
     try std.testing.expect(vs_debug.catch_chance > vs_wisdom.catch_chance);
 }
 
-test "attemptCatch: formal_proof penalized vs chaos" {
+test "attemptCatch: formal_proof bonus vs chaos" {
     const tool = makeCatchTool(.formal_proof, 90);
     var prng1 = std.Random.DefaultPrng.init(0);
     var prng2 = std.Random.DefaultPrng.init(0);
     const vs_chaos = attemptCatch(&tool, .chaos, 10, 100, .common, prng1.random());
     const vs_debug = attemptCatch(&tool, .debug, 10, 100, .common, prng2.random());
 
-    try std.testing.expect(vs_debug.catch_chance > vs_chaos.catch_chance);
+    try std.testing.expect(vs_chaos.catch_chance > vs_debug.catch_chance);
 }
 
 test "attemptCatch: minimum 5% chance" {

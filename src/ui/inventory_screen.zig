@@ -4,6 +4,7 @@ const items_mod = @import("items");
 const critter_mod = @import("critter");
 const species_mod = @import("species");
 const game_data_mod = @import("game_data");
+const leveling = @import("leveling");
 const ui = @import("ui_common.zig");
 const theme = @import("theme.zig");
 const layout = @import("layout.zig");
@@ -86,7 +87,7 @@ pub const InventoryScreen = struct {
             .confirm => {
                 if (self.lookupDisplayIdx(self.cursor)) |lookup| {
                     const item = lookup.item;
-                    if (item.kind == .healing or item.kind == .revive) {
+                    if (item.kind == .healing or item.kind == .revive or item.kind == .xp_grant) {
                         if (self.hasValidTarget(item)) {
                             self.pending_item_idx = self.cursor;
                             self.target_cursor = 0;
@@ -125,6 +126,9 @@ pub const InventoryScreen = struct {
                     heal_amount = critter.current_hp - old_hp;
                 } else if (item.kind == .revive) {
                     heal_amount = critter.applyRevive(item.revive_percent orelse 50);
+                } else if (item.kind == .xp_grant) {
+                    const xp = item.xp_amount orelse return null;
+                    _ = leveling.awardXp(critter, xp, self.game_data);
                 }
 
                 self.entries[lookup.entry_idx].quantity -= 1;
@@ -189,6 +193,14 @@ pub const InventoryScreen = struct {
             _ = writeText(win, 2, row, "Revive Items", theme.category);
             row += 1;
             row = self.renderCategory(win, row, .revive, &display_idx);
+            row += 1;
+        }
+
+        // XP Items
+        if (self.hasCategoryItems(.xp_grant)) {
+            _ = writeText(win, 2, row, "XP Items", theme.category);
+            row += 1;
+            row = self.renderCategory(win, row, .xp_grant, &display_idx);
             row += 1;
         }
 
@@ -283,6 +295,12 @@ pub const InventoryScreen = struct {
                     }
                 }
             },
+            .xp_grant => {
+                if (item.xp_amount) |xp| {
+                    _ = writeFmt(win, panel_x + 1, row, theme.body, "Grants: {d} XP", .{xp});
+                    row += 1;
+                }
+            },
         }
 
         // Prices
@@ -302,7 +320,11 @@ pub const InventoryScreen = struct {
         _ = writeText(win, 2, 1, "Use: ", theme.title);
         _ = writeText(win, 7, 1, item.name, theme.title);
 
-        const prompt: []const u8 = if (item.kind == .revive) "Choose a fainted critter:" else "Choose a critter to heal:";
+        const prompt: []const u8 = switch (item.kind) {
+            .revive => "Choose a fainted critter:",
+            .xp_grant => "Choose a critter to train:",
+            else => "Choose a critter to heal:",
+        };
         _ = writeText(win, 2, 3, prompt, theme.category);
 
         var row: u16 = 5;
@@ -371,6 +393,10 @@ pub const InventoryScreen = struct {
                 if (item.revive_percent) |pct| {
                     _ = writeFmt(win, c, row, .{ .fg = theme.info_gray }, "  ({d}%)", .{pct});
                 }
+            } else if (kind == .xp_grant) {
+                if (item.xp_amount) |xp| {
+                    _ = writeFmt(win, c, row, .{ .fg = theme.info_gray }, "  (+{d} XP)", .{xp});
+                }
             }
 
             row += 1;
@@ -414,12 +440,12 @@ pub const InventoryScreen = struct {
     fn isValidTarget(self: *const InventoryScreen, item: *const items_mod.Item, idx: u8) bool {
         if (idx >= self.roster.len) return false;
         const critter = self.roster[idx];
-        if (item.kind == .healing) {
-            return critter.current_hp > 0 and critter.current_hp < critter.effectiveStat(.hp);
-        } else if (item.kind == .revive) {
-            return critter.current_hp == 0;
-        }
-        return false;
+        return switch (item.kind) {
+            .healing => critter.current_hp > 0 and critter.current_hp < critter.effectiveStat(.hp),
+            .revive => critter.current_hp == 0,
+            .xp_grant => critter.current_hp > 0 and critter.level < 100,
+            else => false,
+        };
     }
 };
 

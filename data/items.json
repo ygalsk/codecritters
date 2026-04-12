@@ -113,5 +113,35 @@
     "move_id": "mutex_lock",
     "buy_price": 350,
     "sell_price": 175
+  },
+  {
+    "id": "code_review",
+    "name": "Code Review",
+    "description": "A thorough peer review that teaches valuable lessons. Grants experience to one critter.",
+    "kind": "xp_grant",
+    "rarity": "uncommon",
+    "xp_amount": 150,
+    "buy_price": 200,
+    "sell_price": 100
+  },
+  {
+    "id": "tech_talk",
+    "name": "Tech Talk",
+    "description": "Attend a conference talk on advanced techniques. Grants significant experience.",
+    "kind": "xp_grant",
+    "rarity": "rare",
+    "xp_amount": 500,
+    "buy_price": 500,
+    "sell_price": 250
+  },
+  {
+    "id": "pair_programming",
+    "name": "Pair Programming",
+    "description": "An intensive pairing session with an expert. Grants a large amount of experience.",
+    "kind": "xp_grant",
+    "rarity": "epic",
+    "xp_amount": 1500,
+    "buy_price": 1200,
+    "sell_price": 600
   }
 ]

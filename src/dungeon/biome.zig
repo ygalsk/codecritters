@@ -125,7 +125,7 @@ test "load biomes from JSON" {
     try std.testing.expect(generic != null);
     try std.testing.expect(generic.?.encounter_table.len >= 10);
     try std.testing.expect(generic.?.boss_pool.len >= 2);
-    try std.testing.expectEqual(@as(usize, 7), generic.?.shop_bias.len);
+    try std.testing.expectEqual(@as(usize, 9), generic.?.shop_bias.len);
 
     // Verify new biomes load
     const pythonic = findById(parsed.value, "pythonic_caves");

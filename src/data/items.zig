@@ -7,6 +7,7 @@ pub const ItemKind = enum {
     healing,
     revive,
     move_disc,
+    xp_grant,
 };
 
 pub const CatchTier = enum {
@@ -28,6 +29,7 @@ pub const Item = struct {
     heal_amount: ?u16 = null,
     revive_percent: ?u8 = null,
     move_id: ?[]const u8 = null,
+    xp_amount: ?u32 = null,
     buy_price: u16 = 0,
     sell_price: u16 = 0,
 };
@@ -70,4 +72,11 @@ test "load items from JSON" {
     try std.testing.expect(disc != null);
     try std.testing.expectEqual(ItemKind.move_disc, disc.?.kind);
     try std.testing.expect(std.mem.eql(u8, "buffer_overflow", disc.?.move_id.?));
+
+    // Check an XP grant item
+    const review = findById(parsed.value, "code_review");
+    try std.testing.expect(review != null);
+    try std.testing.expectEqual(ItemKind.xp_grant, review.?.kind);
+    try std.testing.expectEqual(@as(u32, 150), review.?.xp_amount.?);
+    try std.testing.expectEqual(types.Rarity.uncommon, review.?.rarity);
 }
