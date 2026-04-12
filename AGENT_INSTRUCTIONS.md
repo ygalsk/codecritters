@@ -81,8 +81,8 @@ Verify all 61 sprites exist. Hub shows favorite critter. Roster shows sprite pre
 ### Phase 27 — Meta Shop + Meta Progression HUD [DONE]
 Meta shop accessible from hub with 3 convenience upgrades (Extra Pack Slots, Starting Funds, Species Codex). Lifetime stats HUD on hub screen (runs, deepest floor, catches, species discovered, bosses). Species Codex screen (scrollable list with discovered/undiscovered). Stat tracking hooks on run start, floor advance, battles, catches, and extraction. DB layer for meta upgrades and stats via existing meta key-value table. +3 new UI modules (meta_shop_screen, codex_screen, meta_upgrades), 5 new DB test cases.
 
-### Phase 28 — README + Build + Data Streamlining
-Enhance README with actual screenshots, GIFs, and visual appeal. Streamline build and install process (single-command setup, clearer install instructions). Evaluate JSON data architecture — consider splitting monolithic species/moves/items JSON into per-entity files for easier editing and reduced load overhead.
+### Phase 28 — README + Build + Data Streamlining [DONE]
+Game-first README rewrite (pitch, biomes table, type chart, critter highlights, controls, CLI reference, contributing guide). Install script (`curl | sh`) with arch detection and wrapper for relative-path data loading. GitHub Actions release workflow (Linux x86_64 + aarch64, triggered on version tags). MIT LICENSE file. build.zig.zon updated. Data architecture evaluated — monolithic JSON kept (52KB total, splitting adds complexity for zero benefit).
 
 ### Phase 29 — Balance Pass + Final Polish
 Stat totals by rarity tier, move power/accuracy curves, XP curve verification, catch rate review, biome encounter balance, shop pricing, edge case testing. Add level-up consumable item (XP grant item kind + data + inventory use logic). Content-complete.

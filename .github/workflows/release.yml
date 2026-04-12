@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-linux
+            asset: codecritter-linux-x86_64.tar.gz
+          - os: ubuntu-24.04-arm
+            target: aarch64-linux
+            asset: codecritter-linux-aarch64.tar.gz
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Build
+        run: zig build -Doptimize=ReleaseSafe
+
+      - name: Bundle release
+        run: |
+          mkdir -p release/codecritter
+          cp zig-out/bin/codecritter release/codecritter/
+          cp -r data release/codecritter/
+          cp -r assets release/codecritter/
+          cp LICENSE release/codecritter/
+          cd release && tar czf ../${{ matrix.asset }} codecritter
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.asset }}

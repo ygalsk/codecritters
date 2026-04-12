@@ -2,71 +2,184 @@
 
 **Catch bugs. Train abstractions. Mass panic the kernel.**
 
-Codecritter is a Pokemon-style roguelike that runs in your terminal. Every critter is a programming concept — from the humble `Printf` to the terrifying `Kernel Panic`. Build a party, descend through procedurally generated dungeons themed around programming languages, and catch the bugs that haunt your codebase.
+<!-- TODO: hero screenshot or gameplay GIF -->
 
-Your real coding work fuels the game. Codecritter integrates with Claude Code: tool usage earns your critters XP, coding sessions surface rare items, and your party state is queryable via CLI so your favorite critter can live in your statusline.
+Codecritter is a roguelike that runs in your terminal. Every critter is a programming concept — from the humble `Printf` to the terrifying `Kernel Panic`. Build a party, descend through procedurally generated dungeons, and catch the bugs that haunt your codebase.
 
-## The Pitch
+The twist: your dungeons are themed to whatever you're actually working on. `cd` into a Python project and you'll explore the **Pythonic Caves**. A Rust project spawns the **Rustacean Depths**. And your real coding sessions fuel the game — tool usage earns XP, coding sessions surface rare items, and your favorite critter can live in your terminal statusline.
 
-You `cd` into your Python project. Codecritter detects it and generates the **Pythonic Caves** — indented tunnels where whitespace is load-bearing and VIBE-type critters roam. You descend floor by floor with a party of three: your scarred veteran **Mutex**, a freshly caught **Bobby Tables**, and your starter **Profiler** who's been with you since day one.
+## Play It
 
-On floor 8, you encounter a wild **Heisenbug**. It has insane evasion — it literally disappears when you try to observe it. You burn through two Breakpoints trying to catch it before landing the third. It joins your roster with a DEBUGGING type and a move that makes enemies question their own accuracy.
+### Download
 
-Floor 10: boss fight. **GIL** locks your critters in place with Blocked status while slowly draining their stats. You swap in Bobby Tables — a CHAOS type that bypasses defense entirely — and brute-force your way through. Your Mutex faints and picks up a scar. It'll be on cooldown for a while, recovering while you write actual code.
+```sh
+curl -fsSL https://raw.githubusercontent.com/ygalsk/codecritters/main/install.sh | sh
+```
 
-Later that evening you're deep in a real debugging session. Claude Code fires off Bash and Edit calls. When you launch Codecritter the next morning: "While you were coding, Profiler found a Formal Proof and gained 340 XP."
+### Or build from source
 
-## Features
+```sh
+git clone https://github.com/ygalsk/codecritters.git
+cd codecritters
+zig build run
+```
 
-**7 types with a developer-native effectiveness chart.** DEBUG beats CHAOS because debugging tames messy code. LEGACY resists CHAOS because spaghetti that's been in production for 15 years has already survived everything. VIBE beats SNARK because you can't mock someone who doesn't care.
+Needs [Zig 0.15.2+](https://ziglang.org/download/). Dependencies are fetched automatically.
 
-**61 critters across 5 rarity tiers.** Three-stage evolution lines, standalone rares, epics with defining drawbacks, and 3 typed legendaries. Every critter is a joke that's also a real game mechanic — Regex has a 50% chance to confuse itself, Turing Machine can learn any move but takes 2 turns to compute, Prompt Engineer buffs your whole team but literally cannot attack.
+**Terminal:** Best in [Ghostty](https://ghostty.org), [Kitty](https://sw.kovidgoyal.net/kitty/), or [WezTerm](https://wezfurlong.org/wezterm/) — you get actual pixel sprites via the Kitty graphics protocol. Any truecolor terminal works too (half-block fallback with 24-bit color). Minimum 80x24.
 
-**Roguelike dungeon runs.** Pick 3 from your roster, descend as deep as you can. Procedural floors, biome-specific encounters, shops between floors, bosses every 5 levels. Extract with your loot or wipe and face cooldowns and scarring.
+---
 
-**Pixel-art sprites in your terminal.** Half-block rendering (▄/▀) with 24-bit truecolor. Kitty graphics protocol support for terminals that have it (Ghostty, Kitty, WezTerm) with automatic fallback. Idle animations. Two sprites facing off in a proper battle layout.
+## What You Do
 
-**Claude Code integration.** Your coding fuels the game through a passive ambient layer. CLI subcommands expose your party state for statusline integration and slash commands. Claude Code hooks and skills live in a companion repo ([ygalsk/codecritter](https://github.com/ygalsk/codecritter)) — including a buddy companion that comments on your work in-character.
+Pick 3 critters from your roster and descend into a dungeon. Each floor is procedurally generated — explore rooms and corridors, fight wild critters, catch new ones. Every 5 floors there's a boss. Between floors, spend your currency at the shop.
 
-**Biomes from your codebase.** Codecritter reads your working directory and generates dungeons themed to the language. Python projects get Pythonic Caves. Node projects get the Node Modules Abyss (it's deeper than you think). Rust projects get the Rustacean Depths, where the corridors are strict and there are no unsafe zones. Unlockable for manual selection after clearing.
+Go as deep as you can. When you're ready, extract — you keep everything you caught and earned. If your whole party faints, you wipe. Caught critters are safe, but your party takes scars (permanent stat penalties) and goes on cooldown for 2 runs.
 
-## Critter Highlights
+Between runs, manage your roster. Level critters, equip Move Discs to teach new attacks, plan your next party. If you're using Claude Code, your real coding work earns your favorite critter XP and rolls for rare items while you work.
+
+## The World
+
+Your dungeon is themed to your codebase. Codecritter reads your working directory and picks a biome:
+
+| Biome | Triggers | Flavor |
+|---|---|---|
+| **Pythonic Caves** | `.py` files, `pyproject.toml` | Indented tunnels. Whitespace is load-bearing. |
+| **Node Modules Abyss** | `package.json`, `.js/.ts` | It's deeper than you think. |
+| **Rustacean Depths** | `Cargo.toml`, `.rs` files | Strict corridors. No unsafe zones. |
+| **Gopher Tunnels** | `go.mod`, `.go` files | Clean, concurrent, surprisingly spacious. |
+| **C Catacombs** | `.c/.h` files, `Makefile` | Ancient stone. Manual memory management. |
+| **Shell Scripts** | `.sh/.bash` files | Pipes everywhere. Glue holds it together. |
+| **Generic Dungeon** | Everything else | For the polyglots and the unknown. |
+
+Each biome has its own encounter tables, boss pools, shop items, and color theme.
+
+## The Critters
+
+61 critters across 5 rarity tiers. Three-stage evolution lines, two-stage rares, epics with real drawbacks, and 3 legendaries you won't find in any encounter table.
 
 | Critter | Type | What's its deal |
 |---|---|---|
-| Segfault → Kernel Panic | CHAOS | The classic crash cascade |
-| Mutex → Deadlock | PATIENCE | Locks everything. Including itself. |
-| LGTM → Bikeshed | SNARK | Approves without reading, evolves into arguing about naming |
-| Copilot → Hallucination | VIBE | Starts helpful, ends confidently wrong |
-| Singleton → Monolith | LEGACY | There can only be one, and it's unkillable |
-| Rubber Duck | WISDOM | Debuffs enemies by making them explain themselves |
+| Segfault -> Kernel Panic | CHAOS | The classic crash cascade. |
+| Mutex -> Deadlock | PATIENCE | Locks everything. Including itself. |
+| LGTM -> Bikeshed | SNARK | Approves without reading, evolves into arguing about naming. |
+| Copilot -> Hallucination | VIBE | Starts helpful, ends confidently wrong. |
+| Singleton -> Monolith | LEGACY | There can only be one, and it's unkillable. |
+| Rubber Duck | WISDOM | Debuffs enemies by making them explain themselves. |
 | 404 | SNARK | Not found. Good luck hitting it. |
 | Bobby Tables | CHAOS | SQL injection incarnate. Bypasses defense. |
 | COBOL | LEGACY | Ancient. Terrifying stats. Still runs the banks. |
-| Load Balancer | PATIENCE | Distributes damage across your party — but can't swap out and hits weaker |
+| Load Balancer | PATIENCE | Distributes damage across your party — but can't swap out and hits weaker. |
 
-## Tech Stack
+## The Type Chart
 
-- **Zig** — the whole thing
-- **libvaxis** — terminal rendering, input handling, Kitty graphics protocol
-- **SQLite** — persistent game state
-- **CLI subcommands** — `log-event`, `status`, `set-favorite`, `statusline` for Claude Code integration (hooks/skills in [ygalsk/codecritter](https://github.com/ygalsk/codecritter))
+7 types. Each has 2 strengths and 2 weaknesses. Every matchup tells a story.
 
-## Status
+| | DBG | PAT | CHS | WIS | SNK | VBE | LGC |
+|---|---|---|---|---|---|---|---|
+| **DEBUG** | -- | . | **W** | L | . | **W** | L |
+| **PATIENCE** | . | -- | L | **W** | L | **W** | . |
+| **CHAOS** | L | **W** | -- | . | **W** | . | L |
+| **WISDOM** | **W** | L | . | -- | L | . | **W** |
+| **SNARK** | . | **W** | L | **W** | -- | L | . |
+| **VIBE** | L | L | . | . | **W** | -- | **W** |
+| **LEGACY** | **W** | . | **W** | L | . | L | -- |
 
-Early development. See [CODECRITTER_DESIGN.md](CODECRITTER_DESIGN.md) for the full game design document and [AGENT_INSTRUCTIONS.md](AGENT_INSTRUCTIONS.md) for the implementation roadmap.
+**W** = super effective, **L** = not very effective
 
-## Contributing
+- DEBUG beats CHAOS — debugging tames messy code.
+- PATIENCE beats WISDOM — patience outlasts overthinking.
+- CHAOS beats PATIENCE — chaos overwhelms the patient.
+- WISDOM beats LEGACY — wisdom refactors legacy.
+- SNARK beats WISDOM — snark deflates the wise.
+- VIBE beats LEGACY — vibe coding replaces legacy overnight.
+- LEGACY beats DEBUG — legacy resists debugging.
 
-Contributions are welcome! Whether it's bug fixes, new critter ideas, balance tweaks, or code improvements — we're happy to take a look.
+## Your Code Fuels the Game
 
-We're especially looking for help with **art and assets**:
-- **Sprites** — 32x16 pixel art sprite sheets (2 frames per critter), see `assets/sprites/` for examples
-- **Tilesets** — dungeon floor visuals and biome theming
-- **Sound effects** — battle hits, catches, menu navigation, ambient dungeon audio
+Codecritter integrates with [Claude Code](https://claude.com/claude-code). When you're coding — running commands, editing files, writing code — those events feed into the game. Your favorite critter earns XP passively, and you get loot rolls for items.
 
-To contribute: fork the repo, create a branch, and open a PR. For larger changes or new critter designs, open an issue first so we can discuss the direction.
+Your party is fully queryable from the CLI:
+
+| Command | What it does |
+|---|---|
+| `codecritter` | Launch the game |
+| `codecritter log-event <type>` | Log a coding event (bash, edit, write) |
+| `codecritter set-favorite <id>` | Set which critter earns passive XP |
+| `codecritter status` | JSON dump of game state + favorite critter |
+| `codecritter roster` | Full roster as JSON |
+| `codecritter statusline` | Critter sprite + info for your terminal prompt |
+
+Hooks and skills for Claude Code live in the companion repo: [ygalsk/codecritter](https://github.com/ygalsk/codecritter).
+
+## Controls
+
+| Screen | Keys |
+|---|---|
+| **Hub** | Arrow keys to navigate, Enter to select |
+| **Dungeon** | Arrow keys to move, `M` for quick menu |
+| **Battle** | Arrows to pick action, Enter to confirm, Esc to go back |
+| **Shop** | Arrows to browse, Enter to buy, `C` continue, `E` extract |
+| **Party Select** | Arrows + Enter to toggle, `S` to swap, Tab for items tab, `C` to start |
+| **Roster** | Left/Right to browse, `S` to swap positions, `D` to equip discs |
+| **Inventory** | Arrows to browse, Enter to use item |
+
+---
+
+## For Developers
+
+### Build and Test
+
+```sh
+zig build          # compile
+zig build run      # launch the game
+zig build test     # run 234 unit tests
+```
+
+**Tech:** Zig 0.15.2 + [libvaxis](https://github.com/rockorager/libvaxis) (terminal rendering, Kitty graphics) + [zqlite](https://github.com/karlseguin/zqlite.zig) (SQLite persistence).
+
+### Project Layout
+
+```
+src/data/       Species, moves, items, type chart, leveling, equip logic
+src/battle/     Battle engine — damage, status, catch, AI (no UI)
+src/dungeon/    Dungeon engine — floor gen, biomes, shop, run state (no UI)
+src/passive/    Passive XP/item engine (no UI)
+src/ui/         All screens — hub, dungeon, battle, shop, roster, etc.
+src/db/         SQLite persistence layer
+src/main.zig    TUI entry point + CLI subcommands
+data/*.json     Species, moves, items, biomes (data-driven, no recompile needed)
+assets/         Sprites (32x16 PNG), backgrounds, tilesets, effects
+```
+
+Game logic is fully separated from rendering. The battle engine, dungeon engine, and passive engine are testable without any UI.
+
+### Game Data
+
+All game data lives in 4 JSON files in `data/`:
+
+- `species.json` — 61 critter definitions (stats, moves, evolutions)
+- `moves.json` — 50 moves (type, power, accuracy, status effects)
+- `items.json` — 11 items (catch tools, healing, move discs)
+- `biomes.json` — 7 biomes (encounters, bosses, shops, themes)
+
+These are intentionally monolithic per category. At ~52KB total, splitting into per-entity files would add filesystem complexity for no benefit. To add a new critter, move, or item, just add an entry to the relevant JSON file.
+
+### Contributing
+
+Contributions welcome — bug fixes, new critter ideas, balance tweaks, sprites, anything.
+
+**Sprites** are 32x16 PNG sheets with 2 animation frames (left frame = idle, right frame = bounce). See `assets/sprites/` for examples. We need sprites for all 61 critters.
+
+**Adding critters:** Add a species entry to `data/species.json`, add any new moves to `data/moves.json`, create a sprite in `assets/sprites/<id>.png`, and add the species to the appropriate biome encounter table in `data/biomes.json`.
+
+To contribute: fork, branch, PR. For larger changes, open an issue first.
+
+### Design Docs
+
+- [CODECRITTER_DESIGN.md](CODECRITTER_DESIGN.md) — full game design document
+- [AGENT_INSTRUCTIONS.md](AGENT_INSTRUCTIONS.md) — implementation roadmap and phase workflow
 
 ## License
 
-TBD
+[MIT](LICENSE)
