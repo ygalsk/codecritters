@@ -207,7 +207,10 @@ pub fn build(b: *std.Build) void {
 
     const db_test_modules = [_][]const u8{
         "src/db/db.zig",
-        "src/db/roster.zig",
+        "src/db/critter_store.zig",
+        "src/db/inventory_store.zig",
+        "src/db/currency_store.zig",
+        "src/db/meta_store.zig",
         "src/db/run_store.zig",
         "src/db/passive_store.zig",
     };

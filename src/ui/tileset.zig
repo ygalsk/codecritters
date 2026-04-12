@@ -35,33 +35,13 @@ pub const Tileset = struct {
 
     /// Load pixel data from a tileset PNG (horizontal strip of TILE_COUNT tiles).
     pub fn loadFromFile(alloc: std.mem.Allocator, path: []const u8) !Tileset {
-        const zigimg = vaxis.zigimg;
-        var read_buf: [4096]u8 = undefined;
-        var img = try zigimg.Image.fromFilePath(alloc, path, &read_buf);
-        defer img.deinit(alloc);
-
-        const w: u32 = @intCast(img.width);
-        const h: u32 = @intCast(img.height);
-        const pixel_count = w * h;
-        var pixels = try alloc.alloc(sprite_mod.Pixel, pixel_count);
-
-        var iter = img.iterator();
-        var i: usize = 0;
-        while (i < pixel_count) : (i += 1) {
-            if (iter.next()) |c| {
-                pixels[i] = .{
-                    .r = @intFromFloat(@max(0.0, @min(1.0, c.r)) * 255.0),
-                    .g = @intFromFloat(@max(0.0, @min(1.0, c.g)) * 255.0),
-                    .b = @intFromFloat(@max(0.0, @min(1.0, c.b)) * 255.0),
-                    .a = @intFromFloat(@max(0.0, @min(1.0, c.a)) * 255.0),
-                };
-            } else break;
-        }
+        const image_loader = @import("image_loader.zig");
+        const result = try image_loader.loadPixels(alloc, path);
 
         return .{
-            .pixels = pixels,
-            .sheet_width = w,
-            .sheet_height = h,
+            .pixels = result.pixels,
+            .sheet_width = result.width,
+            .sheet_height = result.height,
         };
     }
 

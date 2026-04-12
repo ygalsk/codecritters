@@ -53,38 +53,15 @@ pub const SpriteSheet = struct {
     const upper_half = "▀";
 
     pub fn loadFromFile(alloc: std.mem.Allocator, path: []const u8) !SpriteSheet {
-        const zigimg = vaxis.zigimg;
-        var read_buf: [4096]u8 = undefined;
-        var img = try zigimg.Image.fromFilePath(alloc, path, &read_buf);
-        defer img.deinit(alloc);
-
-        const w: u32 = @intCast(img.width);
-        const h: u32 = @intCast(img.height);
-        const pixel_count = w * h;
-        const frame_w = w / 2; // 2 frames side by side
-
-        var pixels = try alloc.alloc(Pixel, pixel_count);
-
-        // Convert pixels via format-agnostic iterator (Colorf32 → u8 RGBA)
-        var iter = img.iterator();
-        var i: usize = 0;
-        while (i < pixel_count) : (i += 1) {
-            if (iter.next()) |c| {
-                pixels[i] = .{
-                    .r = @intFromFloat(@max(0.0, @min(1.0, c.r)) * 255.0),
-                    .g = @intFromFloat(@max(0.0, @min(1.0, c.g)) * 255.0),
-                    .b = @intFromFloat(@max(0.0, @min(1.0, c.b)) * 255.0),
-                    .a = @intFromFloat(@max(0.0, @min(1.0, c.a)) * 255.0),
-                };
-            } else break;
-        }
+        const image_loader = @import("image_loader.zig");
+        const result = try image_loader.loadPixels(alloc, path);
 
         return .{
-            .width = w,
-            .height = h,
-            .frame_width = frame_w,
+            .width = result.width,
+            .height = result.height,
+            .frame_width = result.width / 2, // 2 frames side by side
             .frame_count = 2,
-            .pixels = pixels,
+            .pixels = result.pixels,
             .kitty_image = null,
             .alloc = alloc,
         };

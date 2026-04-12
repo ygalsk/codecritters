@@ -7,8 +7,6 @@ const widgets = @import("widgets.zig");
 const input = @import("input.zig");
 const ScreenResult = @import("screen_result.zig").ScreenResult;
 const meta_upgrades = @import("meta_upgrades.zig");
-const roster_db = @import("../db/roster.zig");
-const db_mod = @import("../db/db.zig");
 const Window = ui.Window;
 const writeText = ui.writeText;
 const writeFmt = ui.writeFmt;
@@ -19,16 +17,14 @@ pub const MetaShopScreen = struct {
     currency: u32,
     upgrade_levels: [meta_upgrades.UPGRADE_COUNT]u8,
     log: ui.MessageLog,
-    database: *db_mod.Db,
 
-    pub fn init(database: *db_mod.Db, currency: u32, upgrade_levels: [meta_upgrades.UPGRADE_COUNT]u8) MetaShopScreen {
+    pub fn init(currency: u32, upgrade_levels: [meta_upgrades.UPGRADE_COUNT]u8) MetaShopScreen {
         var screen = MetaShopScreen{
             .cursor = 0,
             .dirty = true,
             .currency = currency,
             .upgrade_levels = upgrade_levels,
             .log = ui.MessageLog.init(),
-            .database = database,
         };
         screen.log.push("Welcome to the Meta Shop!");
         return screen;
@@ -39,14 +35,14 @@ pub const MetaShopScreen = struct {
 
         const action = input.applyCursor(&self.cursor, meta_upgrades.UPGRADE_COUNT, input.menuNav(key));
         if (action == .confirm) {
-            self.tryPurchase();
+            return self.tryPurchase();
         } else if (action == .back) {
             return .goto_hub;
         }
         return null;
     }
 
-    fn tryPurchase(self: *MetaShopScreen) void {
+    fn tryPurchase(self: *MetaShopScreen) ?ScreenResult {
         const upgrade = &meta_upgrades.all_upgrades[self.cursor];
         const level = self.upgrade_levels[self.cursor];
         const maybe_cost = meta_upgrades.costForNextLevel(upgrade, level);
@@ -54,20 +50,31 @@ pub const MetaShopScreen = struct {
         if (maybe_cost) |cost| {
             if (self.currency < cost) {
                 self.log.push("Not enough currency!");
-                return;
+                return null;
             }
-            if (roster_db.purchaseMetaUpgrade(self.database, upgrade.id, cost)) {
-                self.currency -= cost;
-                self.upgrade_levels[self.cursor] = level + 1;
-                var buf: [ui.MSG_BUF_LEN]u8 = undefined;
-                const msg = std.fmt.bufPrint(&buf, "Purchased {s} Lv{d}!", .{ upgrade.name, level + 1 }) catch "Purchased!";
-                self.log.push(msg);
-            } else {
-                self.log.push("Purchase failed!");
-            }
+            return .{ .persist_meta_purchase = .{ .upgrade_index = self.cursor } };
         } else {
             self.log.push("Already maxed!");
+            return null;
         }
+    }
+
+    /// Called by main loop after a successful purchase to update local state.
+    pub fn applyPurchase(self: *MetaShopScreen, upgrade_index: u8, cost: u32) void {
+        self.currency -= cost;
+        self.upgrade_levels[upgrade_index] += 1;
+        self.dirty = true;
+
+        const upgrade = &meta_upgrades.all_upgrades[upgrade_index];
+        var buf: [ui.MSG_BUF_LEN]u8 = undefined;
+        const msg = std.fmt.bufPrint(&buf, "Purchased {s} Lv{d}!", .{ upgrade.name, self.upgrade_levels[upgrade_index] }) catch "Purchased!";
+        self.log.push(msg);
+    }
+
+    /// Called by main loop when a purchase fails.
+    pub fn applyPurchaseFailed(self: *MetaShopScreen) void {
+        self.log.push("Purchase failed!");
+        self.dirty = true;
     }
 
     pub fn render(self: *const MetaShopScreen, win: Window) void {

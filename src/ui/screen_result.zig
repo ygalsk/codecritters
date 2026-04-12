@@ -18,6 +18,7 @@ pub const ScreenResult = union(enum) {
     persist_swap: SwapRequest,
     persist_equip: EquipRequest,
     persist_item_use: ItemUseRequest,
+    persist_meta_purchase: MetaPurchaseRequest,
     start_extraction,
 
     // Quit the application
@@ -47,6 +48,11 @@ pub const ScreenResult = union(enum) {
         critter_idx: u8,
         item_id: []const u8,
         move_id: []const u8,
+    };
+
+    /// Meta shop purchase request.
+    pub const MetaPurchaseRequest = struct {
+        upgrade_index: u8,
     };
 
     /// Item use request with context for persistence routing.

@@ -23,36 +23,16 @@ pub const EffectSprite = struct {
     frame_duration_ms: i64 = 80,
 
     pub fn loadFromFile(alloc: std.mem.Allocator, path: []const u8) !EffectSprite {
-        const zigimg = vaxis.zigimg;
-        var read_buf: [4096]u8 = undefined;
-        var img = try zigimg.Image.fromFilePath(alloc, path, &read_buf);
-        defer img.deinit(alloc);
+        const image_loader = @import("image_loader.zig");
+        const result = try image_loader.loadPixels(alloc, path);
 
-        const w: u32 = @intCast(img.width);
-        const h: u32 = @intCast(img.height);
-        const pixel_count = w * h;
-        const frame_w = h; // assume square frames: each frame is h x h pixels
-        const fc: u8 = @intCast(w / frame_w);
-
-        var pixels = try alloc.alloc(sprite_mod.Pixel, pixel_count);
-
-        var iter = img.iterator();
-        var i: usize = 0;
-        while (i < pixel_count) : (i += 1) {
-            if (iter.next()) |c| {
-                pixels[i] = .{
-                    .r = @intFromFloat(@max(0.0, @min(1.0, c.r)) * 255.0),
-                    .g = @intFromFloat(@max(0.0, @min(1.0, c.g)) * 255.0),
-                    .b = @intFromFloat(@max(0.0, @min(1.0, c.b)) * 255.0),
-                    .a = @intFromFloat(@max(0.0, @min(1.0, c.a)) * 255.0),
-                };
-            } else break;
-        }
+        const frame_w = result.height; // assume square frames: each frame is h x h pixels
+        const fc: u8 = @intCast(result.width / frame_w);
 
         return .{
-            .pixels = pixels,
-            .sheet_width = w,
-            .sheet_height = h,
+            .pixels = result.pixels,
+            .sheet_width = result.width,
+            .sheet_height = result.height,
             .frame_count = fc,
             .frame_width = frame_w,
         };
