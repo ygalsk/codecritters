@@ -1,0 +1,440 @@
+
+<h2 class="sr-only">Codecritter terminal game UI/UX designs — 7 interactive screen mockups: wild battle, boss fight, hub party tab, dungeon, starter select, evolution, and victory/wipe</h2>
+
+<style>
+#cc-root{--z0:#0E0E1E;--z1:#1A1A2E;--z2:#141428;--pn:#14141E;--pb:#505064;--dv:#333355;--tx:#DCDCDC;--tm:#888888;--hi:#334466;--db:#4488DD;--ch:#DD4444;--pa:#44AAAA;--wi:#AAAA44;--sn:#AA44AA;--vi:#DD8844;--le:#888844;--hg:#3CC83C;--hy:#DCC800;--hr:#C83232;--hb:#282828;--yw:#FFAA44;--gr:#44FF44;--rd:#FF4444;}
+.cct{background:var(--color-background-secondary);border:.5px solid var(--color-border-tertiary);color:var(--color-text-secondary);font-family:var(--font-mono,'Courier New',monospace);font-size:11px;padding:4px 10px;cursor:pointer;border-radius:var(--border-radius-md);}
+.cct.on{background:var(--color-background-primary);border-color:var(--color-border-primary);color:var(--color-text-primary);font-weight:500;}
+.cs{display:none;position:absolute;inset:0;}
+.cs.on{display:block;}
+#cc-game{font-family:'Cascadia Code','Fira Code','JetBrains Mono','Courier New',monospace;font-size:10px;line-height:1.2;overflow:hidden;}
+</style>
+
+<div id="cc-root">
+<div style="display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px;">
+  <button class="cct on" onclick="ccS(0,this)">wild battle</button>
+  <button class="cct" onclick="ccS(1,this)">boss fight</button>
+  <button class="cct" onclick="ccS(2,this)">hub — party</button>
+  <button class="cct" onclick="ccS(3,this)">dungeon</button>
+  <button class="cct" onclick="ccS(4,this)">starter select</button>
+  <button class="cct" onclick="ccS(5,this)">evolution</button>
+  <button class="cct" onclick="ccS(6,this)">victory / wipe</button>
+</div>
+
+<div style="overflow-x:auto;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);">
+<div id="cc-game" style="width:640px;height:360px;position:relative;background:var(--z0, #0E0E1E);">
+
+<div class="cs on" id="cc0">
+  <div style="position:absolute;top:0;left:0;width:640px;height:144px;background:#1A1A2E;"></div>
+  <div style="position:absolute;top:144px;left:0;width:640px;height:126px;background:#141428;"></div>
+  <div style="position:absolute;top:144px;left:0;width:640px;height:1px;background:#333355;"></div>
+  <div style="position:absolute;top:270px;left:0;width:640px;height:1px;background:#333355;"></div>
+  <div style="position:absolute;top:50px;left:420px;width:64px;height:32px;background:#44AAAA;opacity:.85;"></div>
+  <div style="position:absolute;top:60px;left:422px;color:#000;font-size:8px;padding:1px 2px;background:#44AAAA;opacity:.6;line-height:1.5;">SEMAPHORE</div>
+  <div style="position:absolute;top:170px;left:120px;width:64px;height:32px;background:#4488DD;opacity:.85;"></div>
+  <div style="position:absolute;top:180px;left:122px;color:#000;font-size:8px;padding:1px 2px;background:#4488DD;opacity:.6;line-height:1.5;">PRINTLN</div>
+  <div style="position:absolute;top:10px;left:10px;width:230px;height:46px;background:#14141E;border:1px solid #505064;box-sizing:border-box;">
+    <div style="position:absolute;top:5px;left:5px;width:52px;height:13px;background:#44AAAA;display:flex;align-items:center;justify-content:center;"><span style="color:#000;font-size:8px;font-weight:bold;">PATIENCE</span></div>
+    <div style="position:absolute;top:5px;left:64px;width:100px;height:6px;background:#282828;top:8px;">
+      <div style="width:55%;height:100%;background:#3CC83C;"></div>
+    </div>
+    <span style="position:absolute;top:5px;left:170px;color:#AAAAAA;font-size:8px;">55/100</span>
+    <span style="position:absolute;top:22px;left:5px;color:#DCDCDC;font-size:9px;">Semaphore  Lv10</span>
+    <span style="position:absolute;top:33px;left:5px;color:#666688;font-size:8px;">UPTIME archetype</span>
+  </div>
+  <div style="position:absolute;top:210px;left:360px;width:230px;height:46px;background:#14141E;border:1px solid #505064;box-sizing:border-box;">
+    <div style="position:absolute;top:5px;left:5px;width:36px;height:13px;background:#4488DD;display:flex;align-items:center;justify-content:center;"><span style="color:#000;font-size:8px;font-weight:bold;">DEBUG</span></div>
+    <div style="position:absolute;top:8px;left:48px;width:100px;height:6px;background:#282828;">
+      <div style="width:85%;height:100%;background:#3CC83C;"></div>
+    </div>
+    <span style="position:absolute;top:5px;left:154px;color:#AAAAAA;font-size:8px;">38/45</span>
+    <span style="position:absolute;top:22px;left:5px;color:#DCDCDC;font-size:9px;">Println  Lv10</span>
+    <div style="position:absolute;top:5px;left:174px;width:26px;height:13px;background:#6464DC;display:flex;align-items:center;justify-content:center;"><span style="color:#000;font-size:7px;font-weight:bold;">BLK</span></div>
+    <span style="position:absolute;top:33px;left:5px;color:#666688;font-size:8px;">DEPLOYER archetype</span>
+  </div>
+  <div style="position:absolute;top:270px;left:0;width:640px;height:42px;background:#14141E;border-bottom:1px solid #505064;">
+    <span style="position:absolute;top:7px;left:8px;color:#DCDCDC;font-size:9px;">Semaphore used Mutex Lock — 12 dmg [NOT VERY EFFECTIVE]</span>
+    <span style="position:absolute;top:22px;left:8px;color:#FFAA44;font-size:9px;">Println is now Blocked!</span>
+  </div>
+  <div style="position:absolute;top:312px;left:0;width:640px;height:48px;background:#14141E;border-top:1px solid #505064;">
+    <div style="position:absolute;top:2px;left:2px;width:156px;height:44px;background:#334466;border-radius:2px;"></div>
+    <span style="position:absolute;top:16px;left:14px;color:#FFFFFF;font-size:10px;">1  Attack</span>
+    <span style="position:absolute;top:16px;left:176px;color:#888888;font-size:10px;">2  Catch</span>
+    <span style="position:absolute;top:16px;left:336px;color:#888888;font-size:10px;">3  Swap</span>
+    <span style="position:absolute;top:16px;left:496px;color:#888888;font-size:10px;">4  Item</span>
+  </div>
+  <div style="position:absolute;top:290px;right:8px;color:#AAAAAA;font-size:9px;">Floor 3/15  💰 280g</div>
+</div>
+
+<div class="cs" id="cc1">
+  <div style="position:absolute;top:0;left:0;width:640px;height:144px;background:#1A1A2E;"></div>
+  <div style="position:absolute;top:144px;left:0;width:640px;height:126px;background:#141428;"></div>
+  <div style="position:absolute;top:144px;left:0;width:640px;height:1px;background:#333355;"></div>
+  <div style="position:absolute;top:270px;left:0;width:640px;height:1px;background:#333355;"></div>
+  <div style="position:absolute;top:50px;left:380px;width:64px;height:32px;background:#4488DD;opacity:.85;"></div>
+  <div style="position:absolute;top:50px;left:466px;width:48px;height:24px;background:#4488DD;opacity:.5;"></div>
+  <div style="position:absolute;top:170px;left:120px;width:64px;height:32px;background:#AAAA44;opacity:.85;"></div>
+  <span style="position:absolute;top:8px;left:10px;color:#FF6644;font-size:9px;">[BOSS]  Party: ●●○</span>
+  <div style="position:absolute;top:22px;left:10px;width:230px;height:46px;background:#14141E;border:1px solid #505064;box-sizing:border-box;">
+    <div style="position:absolute;top:5px;left:5px;width:36px;height:13px;background:#4488DD;display:flex;align-items:center;justify-content:center;"><span style="color:#000;font-size:8px;font-weight:bold;">DEBUG</span></div>
+    <div style="position:absolute;top:8px;left:48px;width:100px;height:6px;background:#282828;">
+      <div style="width:68%;height:100%;background:#DCC800;"></div>
+    </div>
+    <span style="position:absolute;top:5px;left:154px;color:#AAAAAA;font-size:8px;">65/95</span>
+    <span style="position:absolute;top:22px;left:5px;color:#DCDCDC;font-size:9px;">Profiler  Lv20</span>
+    <span style="position:absolute;top:33px;left:5px;color:#FF6644;font-size:8px;">BOSS — DEPLOYER</span>
+  </div>
+  <div style="position:absolute;top:210px;left:360px;width:230px;height:46px;background:#14141E;border:1px solid #505064;box-sizing:border-box;">
+    <div style="position:absolute;top:5px;left:5px;width:36px;height:13px;background:#AAAA44;display:flex;align-items:center;justify-content:center;"><span style="color:#000;font-size:8px;font-weight:bold;">WISDOM</span></div>
+    <div style="position:absolute;top:8px;left:48px;width:100px;height:6px;background:#282828;">
+      <div style="width:100%;height:100%;background:#3CC83C;"></div>
+    </div>
+    <span style="position:absolute;top:5px;left:154px;color:#AAAAAA;font-size:8px;">70/70</span>
+    <span style="position:absolute;top:22px;left:5px;color:#DCDCDC;font-size:9px;">Burrito  Lv9</span>
+  </div>
+  <div style="position:absolute;top:270px;left:0;width:640px;height:42px;background:#14141E;border-bottom:1px solid #505064;">
+    <span style="position:absolute;top:7px;left:8px;color:#DCDCDC;font-size:9px;">What will Burrito do?</span>
+    <span style="position:absolute;top:22px;left:8px;color:#888888;font-size:9px;">↓ Moves submenu open</span>
+  </div>
+  <div style="position:absolute;top:312px;left:0;width:640px;height:48px;background:#14141E;border-top:1px solid #505064;">
+    <div style="position:absolute;top:2px;left:2px;width:208px;height:44px;background:#334466;border-radius:2px;"></div>
+    <div style="position:absolute;top:4px;left:4px;width:8px;height:8px;background:#AAAA44;border-radius:1px;"></div>
+    <span style="position:absolute;top:5px;left:16px;color:#FFFFFF;font-size:10px;">Bind</span>
+    <span style="position:absolute;top:20px;left:16px;color:#AAAAAA;font-size:9px;">P:50 A:95%  SE</span>
+    <div style="position:absolute;top:4px;left:216px;width:8px;height:8px;background:#AAAA44;border-radius:1px;"></div>
+    <span style="position:absolute;top:5px;left:228px;color:#888888;font-size:10px;">Fmap</span>
+    <span style="position:absolute;top:20px;left:228px;color:#666666;font-size:9px;">P:55 A:95%</span>
+    <div style="position:absolute;top:4px;left:428px;width:8px;height:8px;background:#888844;border-radius:1px;"></div>
+    <span style="position:absolute;top:5px;left:440px;color:#888888;font-size:10px;">Jump Table</span>
+    <span style="position:absolute;top:20px;left:440px;color:#666666;font-size:9px;">P:40 A:100%  NVE</span>
+    <span style="position:absolute;top:38px;left:8px;color:#666666;font-size:8px;">[B] Back</span>
+  </div>
+</div>
+
+<div class="cs" id="cc2">
+  <div style="position:absolute;top:0;left:0;width:640px;height:360px;background:#0E0E1E;"></div>
+  <div style="position:absolute;top:0;left:0;width:640px;height:26px;background:#14141E;border-bottom:1px solid #505064;display:flex;">
+    <div style="width:160px;height:26px;background:#334466;display:flex;align-items:center;justify-content:center;"><span style="color:#FFFFFF;font-size:10px;">1  Party</span></div>
+    <div style="width:160px;height:26px;display:flex;align-items:center;justify-content:center;"><span style="color:#888888;font-size:10px;">2  Roster</span></div>
+    <div style="width:160px;height:26px;display:flex;align-items:center;justify-content:center;"><span style="color:#888888;font-size:10px;">3  Items</span></div>
+    <div style="width:160px;height:26px;display:flex;align-items:center;justify-content:center;"><span style="color:#888888;font-size:10px;">4  Records</span></div>
+  </div>
+  <div style="position:absolute;top:26px;left:0;width:1px;height:310px;background:#333355;left:310px;"></div>
+
+  <div style="position:absolute;top:36px;left:8px;color:#888888;font-size:9px;">PARTY — select up to 3</div>
+
+  <div style="position:absolute;top:50px;left:8px;width:295px;height:72px;background:#14141E;border:1px solid #4488DD;box-sizing:border-box;">
+    <div style="position:absolute;top:8px;left:8px;width:32px;height:24px;background:#4488DD;opacity:.7;"></div>
+    <div style="position:absolute;top:8px;left:48px;width:34px;height:11px;background:#4488DD;display:flex;align-items:center;justify-content:center;"><span style="color:#000;font-size:8px;">DEBUG</span></div>
+    <span style="position:absolute;top:8px;left:88px;color:#DCDCDC;font-size:10px;">Println</span>
+    <span style="position:absolute;top:8px;left:200px;color:#888888;font-size:9px;">Lv 10  ★</span>
+    <div style="position:absolute;top:22px;left:48px;width:80px;height:5px;background:#282828;">
+      <div style="width:85%;height:100%;background:#3CC83C;"></div>
+    </div>
+    <span style="position:absolute;top:21px;left:134px;color:#AAAAAA;font-size:8px;">38/45 HP</span>
+    <span style="position:absolute;top:36px;left:48px;color:#666688;font-size:8px;">Moves: Log Dump / Stack Trace</span>
+    <span style="position:absolute;top:49px;left:48px;color:#666688;font-size:8px;">Hold: Memory Leak ·  Disc: —</span>
+    <span style="position:absolute;top:22px;left:240px;color:#FFAA44;font-size:8px;">1 scar</span>
+    <span style="position:absolute;top:33px;left:240px;color:#888888;font-size:8px;">XP 420/490</span>
+  </div>
+
+  <div style="position:absolute;top:130px;left:8px;width:295px;height:72px;background:#14141E;border:1px solid #505064;box-sizing:border-box;">
+    <div style="position:absolute;top:8px;left:8px;width:32px;height:24px;background:#DD4444;opacity:.7;"></div>
+    <div style="position:absolute;top:8px;left:48px;width:34px;height:11px;background:#DD4444;display:flex;align-items:center;justify-content:center;"><span style="color:#000;font-size:8px;">CHAOS</span></div>
+    <span style="position:absolute;top:8px;left:88px;color:#DCDCDC;font-size:10px;">Glitch</span>
+    <span style="position:absolute;top:8px;left:200px;color:#888888;font-size:9px;">Lv 8</span>
+    <div style="position:absolute;top:22px;left:48px;width:80px;height:5px;background:#282828;">
+      <div style="width:100%;height:100%;background:#3CC83C;"></div>
+    </div>
+    <span style="position:absolute;top:21px;left:134px;color:#AAAAAA;font-size:8px;">40/40 HP</span>
+    <span style="position:absolute;top:36px;left:48px;color:#666688;font-size:8px;">Moves: Bit Flip / —</span>
+    <span style="position:absolute;top:49px;left:48px;color:#666688;font-size:8px;">Hold: —  ·  Disc: Wisdom Disc II</span>
+  </div>
+
+  <div style="position:absolute;top:210px;left:8px;width:295px;height:72px;background:#14141E;border:1px solid #333355;box-sizing:border-box;opacity:.5;">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#505064;font-size:24px;">+</div>
+    <span style="position:absolute;bottom:8px;left:8px;color:#505064;font-size:8px;">slot 3 — empty</span>
+  </div>
+
+  <div style="position:absolute;top:26px;left:318px;width:314px;height:300px;background:#0E0E1E;">
+    <span style="position:absolute;top:8px;left:8px;color:#888888;font-size:9px;">SELECTED CRITTER</span>
+    <div style="position:absolute;top:24px;left:8px;width:64px;height:48px;background:#4488DD;opacity:.7;"></div>
+    <span style="position:absolute;top:24px;left:80px;color:#DCDCDC;font-size:13px;font-weight:500;">Println</span>
+    <div style="position:absolute;top:40px;left:80px;width:36px;height:12px;background:#4488DD;display:flex;align-items:center;justify-content:center;"><span style="color:#000;font-size:8px;">DEBUG</span></div>
+    <div style="position:absolute;top:40px;left:122px;width:50px;height:12px;background:#3C3C50;display:flex;align-items:center;justify-content:center;"><span style="color:#C8C8DC;font-size:8px;">DEPLOYER</span></div>
+    <span style="position:absolute;top:58px;left:80px;color:#AAAAAA;font-size:9px;">Lv 10  XP 420/490</span>
+    <span style="position:absolute;top:80px;left:8px;color:#888888;font-size:9px;">STATS</span>
+    <div style="position:absolute;top:92px;left:8px;">
+      <span style="color:#AAAAAA;font-size:9px;display:block;margin:3px 0;">HP    <span style="color:#DCDCDC;">45</span>  <span style="color:#3CC83C;">████████░░</span></span>
+      <span style="color:#AAAAAA;font-size:9px;display:block;margin:3px 0;">Logic <span style="color:#DCDCDC;">66</span>  <span style="color:#4488DD;">████████████░░</span></span>
+      <span style="color:#AAAAAA;font-size:9px;display:block;margin:3px 0;">Resolve<span style="color:#DCDCDC;">48</span>  <span style="color:#4488DD;">█████████░░</span></span>
+      <span style="color:#AAAAAA;font-size:9px;display:block;margin:3px 0;">Speed <span style="color:#DCDCDC;">60</span>  <span style="color:#4488DD;">████████████░</span></span>
+    </div>
+    <span style="position:absolute;top:168px;left:8px;color:#888888;font-size:9px;">MOVES</span>
+    <div style="position:absolute;top:180px;left:8px;width:299px;background:#14141E;border:1px solid #505064;padding:5px 6px;box-sizing:border-box;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#4488DD;font-size:9px;">●</span><span style="color:#DCDCDC;font-size:9px;">Log Dump</span><span style="color:#888888;font-size:8px;">DEBUG · P:40 · A:100%</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#4488DD;font-size:9px;">●</span><span style="color:#DCDCDC;font-size:9px;">Stack Trace</span><span style="color:#888888;font-size:8px;">DEBUG · P:65 · A:90%</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#505064;font-size:9px;">○</span><span style="color:#888888;font-size:9px;">— Disc slot —</span><span style="color:#888888;font-size:8px;">equip from Items</span></div>
+    </div>
+    <span style="position:absolute;top:256px;left:8px;color:#888888;font-size:9px;">HOLD ITEM</span>
+    <div style="position:absolute;top:268px;left:8px;width:299px;height:22px;background:#14141E;border:1px solid #505064;display:flex;align-items:center;padding:0 6px;box-sizing:border-box;">
+      <span style="color:#3CC83C;font-size:9px;">Memory Leak</span><span style="color:#888888;font-size:9px;margin-left:8px;">+5% HP regen/turn</span>
+    </div>
+  </div>
+
+  <div style="position:absolute;bottom:0;left:0;width:640px;height:34px;background:#14141E;border-top:1px solid #505064;display:flex;align-items:center;padding:0 12px;box-sizing:border-box;justify-content:space-between;">
+    <span style="color:#DCDCDC;font-size:10px;">💰 340g</span>
+    <div style="background:#4488DD;color:#000;font-size:10px;font-weight:bold;padding:4px 18px;border-radius:2px;">START RUN →</div>
+  </div>
+</div>
+
+<div class="cs" id="cc3">
+  <canvas id="cc-dcanvas" width="640" height="360"></canvas>
+</div>
+
+<div class="cs" id="cc4">
+  <div style="position:absolute;inset:0;background:#0E0E1E;display:flex;align-items:center;justify-content:center;">
+    <div style="width:580px;background:#14141E;border:1px solid #505064;box-sizing:border-box;padding:0;">
+      <div style="background:#0A0A1A;padding:8px 16px;border-bottom:1px solid #505064;">
+        <span style="color:#FFAA44;font-size:10px;letter-spacing:2px;">── CHOOSE YOUR PARTNER ─────────────────────────────────</span>
+      </div>
+      <div style="display:flex;padding:16px;gap:12px;">
+        <div style="flex:1;background:#0E0E1E;border:1px solid #4488DD;padding:12px;text-align:center;box-sizing:border-box;">
+          <div style="width:48px;height:36px;background:#4488DD;opacity:.7;margin:0 auto 8px;"></div>
+          <div style="width:60px;height:12px;background:#4488DD;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;"><span style="color:#000;font-size:8px;font-weight:bold;">DEBUG</span></div>
+          <div style="color:#DCDCDC;font-size:12px;margin:4px 0;">Println</div>
+          <div style="color:#888888;font-size:8px;margin:2px 0;">Deployer</div>
+          <div style="color:#AAAAAA;font-size:9px;margin:6px 0;line-height:1.4;">Methodical.<br>Lints opponents.</div>
+        </div>
+        <div style="flex:1;background:#141428;border:2px solid #888844;padding:12px;text-align:center;box-sizing:border-box;">
+          <div style="background:#888844;color:#000;font-size:8px;padding:2px 6px;display:inline-block;margin-bottom:6px;">SELECTED</div>
+          <div style="width:48px;height:36px;background:#888844;opacity:.7;margin:0 auto 8px;"></div>
+          <div style="width:60px;height:12px;background:#888844;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;"><span style="color:#000;font-size:8px;font-weight:bold;">LEGACY</span></div>
+          <div style="color:#DCDCDC;font-size:12px;margin:4px 0;">Goto</div>
+          <div style="color:#888888;font-size:8px;margin:2px 0;">Monolith</div>
+          <div style="color:#AAAAAA;font-size:9px;margin:6px 0;line-height:1.4;">Indestructible.<br>Outlasts all.</div>
+        </div>
+        <div style="flex:1;background:#0E0E1E;border:1px solid #DD4444;padding:12px;text-align:center;box-sizing:border-box;">
+          <div style="width:48px;height:36px;background:#DD4444;opacity:.7;margin:0 auto 8px;"></div>
+          <div style="width:60px;height:12px;background:#DD4444;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;"><span style="color:#000;font-size:8px;font-weight:bold;">CHAOS</span></div>
+          <div style="color:#DCDCDC;font-size:12px;margin:4px 0;">Glitch</div>
+          <div style="color:#888888;font-size:8px;margin:2px 0;">Hotfix</div>
+          <div style="color:#AAAAAA;font-size:9px;margin:6px 0;line-height:1.4;">Fast.<br>Volatile.</div>
+        </div>
+      </div>
+      <div style="background:#0A0A1A;padding:8px 16px;border-top:1px solid #505064;text-align:center;">
+        <span style="color:#888888;font-size:9px;">◄► to browse    Enter to choose    [?] help</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cs" id="cc5">
+  <div style="position:absolute;inset:0;background:#050510;">
+    <div style="position:absolute;top:0;left:0;width:640px;height:360px;background:#050510;"></div>
+    <div style="position:absolute;top:60px;left:80px;color:#888888;font-size:9px;letter-spacing:1px;">─────────────────────────────────────────</div>
+    <div style="position:absolute;top:80px;left:140px;display:flex;gap:48px;align-items:center;">
+      <div style="text-align:center;">
+        <div style="width:56px;height:40px;background:#888844;opacity:.5;margin:0 auto;"></div>
+        <span style="color:#888888;font-size:9px;">Goto  Lv13</span>
+      </div>
+      <div style="font-size:22px;color:#FFAA44;">→</div>
+      <div style="text-align:center;">
+        <div style="width:80px;height:56px;background:#888844;margin:0 auto;border:1px solid #FFAA44;"></div>
+        <span style="color:#FFAA44;font-size:11px;font-weight:bold;">Spaghetto</span>
+      </div>
+    </div>
+    <div style="position:absolute;top:170px;left:80px;width:480px;">
+      <div style="color:#FFAA44;font-size:11px;margin-bottom:10px;text-align:center;">EVOLVING INTO SPAGHETTO</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;text-align:center;">
+        <div style="background:#14141E;border:1px solid #505064;padding:6px;"><span style="color:#888888;font-size:8px;">HP</span><br><span style="color:#DCDCDC;font-size:10px;">50</span><span style="color:#44FF44;font-size:8px;"> +15 →</span><span style="color:#44FF44;font-size:10px;">65</span></div>
+        <div style="background:#14141E;border:1px solid #505064;padding:6px;"><span style="color:#888888;font-size:8px;">Logic</span><br><span style="color:#DCDCDC;font-size:10px;">45</span><span style="color:#44FF44;font-size:8px;"> +10 →</span><span style="color:#44FF44;font-size:10px;">55</span></div>
+        <div style="background:#14141E;border:1px solid #505064;padding:6px;"><span style="color:#888888;font-size:8px;">Resolve</span><br><span style="color:#DCDCDC;font-size:10px;">55</span><span style="color:#44FF44;font-size:8px;"> +15 →</span><span style="color:#44FF44;font-size:10px;">70</span></div>
+        <div style="background:#14141E;border:1px solid #505064;padding:6px;"><span style="color:#888888;font-size:8px;">Speed</span><br><span style="color:#DCDCDC;font-size:10px;">40</span><span style="color:#44FF44;font-size:8px;"> +20 →</span><span style="color:#44FF44;font-size:10px;">60</span></div>
+      </div>
+      <div style="margin-top:10px;background:#14141E;border:1px solid #505064;padding:6px;text-align:center;">
+        <span style="color:#AAAA44;font-size:9px;">NEW MOVE UNLOCKED: </span><span style="color:#DCDCDC;font-size:9px;">Tech Debt</span><span style="color:#888888;font-size:8px;">  LEGACY · P:60 · A:85%  → inflicts Deprecated (25%)</span>
+      </div>
+    </div>
+    <div style="position:absolute;bottom:28px;left:0;width:640px;text-align:center;color:#888888;font-size:9px;letter-spacing:1px;">─────────────────────────────────────────</div>
+    <div style="position:absolute;bottom:10px;left:0;width:640px;text-align:center;color:#666666;font-size:9px;">press any key to continue</div>
+  </div>
+</div>
+
+<div class="cs" id="cc6">
+  <div style="position:absolute;inset:0;background:#0E0E1E;display:flex;">
+    <div style="width:320px;height:360px;background:#0A0A14;border-right:1px solid #333355;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;">
+      <div style="color:#44FF44;font-size:16px;letter-spacing:2px;">VICTORY!</div>
+      <div style="width:64px;height:48px;background:#4488DD;opacity:.7;margin:8px 0;"></div>
+      <div style="color:#DCDCDC;font-size:11px;">Println  Lv10</div>
+      <div style="color:#AAAAAA;font-size:9px;">gained 40 XP!</div>
+      <div style="width:200px;height:1px;background:#333355;margin:6px 0;"></div>
+      <div style="color:#888888;font-size:9px;">Floor 3 cleared</div>
+      <div style="color:#FFAA44;font-size:9px;">+85 gold</div>
+      <div style="width:200px;background:#14141E;border:1px solid #505064;padding:8px;margin-top:4px;">
+        <div style="color:#AAAAAA;font-size:8px;margin-bottom:4px;">XP Progress</div>
+        <div style="width:100%;height:5px;background:#282828;">
+          <div style="width:72%;height:100%;background:#4488DD;"></div>
+        </div>
+        <div style="color:#888888;font-size:8px;margin-top:2px;">420 / 490  →  Lv11</div>
+      </div>
+    </div>
+    <div style="width:320px;height:360px;background:#120A0A;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;">
+      <div style="color:#FF4444;font-size:16px;letter-spacing:2px;">RUN OVER</div>
+      <div style="color:#888888;font-size:9px;margin-bottom:8px;">floor 7  ·  11 min</div>
+      <div style="width:260px;background:#14141E;border:1px solid #505064;padding:10px;">
+        <div style="color:#888888;font-size:8px;margin-bottom:6px;">SCARS APPLIED</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="width:24px;height:18px;background:#888844;opacity:.6;"></div>
+          <span style="color:#DCDCDC;font-size:9px;">Goto</span><span style="color:#FF4444;font-size:9px;margin-left:auto;">Logic −1  permanently</span>
+        </div>
+        <div style="height:1px;background:#333355;margin:6px 0;"></div>
+        <div style="color:#888888;font-size:8px;margin-bottom:4px;">ON COOLDOWN (1 run)</div>
+        <div style="color:#AAAAAA;font-size:9px;">Goto  ·  Glitch</div>
+        <div style="height:1px;background:#333355;margin:6px 0;"></div>
+        <div style="color:#888888;font-size:8px;margin-bottom:4px;">CATCHES KEPT</div>
+        <div style="color:#AAAAAA;font-size:9px;">Semaphore  Lv6  (PATIENCE)</div>
+        <div style="color:#888888;font-size:8px;margin-top:6px;">1 run  ·  deepest floor 7  ·  3 catches</div>
+      </div>
+      <div style="color:#666666;font-size:9px;margin-top:4px;">press any key to return to hub</div>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+</div>
+
+<script>
+function ccS(n,btn){
+  document.querySelectorAll('.cs').forEach((el,i)=>el.classList.toggle('on',i===n));
+  document.querySelectorAll('.cct').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  if(n===3)ccDungeon();
+}
+
+function ccDungeon(){
+  const c=document.getElementById('cc-dcanvas');
+  if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=640,H=360;
+  const TW=16,TH=16;
+  ctx.fillStyle='#060612';
+  ctx.fillRect(0,0,W,H);
+  const rooms=[
+    {x:2,y:1,w:6,h:5},
+    {x:12,y:1,w:7,h:5},
+    {x:22,y:1,w:6,h:5},
+    {x:12,y:10,w:7,h:5},
+    {x:22,y:10,w:6,h:5},
+    {x:32,y:5,w:5,h:5}
+  ];
+  const corridors=[
+    {x:8,y:3,w:4,h:2},
+    {x:19,y:3,w:3,h:2},
+    {x:15,y:6,w:4,h:4},
+    {x:19,y:12,w:3,h:1},
+    {x:27,y:7,w:5,h:2}
+  ];
+  const explored=[0,1,2,4];
+  const dim=[3];
+  rooms.forEach((r,i)=>{
+    let fill='#060612';
+    if(explored.includes(i))fill='#1C1C3C';
+    else if(dim.includes(i))fill='#0E0E22';
+    ctx.fillStyle=fill;
+    ctx.fillRect(r.x*TW,r.y*TH,r.w*TW,r.h*TH);
+    if(explored.includes(i)||dim.includes(i)){
+      ctx.strokeStyle=explored.includes(i)?'#2A2A50':'#181830';
+      ctx.lineWidth=1;
+      ctx.strokeRect(r.x*TW+0.5,r.y*TH+0.5,r.w*TW-1,r.h*TH-1);
+    }
+  });
+  corridors.forEach((c2,i)=>{
+    ctx.fillStyle=i<4?'#181830':'#060612';
+    ctx.fillRect(c2.x*TW,c2.y*TH,c2.w*TW,c2.h*TH);
+  });
+  const enemies=[{x:14,y:2},{x:24,y:2}];
+  enemies.forEach(e=>{
+    ctx.fillStyle='#DD4444';
+    ctx.fillRect(e.x*TW+4,e.y*TH+4,8,8);
+  });
+  const chest={x:16,y:11};
+  ctx.fillStyle='#FFAA44';
+  ctx.fillRect(chest.x*TW+3,chest.y*TH+3,10,10);
+  ctx.fillStyle='#FFFF44';
+  ctx.fillRect(chest.x*TW+6,chest.y*TH+5,4,6);
+  ctx.fillStyle='#4488DD';
+  ctx.beginPath();
+  ctx.arc(4*TW+12,3*TH+10,5,0,Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle='#6688FF';
+  ctx.fillRect(4*TW+9,3*TH+14,6,8);
+  ctx.fillStyle='#1C1C3C';
+  ctx.fillRect(32*TW,5*TH,5*TW,5*TH);
+  ctx.strokeStyle='#505064';
+  ctx.lineWidth=1;
+  ctx.strokeRect(32*TW+0.5,5*TH+0.5,5*TW-1,5*TH-1);
+  ctx.fillStyle='#888888';
+  ctx.font='bold 8px monospace';
+  ctx.fillText('BOSS',33*TW+6,7*TH+4);
+  ctx.fillStyle='#C83232';
+  ctx.fillRect(33*TW+4,7*TH+8,20,14);
+  ctx.fillStyle='#505064';
+  ctx.fillRect(35*TW,9*TH+4,8,8);
+  ctx.fillStyle='#FFFF44';
+  ctx.fillRect(35*TW+3,9*TH+2,2,8);
+  const mm={x:576,y:4,w:58,h:42};
+  ctx.fillStyle='#0A0A1A';
+  ctx.fillRect(mm.x,mm.y,mm.w,mm.h);
+  ctx.strokeStyle='#333355';
+  ctx.lineWidth=1;
+  ctx.strokeRect(mm.x,mm.y,mm.w,mm.h);
+  const scale=0.15;
+  rooms.forEach((r,i)=>{
+    let fill='#060612';
+    if(explored.includes(i))fill='#2A2A60';
+    else if(dim.includes(i))fill='#181838';
+    ctx.fillStyle=fill;
+    ctx.fillRect(mm.x+r.x*TW*scale,mm.y+r.y*TH*scale,r.w*TW*scale,r.h*TH*scale);
+  });
+  ctx.fillStyle='#6688FF';
+  ctx.fillRect(mm.x+4*TW*scale+1,mm.y+3*TH*scale+1,3,3);
+  ctx.fillStyle='#FF6644';
+  ctx.fillRect(mm.x+33*TW*scale,mm.y+7*TH*scale,3,3);
+  ctx.fillStyle='rgba(255,255,100,0.6)';
+  ctx.fillRect(mm.x+chest.x*TW*scale,mm.y+chest.y*TH*scale,2,2);
+  ctx.fillStyle='#14141E';
+  ctx.fillRect(0,320,W,40);
+  ctx.fillStyle='#333355';
+  ctx.fillRect(0,320,W,1);
+  const party=[{name:'Println',hp:38,mhp:45,col:'#4488DD'},{name:'Glitch',hp:40,mhp:40,col:'#DD4444'},{name:'',hp:0,mhp:0,col:'#333355'}];
+  party.forEach((p,i)=>{
+    const bx=10+i*140,by=331;
+    if(!p.name){
+      ctx.fillStyle='#333355';
+      ctx.font='9px monospace';
+      ctx.fillText('— empty —',bx+10,by+8);
+      return;
+    }
+    ctx.fillStyle=p.col;
+    ctx.font='9px monospace';
+    ctx.fillText(p.name,bx,by);
+    ctx.fillStyle='#282828';
+    ctx.fillRect(bx,by+4,80,5);
+    ctx.fillStyle=p.hp/p.mhp>0.5?'#3CC83C':p.hp/p.mhp>0.25?'#DCC800':'#C83232';
+    ctx.fillRect(bx,by+4,80*(p.hp/p.mhp),5);
+    ctx.fillStyle='#888888';
+    ctx.font='8px monospace';
+    ctx.fillText(p.hp+'/'+p.mhp,bx,by+18);
+  });
+  ctx.fillStyle='#DCDCDC';
+  ctx.font='9px monospace';
+  ctx.fillText('Floor 3/15',440,335);
+  ctx.fillStyle='#FFAA44';
+  ctx.fillText('280g',560,335);
+  ctx.fillStyle='#666688';
+  ctx.font='8px monospace';
+  ctx.fillText('[S] to sprint  [?] map',440,348);
+}
+</script>
