@@ -2,7 +2,7 @@
 
 **Catch bugs. Train abstractions. Mass panic the kernel.**
 
-<!-- TODO: hero screenshot or gameplay GIF -->
+> **Note:** Codecritter is currently being rebuilt on the [Vexel engine](https://github.com/ygalsk/vexel).
 
 Codecritter is a roguelike that runs in your terminal. Every critter is a programming concept — from the humble `Printf` to the terrifying `Kernel Panic`. Build a party, descend through procedurally generated dungeons, and catch the bugs that haunt your codebase.
 
