@@ -3,3 +3,4 @@ save.db
 zig-out/
 zig-cache/
 .zig-cache/
+*.obsidian
