@@ -5,13 +5,14 @@
 
 ---
 
-## Vision
+## Visionapple human intefrace design
+nielsen 10 ux heuristics
 
 Codecritter is a Pokemon-style roguelike that lives in your terminal. Every critter is a programming concept — a bug, a tool, a language spirit, a design pattern. You catch them, build a party, and descend through procedurally generated dungeons themed around programming languages.
 
 This is not a tutorial. It does not hold your hand. But it will teach you through play: type matchups reveal themselves through losses, status effects make sense the moment they happen to you, and the first time Load Balancer saves your Println from a KO, you understand why the Reviewer archetype exists.
 
-Think LÖVE, but for the terminal. Think Pokemon Gold, but your party knows what a mutex is.
+Think LÖVE, but for the terminal. Think Pokemon Emerald, but your party knows what a mutex is.
 
 ---
 
