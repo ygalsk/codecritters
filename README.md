@@ -2,7 +2,7 @@
 
 Pokemon-style roguelike for the terminal. Every critter is a programming concept.
 
-Built on [Vexel](https://github.com/dkremer/vexel), a terminal graphics engine using the Kitty graphics protocol.
+Built on [Vexel](https://github.com/ygalsk/vexel), a terminal graphics engine using the Kitty graphics protocol.
 
 ## Running
 
