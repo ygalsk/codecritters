@@ -7,13 +7,6 @@
 - **Sprite size**: 32x32px minimum for battle sprites
 - **Sprite registry**: `sprite/registry.lua` maps species_id -> art config. New art drops in without code changes.
 
-## Assets in Use
-
-- Pixel UI Pack — HP bars, panel borders, badges, buttons
-- Legacy Collection (TinyRPG dungeon) — dungeon tileset (purple/blue)
-- Legacy Collection (Grotto FX) — battle effects (electro-shock, fire-ball, energy-smack, etc.)
-- 42 Clement Panchout WAV tracks — full music coverage
-
 ## Per-Type Battle FX
 
 | Type | Effect | Flavor |
